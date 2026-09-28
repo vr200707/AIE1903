@@ -1,10 +1,30 @@
-.DS_Store
+# Environment and secrets
 .env
 .env.*
 !.env.example
+
+# Private/local candidate materials
+data/private/
+data/samples/*
+!data/samples/.gitkeep
+!data/samples/README.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
 node_modules/
 dist/
 .next/
 coverage/
-*.log
 
+# OS/editor
+.DS_Store
+Thumbs.db
+*.log
