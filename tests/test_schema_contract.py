@@ -1,4 +1,5 @@
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -44,14 +45,24 @@ class SchemaContractTests(unittest.TestCase):
         source_url = self.schema["$defs"]["evidence"]["properties"]["source_url"]
         self.assertEqual(
             source_url["anyOf"],
-            [{"type": "string", "format": "uri"}, {"type": "null"}],
+            [
+                {
+                    "type": "string",
+                    "format": "uri",
+                    "pattern": "^https?://[^\\s]+$",
+                },
+                {"type": "null"},
+            ],
         )
 
-    def test_schema_is_strict_and_uses_no_unresolved_local_refs(self):
-        self.assertFalse(self.schema["additionalProperties"])
+    def test_all_object_schemas_are_strict_and_refs_are_resolved(self):
+        object_schemas = []
 
         def visit(value):
             if isinstance(value, dict):
+                if value.get("type") == "object":
+                    object_schemas.append(value)
+                    self.assertIs(value.get("additionalProperties"), False)
                 ref = value.get("$ref")
                 if ref and ref.startswith("#/$defs/"):
                     self.assertIn(ref.removeprefix("#/$defs/"), self.schema["$defs"])
@@ -62,6 +73,15 @@ class SchemaContractTests(unittest.TestCase):
                     visit(child)
 
         visit(self.schema)
+        self.assertGreater(len(object_schemas), 1)
+
+    def test_partial_date_pattern_rejects_out_of_range_months_and_days(self):
+        pattern = self.schema["$defs"]["date_value"]["anyOf"][0]["pattern"]
+        self.assertIsNotNone(re.fullmatch(pattern, "2024"))
+        self.assertIsNotNone(re.fullmatch(pattern, "2024-02"))
+        self.assertIsNotNone(re.fullmatch(pattern, "2024-02-29"))
+        self.assertIsNone(re.fullmatch(pattern, "2024-99"))
+        self.assertIsNone(re.fullmatch(pattern, "2024-02-32"))
 
 
 if __name__ == "__main__":
