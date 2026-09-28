@@ -43,17 +43,15 @@ class SchemaContractTests(unittest.TestCase):
 
     def test_source_url_reserves_a_nullable_clickable_provenance_link(self):
         source_url = self.schema["$defs"]["evidence"]["properties"]["source_url"]
-        self.assertEqual(
-            source_url["anyOf"],
-            [
-                {
-                    "type": "string",
-                    "format": "uri",
-                    "pattern": "^https?://[^\\s]+$",
-                },
-                {"type": "null"},
-            ],
-        )
+        self.assertEqual(source_url["anyOf"][1], {"type": "null"})
+        url_rule = source_url["anyOf"][0]
+        self.assertEqual(url_rule["format"], "uri")
+        pattern = url_rule["pattern"]
+        self.assertIsNotNone(re.fullmatch(pattern, "https://example.com/paper/123"))
+        self.assertIsNotNone(re.fullmatch(pattern, "http://127.0.0.1:8000/source"))
+        self.assertIsNone(re.fullmatch(pattern, "not a uri"))
+        self.assertIsNone(re.fullmatch(pattern, "https://?"))
+        self.assertIsNone(re.fullmatch(pattern, "http://["))
 
     def test_all_object_schemas_are_strict_and_refs_are_resolved(self):
         object_schemas = []
@@ -80,8 +78,12 @@ class SchemaContractTests(unittest.TestCase):
         self.assertIsNotNone(re.fullmatch(pattern, "2024"))
         self.assertIsNotNone(re.fullmatch(pattern, "2024-02"))
         self.assertIsNotNone(re.fullmatch(pattern, "2024-02-29"))
+        self.assertIsNotNone(re.fullmatch(pattern, "2024-04-30"))
         self.assertIsNone(re.fullmatch(pattern, "2024-99"))
         self.assertIsNone(re.fullmatch(pattern, "2024-02-32"))
+        self.assertIsNone(re.fullmatch(pattern, "2023-02-29"))
+        self.assertIsNone(re.fullmatch(pattern, "2024-02-31"))
+        self.assertIsNone(re.fullmatch(pattern, "2024-04-31"))
 
 
 if __name__ == "__main__":
