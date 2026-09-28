@@ -7,4 +7,6 @@ dist/
 .next/
 coverage/
 *.log
+.npm-cache/
+.appdata/
 
