@@ -1,0 +1,486 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/vr200707/AIE1903/docs/schema.json",
+  "title": "Candidate Resume Analysis Profile",
+  "description": "用于候选人简历抽取、外部核验与综合评价的数据契约。未知信息使用 null 或空数组，不得推测补全。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "candidate"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "basic_info",
+        "education_employment",
+        "awards_funding",
+        "publications_impact",
+        "academic_service",
+        "overall_evaluation"
+      ],
+      "properties": {
+        "basic_info": { "$ref": "#/$defs/basic_info" },
+        "education_employment": { "$ref": "#/$defs/education_employment" },
+        "awards_funding": { "$ref": "#/$defs/awards_funding" },
+        "publications_impact": { "$ref": "#/$defs/publications_impact" },
+        "academic_service": { "$ref": "#/$defs/academic_service" },
+        "overall_evaluation": { "$ref": "#/$defs/overall_evaluation" }
+      }
+    }
+  },
+  "$defs": {
+    "nullable_string": {
+      "type": ["string", "null"]
+    },
+    "nonempty_nullable_string": {
+      "anyOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "null" }
+      ]
+    },
+    "date_value": {
+      "description": "允许 YYYY、YYYY-MM 或 YYYY-MM-DD；无法确定时为 null。",
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^(?:[0-9]{4}|[0-9]{4}-(?:0[1-9]|1[0-2])|(?:[0-9]{2}(?:0[48]|[2468][048]|[13579][26])|(?:0[48]|[2468][048]|[13579][26])00)-02-29|[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|02-(?:0[1-9]|1[0-9]|2[0-8])))$"
+        },
+        { "type": "null" }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "source_url", "evidence", "evidence_status", "query_date"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "description": "便于识别的来源名称，例如文件名、机构官网或文献数据库名称。"
+        },
+        "source_url": {
+          "description": "可一键打开的溯源链接；没有可用链接时必须填写 null，以便日后补充。",
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://(?:localhost|(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}|(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]))(?::[0-9]{1,5})?(?:[/?#][^\\s]*)?$"
+            },
+            { "type": "null" }
+          ]
+        },
+        "evidence": {
+          "type": "string",
+          "minLength": 1,
+          "description": "支持或反驳该事实的原文摘录或检索结果摘要。"
+        },
+        "evidence_status": {
+          "type": "string",
+          "enum": ["confirmed", "not_found_public", "to_verify", "conflict"]
+        },
+        "query_date": {
+          "type": "string",
+          "format": "date",
+          "description": "读取文档或查询外部来源的日期。"
+        },
+        "page": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "source_type": {
+          "type": "string",
+          "enum": [
+            "resume",
+            "supporting_document",
+            "institutional_page",
+            "publisher_page",
+            "bibliographic_database",
+            "code_repository",
+            "other"
+          ]
+        },
+        "notes": { "$ref": "#/$defs/nullable_string" }
+      }
+    },
+    "evidence_list": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/evidence" }
+    },
+    "verification_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim", "reason", "evidence"],
+      "properties": {
+        "claim": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "evidence": { "$ref": "#/$defs/evidence_list" }
+      }
+    },
+    "basic_info": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "institution",
+        "position",
+        "research_interests",
+        "highest_degree",
+        "skills",
+        "strengths",
+        "to_verify",
+        "evidence"
+      ],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonempty_nullable_string" },
+        "institution": { "$ref": "#/$defs/nullable_string" },
+        "position": { "$ref": "#/$defs/nullable_string" },
+        "research_interests": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "highest_degree": { "$ref": "#/$defs/nullable_string" },
+        "skills": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "strengths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "to_verify": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/verification_item" }
+        },
+        "evidence": { "$ref": "#/$defs/evidence_list" }
+      }
+    },
+    "education_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "degree",
+        "field",
+        "institution",
+        "advisor",
+        "start_date",
+        "end_date",
+        "projects",
+        "outcomes",
+        "evidence"
+      ],
+      "properties": {
+        "degree": { "$ref": "#/$defs/nullable_string" },
+        "field": { "$ref": "#/$defs/nullable_string" },
+        "institution": { "$ref": "#/$defs/nullable_string" },
+        "advisor": { "$ref": "#/$defs/nullable_string" },
+        "start_date": { "$ref": "#/$defs/date_value" },
+        "end_date": { "$ref": "#/$defs/date_value" },
+        "projects": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "outcomes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "evidence": { "$ref": "#/$defs/evidence_list" }
+      }
+    },
+    "employment_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "institution",
+        "position",
+        "start_date",
+        "end_date",
+        "responsibilities",
+        "projects",
+        "outcomes",
+        "evidence"
+      ],
+      "properties": {
+        "institution": { "$ref": "#/$defs/nullable_string" },
+        "position": { "$ref": "#/$defs/nullable_string" },
+        "start_date": { "$ref": "#/$defs/date_value" },
+        "end_date": { "$ref": "#/$defs/date_value" },
+        "responsibilities": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "projects": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "outcomes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "evidence": { "$ref": "#/$defs/evidence_list" }
+      }
+    },
+    "education_employment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["education", "employment"],
+      "properties": {
+        "education": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/education_record" }
+        },
+        "employment": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/employment_record" }
+        }
+      }
+    },
+    "award_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "year", "awarding_body", "evidence"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "year": {
+          "anyOf": [
+            { "type": "integer", "minimum": 1900, "maximum": 2100 },
+            { "type": "null" }
+          ]
+        },
+        "awarding_body": { "$ref": "#/$defs/nullable_string" },
+        "evidence": { "$ref": "#/$defs/evidence_list" }
+      }
+    },
+    "funding_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_name",
+        "funder",
+        "start_date",
+        "end_date",
+        "amount",
+        "currency",
+        "role",
+        "evidence"
+      ],
+      "properties": {
+        "project_name": { "type": "string", "minLength": 1 },
+        "funder": { "$ref": "#/$defs/nullable_string" },
+        "start_date": { "$ref": "#/$defs/date_value" },
+        "end_date": { "$ref": "#/$defs/date_value" },
+        "amount": {
+          "anyOf": [
+            { "type": "number", "minimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "currency": {
+          "anyOf": [
+            { "type": "string", "pattern": "^[A-Z]{3}$" },
+            { "type": "null" }
+          ],
+          "description": "ISO 4217 三字母货币代码。"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["PI", "Co-PI", "participant", "unknown"]
+        },
+        "evidence": { "$ref": "#/$defs/evidence_list" }
+      }
+    },
+    "awards_funding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["awards", "funding"],
+      "properties": {
+        "awards": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/award_record" }
+        },
+        "funding": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/funding_record" }
+        }
+      }
+    },
+    "publication_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "year",
+        "author_role",
+        "venue",
+        "venue_type",
+        "ranking",
+        "citation_count",
+        "citation_query_date",
+        "code_repository",
+        "repository_stars",
+        "stars_query_date",
+        "evidence"
+      ],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "year": {
+          "anyOf": [
+            { "type": "integer", "minimum": 1900, "maximum": 2100 },
+            { "type": "null" }
+          ]
+        },
+        "author_role": {
+          "type": "string",
+          "enum": [
+            "first_author",
+            "co_first_author",
+            "corresponding_author",
+            "co_corresponding_author",
+            "middle_author",
+            "single_author",
+            "unknown"
+          ]
+        },
+        "venue": { "$ref": "#/$defs/nullable_string" },
+        "venue_type": {
+          "type": "string",
+          "enum": ["journal", "conference", "workshop", "preprint", "other", "unknown"]
+        },
+        "ranking": { "$ref": "#/$defs/nullable_string" },
+        "citation_count": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "citation_query_date": {
+          "anyOf": [
+            { "type": "string", "format": "date" },
+            { "type": "null" }
+          ]
+        },
+        "code_repository": {
+          "anyOf": [
+            { "type": "string", "format": "uri" },
+            { "type": "null" }
+          ]
+        },
+        "repository_stars": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "stars_query_date": {
+          "anyOf": [
+            { "type": "string", "format": "date" },
+            { "type": "null" }
+          ]
+        },
+        "evidence": { "$ref": "#/$defs/evidence_list" }
+      }
+    },
+    "publications_impact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["publications", "total_citations", "citation_query_date"],
+      "properties": {
+        "publications": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/publication_record" }
+        },
+        "total_citations": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "citation_query_date": {
+          "anyOf": [
+            { "type": "string", "format": "date" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "service_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "service_type",
+        "organization_or_venue",
+        "role",
+        "start_year",
+        "end_year",
+        "research_areas",
+        "evidence"
+      ],
+      "properties": {
+        "service_type": {
+          "type": "string",
+          "enum": ["reviewer", "editor", "program_committee", "other"]
+        },
+        "organization_or_venue": { "type": "string", "minLength": 1 },
+        "role": { "$ref": "#/$defs/nullable_string" },
+        "start_year": {
+          "type": ["integer", "null"],
+          "minimum": 1900,
+          "maximum": 2100
+        },
+        "end_year": {
+          "type": ["integer", "null"],
+          "minimum": 1900,
+          "maximum": 2100
+        },
+        "research_areas": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "evidence": { "$ref": "#/$defs/evidence_list" }
+      }
+    },
+    "academic_service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["services"],
+      "properties": {
+        "services": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/service_record" }
+        }
+      }
+    },
+    "evaluation_dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dimension", "assessment", "evidence"],
+      "properties": {
+        "dimension": { "type": "string", "minLength": 1 },
+        "assessment": { "type": "string", "minLength": 1 },
+        "evidence": { "$ref": "#/$defs/evidence_list" }
+      }
+    },
+    "overall_evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "strengths", "risks", "dimensions"],
+      "properties": {
+        "summary": { "$ref": "#/$defs/nullable_string" },
+        "strengths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "risks": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "dimensions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evaluation_dimension" }
+        }
+      }
+    }
+  }
+}
