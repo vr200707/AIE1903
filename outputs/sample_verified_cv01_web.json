@@ -1,0 +1,835 @@
+{
+  "schema_version": "1.0.0",
+  "candidate": {
+    "basic_info": {
+      "name": "Evelyn R. Hart",
+      "institution": "Northbridge Institute of Technology",
+      "position": "Assistant Professor of Human-Centered AI",
+      "research_interests": [
+        "Human-Centered AI",
+        "Model calibration",
+        "Causal evaluation",
+        "Clinician-facing decision support",
+        "Robust prediction under distribution shift"
+      ],
+      "highest_degree": "Ph.D.",
+      "skills": [
+        "Python",
+        "R",
+        "SQL",
+        "PyTorch",
+        "scikit-learn",
+        "causal inference",
+        "calibration",
+        "data visualization",
+        "research supervision",
+        "grant writing"
+      ],
+      "strengths": [
+        "Interdisciplinary research leadership",
+        "Teaching machine learning",
+        "Grant writing and funding acquisition"
+      ],
+      "to_verify": [],
+      "evidence": [
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "EVELYN R. HART, Ph.D. Assistant Professor of Human-Centered AI Northbridge Institute of Technology, Department of Computer Science",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 1,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "I study how machine-learning systems behave when they encounter changes in people, workflows, and data. My current work combines model calibration, causal evaluation, and clinician-facing decision support.",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 1,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "Ph.D., Computer Science University of Calder 2015 - 2019",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 1,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "Python, R, SQL, PyTorch, scikit-learn, causal inference, calibration, data visualization, research supervision, grant writing.",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 2,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "I teach machine learning and lead a small interdisciplinary research group.",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 1,
+          "source_type": "resume"
+        },
+        {
+          "source": "WebSearch",
+          "source_url": "https://baike.baidu.com/item/Evelyn/15493091",
+          "evidence": "网页搜索找到相关线索：Evelyn（女子名字）_百度百科（Evelyn，女子英文名，英式音标为[ˈiːvlɪn]，美式音标为[ˈevlɪn]，中文意思为“伊芙琳”。阅读更多）。 另有相关结果：evelyn（エブリン）公式通販サイト；2022年女英文名NO.9——Evelyn 伊芙琳 - 知乎。 网页搜索无法自动确认真伪，请人工打开链接核对权威来源。",
+          "evidence_status": "to_verify",
+          "query_date": "2026-09-29",
+          "source_type": "other"
+        }
+      ]
+    },
+    "education_employment": {
+      "education": [
+        {
+          "degree": "Ph.D.",
+          "field": "Computer Science",
+          "institution": "University of Calder",
+          "advisor": null,
+          "start_date": "2015",
+          "end_date": "2019",
+          "projects": [],
+          "outcomes": [
+            "Dissertation: Robust Prediction under Distribution Shift"
+          ],
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Ph.D., Computer Science University of Calder 2015 - 2019 Dissertation: Robust Prediction under Distribution Shift",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            },
+            {
+              "source": "WebSearch",
+              "source_url": "https://baike.baidu.com/item/%E9%85%B8%E7%A2%B1%E5%BA%A6/633190",
+              "evidence": "网页搜索找到相关线索：酸碱度_百度百科（通常酸碱度可用pH值来表示。 常温下，pH=7的溶液为中性，pH<7的溶液呈酸性，pH>7的溶液则呈碱性。 pH的范围为0~14，仅适用 …）。 另有相关结果：什么是pH？为什么「pH」的p要小写？ - 知识概念 - 实验与分析；ph值的对照表 - 百度文库。 网页搜索无法自动确认真伪，请人工打开链接核对权威来源。",
+              "evidence_status": "to_verify",
+              "query_date": "2026-09-29",
+              "source_type": "other"
+            }
+          ]
+        },
+        {
+          "degree": "M.Sc.",
+          "field": "Statistics",
+          "institution": "University of Calder",
+          "advisor": null,
+          "start_date": "2013",
+          "end_date": "2015",
+          "projects": [],
+          "outcomes": [
+            "Thesis: Semi-supervised Risk Estimation"
+          ],
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "M.Sc., Statistics University of Calder 2013 - 2015 Thesis: Semi-supervised Risk Estimation",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            },
+            {
+              "source": "WebSearch",
+              "source_url": "https://baike.baidu.com/item/m/5488",
+              "evidence": "网页搜索找到相关线索：m（拉丁字母）_百度百科（它起源于希腊的Μ，μ。其最早的象形符号为波浪形，表示水，闪族人（闪米特人）用它表示水而非山，希伯来语称之为mem，意为“ …）。 另有相关结果：m是什么意思啊 - 百度知道；M, m中文 (简体)翻译：剑桥词典。 网页搜索无法自动确认真伪，请人工打开链接核对权威来源。",
+              "evidence_status": "to_verify",
+              "query_date": "2026-09-29",
+              "source_type": "other"
+            }
+          ]
+        },
+        {
+          "degree": "B.Sc.",
+          "field": "Mathematics",
+          "institution": "Westmere College",
+          "advisor": null,
+          "start_date": "2009",
+          "end_date": "2013",
+          "projects": [],
+          "outcomes": [
+            "First-class honours"
+          ],
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "B.Sc., Mathematics Westmere College 2009 - 2013 First-class honours",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            },
+            {
+              "source": "WebSearch",
+              "source_url": "https://www.bilibili.com/",
+              "evidence": "网页搜索找到相关线索：哔哩哔哩 (゜-゜)つロ 干杯~-bilibili（哔哩哔哩（bilibili.com)是国内知名的视频弹幕网站，这里有及时的动漫新番，活跃的ACG氛围，有创意的Up主。大家可以在这里找到 …）。 另有相关结果：哔哩哔哩直播，二次元弹幕直播平台；哔哩哔哩下载中心。 网页搜索无法自动确认真伪，请人工打开链接核对权威来源。",
+              "evidence_status": "to_verify",
+              "query_date": "2026-09-29",
+              "source_type": "other"
+            }
+          ]
+        }
+      ],
+      "employment": [
+        {
+          "institution": "Northbridge Institute of Technology",
+          "position": "Assistant Professor, Computer Science",
+          "start_date": "2022",
+          "end_date": null,
+          "responsibilities": [
+            "Teaching machine learning",
+            "Leading a small interdisciplinary research group"
+          ],
+          "projects": [],
+          "outcomes": [],
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Assistant Professor, Computer Science Northbridge Institute of Technology 2022 - Present",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            },
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "I teach machine learning and lead a small interdisciplinary research group.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            },
+            {
+              "source": "WebSearch",
+              "source_url": "https://global.bing.com/dict/search?q=assistant&FORM=BDVSP6&cc=cn",
+              "evidence": "网页搜索找到相关线索：assistant - 搜索 词典（必应词典为您提供assistant的释义，美 [əˈsɪstənt]，英 [əˈsɪst (ə)nt]，n. 助理；助手；助教（在国外留学的大学生，教授本国语）； …）。 另有相关结果：Assistant（英语单词）_百度百科；ASSISTANT中文 (简体)翻译：剑桥词典 - Cambridge Dictionary。 网页搜索无法自动确认真伪，请人工打开链接核对权威来源。",
+              "evidence_status": "to_verify",
+              "query_date": "2026-09-29",
+              "source_type": "other"
+            }
+          ]
+        },
+        {
+          "institution": "Calder Centre for Clinical AI",
+          "position": "Postdoctoral Research Associate, Health Data Science",
+          "start_date": "2019",
+          "end_date": "2022",
+          "responsibilities": [],
+          "projects": [],
+          "outcomes": [],
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Postdoctoral Research Associate, Health Data Science Calder Centre for Clinical AI 2019 - 2022",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            },
+            {
+              "source": "WebSearch",
+              "source_url": "https://www.sohu.com/a/832707507_122101967",
+              "evidence": "网页搜索找到相关线索：博士后的英文是 Postdoctoral 还是 Postdoctor？_研究_学术 ...（2024年12月3日 · Postdoctor：虽然字面上看似与“博士后”相近，但实际上并不是一个广泛接受或标准的英文术语。 对于有志于在莫斯 …）。 另有相关结果：人社部留学人员和专家服务中心中国博士后科学基金会；POSTDOCTORAL中文 (简体)翻译：剑桥词典。 网页搜索无法自动确认真伪，请人工打开链接核对权威来源。",
+              "evidence_status": "to_verify",
+              "query_date": "2026-09-29",
+              "source_type": "other"
+            }
+          ]
+        }
+      ]
+    },
+    "awards_funding": {
+      "awards": [
+        {
+          "name": "Early Career Research Prize",
+          "year": 2024,
+          "awarding_body": "Calder Society for Computing",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Early Career Research Prize, Calder Society for Computing, 2024.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            },
+            {
+              "source": "WebSearch",
+              "source_url": "https://baike.baidu.com/item/early/7264613",
+              "evidence": "网页搜索找到相关线索：early（英语单词）_百度百科（作为形容词时，指时间或阶段的“早期/初期”（如“early diagnosis”）或生物的“早熟”；副词用法强调行为发生的“提早”（如“get up …阅读更多）。 另有相关结果：early是什么意思_early的翻译_音标_读音_用法_例句_爱词霸 ...；EARLY中文 (简体)翻译：剑桥词典 - Cambridge Dictionary。 网页搜索无法自动确认真伪，请人工打开链接核对权威来源。",
+              "evidence_status": "to_verify",
+              "query_date": "2026-09-29",
+              "source_type": "other"
+            }
+          ]
+        },
+        {
+          "name": "Best Paper Award",
+          "year": 2023,
+          "awarding_body": "Synthetic AI for Health Conference",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Best Paper Award, Synthetic AI for Health Conference, 2023.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            },
+            {
+              "source": "WebSearch",
+              "source_url": "https://baike.baidu.com/item/best/13680727",
+              "evidence": "网页搜索找到相关线索：best（英语单词）_百度百科（常见短语包含all the best（祝一切顺利）、best friend（好友）、try one's best（尽最大努力）等固定表达，并衍生出best bet（最佳选 …阅读更多）。 另有相关结果：best是什么意思_best的翻译_音标_读音_用法_例句_爱词霸 ...；BEST中文 (简体)翻译：剑桥词典 - Cambridge Dictionary。 网页搜索无法自动确认真伪，请人工打开链接核对权威来源。",
+              "evidence_status": "to_verify",
+              "query_date": "2026-09-29",
+              "source_type": "other"
+            }
+          ]
+        },
+        {
+          "name": "Outstanding Doctoral Dissertation",
+          "year": 2020,
+          "awarding_body": "University of Calder",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Outstanding Doctoral Dissertation, University of Calder, 2020.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            },
+            {
+              "source": "WebSearch",
+              "source_url": "https://baike.baidu.com/item/Outstanding/9567339",
+              "evidence": "网页搜索找到相关线索：outstanding（英语单词）_百度百科（outstanding是英语形容词，英音及美音均为 [aʊtˈstændɪŋ]，核心释义包含“杰出的”“显著的”“未解决的”三层含义。 该词在柯林斯词典中 …阅读更多）。 另有相关结果：OUTSTANDING中文 (简体)翻译：剑桥词典；outstanding - 搜索 词典。 网页搜索无法自动确认真伪，请人工打开链接核对权威来源。",
+              "evidence_status": "to_verify",
+              "query_date": "2026-09-29",
+              "source_type": "other"
+            }
+          ]
+        }
+      ],
+      "funding": [
+        {
+          "project_name": "Adaptation-Aware Decision Support for Community Clinics",
+          "funder": "Arcadia Health Research Council",
+          "start_date": "2025",
+          "end_date": "2028",
+          "amount": 420000,
+          "currency": "GBP",
+          "role": "PI",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "PI, Adaptation-Aware Decision Support for Community Clinics, Arcadia Health Research Council, 2025 - 2028, GBP 420,000.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            },
+            {
+              "source": "WebSearch",
+              "source_url": "https://www.iciba.com/word?w=adaptation",
+              "evidence": "网页搜索找到相关线索：adaptation是什么意思_adaptation的翻译_音标_读音_用法 ...（爱词霸权威在线词典,为您提供adaptation的中文意思,adaptation的用法讲解,adaptation的读音,adaptation的同义词,adaptation的反义 …）。 另有相关结果：ADAPTATION中文 (简体)翻译：剑桥词典；adaptation - 搜索 词典。 网页搜索无法自动确认真伪，请人工打开链接核对权威来源。",
+              "evidence_status": "to_verify",
+              "query_date": "2026-09-29",
+              "source_type": "other"
+            }
+          ]
+        },
+        {
+          "project_name": "Human-in-the-Loop Calibration for Rare Disease Screening",
+          "funder": "Northbridge Seed Fund",
+          "start_date": "2023",
+          "end_date": "2025",
+          "amount": 75000,
+          "currency": "GBP",
+          "role": "PI",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "PI, Human-in-the-Loop Calibration for Rare Disease Screening, Northbridge Seed Fund, 2023 - 2025, GBP 75,000.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            },
+            {
+              "source": "WebSearch",
+              "source_url": "https://humanbenchmark.me/zh",
+              "evidence": "网页搜索找到相关线索：Human Benchmark | 通过脑力游戏和认知测试测量您的能力 ...（什么是 Human Benchmark？ Human Benchmark 是一个免费的平台，提供多种认知测试，旨在测量和提高您的心理能力。我们的测试 …阅读更多）。 另有相关结果：Human Benchmark 认知测试与脑力训练；human（英语单词）_百度百科。 网页搜索无法自动确认真伪，请人工打开链接核对权威来源。",
+              "evidence_status": "to_verify",
+              "query_date": "2026-09-29",
+              "source_type": "other"
+            }
+          ]
+        },
+        {
+          "project_name": "Responsible Deployment of Predictive Models",
+          "funder": "Calder-Industry Partnership",
+          "start_date": "2021",
+          "end_date": "2023",
+          "amount": 180000,
+          "currency": "GBP",
+          "role": "Co-PI",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Co-I, Responsible Deployment of Predictive Models, Calder-Industry Partnership, 2021 - 2023, GBP 180,000.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            },
+            {
+              "source": "WebSearch",
+              "source_url": "https://www.iciba.com/word?w=responsible",
+              "evidence": "网页搜索找到相关线索：responsible是什么意思_responsible的翻译_音标_读音_用法 ...（爱词霸权威在线词典,为您提供responsible的中文意思,responsible的用法讲解,responsible的读音,responsible的同义词,responsible的反 …）。 另有相关结果：RESPONSIBLE中文 (简体)翻译：剑桥词典；responsible - 搜索 词典。 网页搜索无法自动确认真伪，请人工打开链接核对权威来源。",
+              "evidence_status": "to_verify",
+              "query_date": "2026-09-29",
+              "source_type": "other"
+            }
+          ]
+        }
+      ]
+    },
+    "publications_impact": {
+      "publications": [
+        {
+          "title": "Calibration drift in clinical decision support after deployment",
+          "year": 2025,
+          "author_role": "first_author",
+          "venue": "Journal of Responsible Machine Learning",
+          "venue_type": "journal",
+          "ranking": null,
+          "citation_count": 41,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Hart, E. R., Imani, N., and Bell, J. (2025). Calibration drift in clinical decision support after deployment. Journal of Responsible Machine Learning, 12(2), 101-119. Citations: 41.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            },
+            {
+              "source": "ExternalVerifier",
+              "source_url": null,
+              "evidence": "在 Crossref / OpenAlex 中均未检索到标题匹配的论文，公开来源暂无法证实该声明。",
+              "evidence_status": "not_found_public",
+              "query_date": "2026-09-29",
+              "source_type": "bibliographic_database"
+            }
+          ]
+        },
+        {
+          "title": "When does causal evaluation change model selection?",
+          "year": 2024,
+          "author_role": "first_author",
+          "venue": "Proceedings of the Synthetic AI for Health Conference",
+          "venue_type": "conference",
+          "ranking": null,
+          "citation_count": 28,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Hart, E. R., and Patel, S. (2024). When does causal evaluation change model selection? Proceedings of the Synthetic AI for Health Conference, 88-101. Citations: 28.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            },
+            {
+              "source": "ExternalVerifier",
+              "source_url": null,
+              "evidence": "在 Crossref / OpenAlex 中均未检索到标题匹配的论文，公开来源暂无法证实该声明。",
+              "evidence_status": "not_found_public",
+              "query_date": "2026-09-29",
+              "source_type": "bibliographic_database"
+            }
+          ]
+        },
+        {
+          "title": "Uncertainty communication for high-stakes predictions",
+          "year": 2024,
+          "author_role": "middle_author",
+          "venue": "Clinical Data Science Forum",
+          "venue_type": "journal",
+          "ranking": null,
+          "citation_count": 18,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Imani, N., Hart, E. R., and Olsen, M. (2024). Uncertainty communication for high-stakes predictions. Clinical Data Science Forum, 7(1), 33-49. Citations: 18.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            },
+            {
+              "source": "ExternalVerifier",
+              "source_url": null,
+              "evidence": "在 Crossref / OpenAlex 中均未检索到标题匹配的论文，公开来源暂无法证实该声明。",
+              "evidence_status": "not_found_public",
+              "query_date": "2026-09-29",
+              "source_type": "bibliographic_database"
+            }
+          ]
+        },
+        {
+          "title": "A benchmark for temporal robustness in tabular healthcare models",
+          "year": 2023,
+          "author_role": "first_author",
+          "venue": "Journal of Applied Machine Learning",
+          "venue_type": "journal",
+          "ranking": null,
+          "citation_count": 64,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Hart, E. R., Chen, L., and Ward, P. (2023). A benchmark for temporal robustness in tabular healthcare models. Journal of Applied Machine Learning, 9(4), 410-432. Citations: 64.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            },
+            {
+              "source": "ExternalVerifier",
+              "source_url": null,
+              "evidence": "在 Crossref / OpenAlex 中均未检索到标题匹配的论文，公开来源暂无法证实该声明。",
+              "evidence_status": "not_found_public",
+              "query_date": "2026-09-29",
+              "source_type": "bibliographic_database"
+            }
+          ]
+        },
+        {
+          "title": "Distribution shift is not only a data problem",
+          "year": 2023,
+          "author_role": "single_author",
+          "venue": "Responsible Machine Learning Review",
+          "venue_type": "journal",
+          "ranking": null,
+          "citation_count": 22,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Hart, E. R. (2023). Distribution shift is not only a data problem. Responsible Machine Learning Review, 5(3), 201-218. Citations: 22.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            },
+            {
+              "source": "ExternalVerifier",
+              "source_url": null,
+              "evidence": "在 Crossref / OpenAlex 中均未检索到标题匹配的论文，公开来源暂无法证实该声明。",
+              "evidence_status": "not_found_public",
+              "query_date": "2026-09-29",
+              "source_type": "bibliographic_database"
+            }
+          ]
+        },
+        {
+          "title": "Participatory model evaluation with clinical teams",
+          "year": 2022,
+          "author_role": "middle_author",
+          "venue": "Proceedings of the Northbridge Symposium on Computing",
+          "venue_type": "conference",
+          "ranking": null,
+          "citation_count": 31,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Olsen, M., Hart, E. R., and Imani, N. (2022). Participatory model evaluation with clinical teams. Proceedings of the Northbridge Symposium on Computing, 144-153. Citations: 31.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            },
+            {
+              "source": "ExternalVerifier",
+              "source_url": null,
+              "evidence": "在 Crossref / OpenAlex 中均未检索到标题匹配的论文，公开来源暂无法证实该声明。",
+              "evidence_status": "not_found_public",
+              "query_date": "2026-09-29",
+              "source_type": "bibliographic_database"
+            }
+          ]
+        },
+        {
+          "title": "Risk-aware abstention for rare disease screening",
+          "year": 2021,
+          "author_role": "first_author",
+          "venue": "Health Data Science Letters",
+          "venue_type": "journal",
+          "ranking": null,
+          "citation_count": 37,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Hart, E. R., and Bell, J. (2021). Risk-aware abstention for rare disease screening. Health Data Science Letters, 4(2), 77-91. Citations: 37.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            },
+            {
+              "source": "ExternalVerifier",
+              "source_url": null,
+              "evidence": "在 Crossref / OpenAlex 中均未检索到标题匹配的论文，公开来源暂无法证实该声明。",
+              "evidence_status": "not_found_public",
+              "query_date": "2026-09-29",
+              "source_type": "bibliographic_database"
+            }
+          ]
+        },
+        {
+          "title": "Robustness under subgroup shift with limited labels",
+          "year": 2020,
+          "author_role": "middle_author",
+          "venue": "Journal of Statistical Learning",
+          "venue_type": "journal",
+          "ranking": null,
+          "citation_count": 52,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Patel, S., Hart, E. R., and Ward, P. (2020). Robustness under subgroup shift with limited labels. Journal of Statistical Learning, 14(1), 5-27. Citations: 52.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            },
+            {
+              "source": "ExternalVerifier",
+              "source_url": "https://doi.org/10.17760/d20409230",
+              "evidence": "公开来源中仅检索到标题部分相似的论文：Robust Visual Learning with Limited Labels，作者：Kai Li，相似度不足以认定是同一篇，请人工复核。",
+              "evidence_status": "to_verify",
+              "query_date": "2026-09-29",
+              "source_type": "bibliographic_database"
+            }
+          ]
+        },
+        {
+          "title": "Semi-supervised risk estimation under unobserved confounding",
+          "year": 2019,
+          "author_role": "single_author",
+          "venue": "Calder Computing Monographs",
+          "venue_type": "other",
+          "ranking": null,
+          "citation_count": 11,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Hart, E. R. (2019). Semi-supervised risk estimation under unobserved confounding. Calder Computing Monographs, 3, 1-38. Citations: 11.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            },
+            {
+              "source": "ExternalVerifier",
+              "source_url": "https://doi.org/10.1287/mnsc.2020.3699",
+              "evidence": "公开来源中仅检索到标题部分相似的论文：Minimax-Optimal Policy Learning Under Unobserved Confounding，作者：Nathan Kallus、Angela Zhou，相似度不足以认定是同一篇，请人工复核。",
+              "evidence_status": "to_verify",
+              "query_date": "2026-09-29",
+              "source_type": "bibliographic_database"
+            }
+          ]
+        }
+      ],
+      "total_citations": null,
+      "citation_query_date": null
+    },
+    "academic_service": {
+      "services": [
+        {
+          "service_type": "reviewer",
+          "organization_or_venue": "Responsible Machine Learning Review",
+          "role": "Reviewer",
+          "start_year": 2023,
+          "end_year": null,
+          "research_areas": [],
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Reviewer for Responsible Machine Learning Review (2023 - Present)",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "service_type": "reviewer",
+          "organization_or_venue": "Clinical Data Science Forum",
+          "role": "Reviewer",
+          "start_year": 2022,
+          "end_year": null,
+          "research_areas": [],
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Clinical Data Science Forum (2022 - Present)",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "service_type": "program_committee",
+          "organization_or_venue": "Synthetic AI for Health Conference",
+          "role": "Program committee member",
+          "start_year": 2023,
+          "end_year": 2026,
+          "research_areas": [],
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Program committee member, Synthetic AI for Health Conference (2023 - 2026).",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        }
+      ]
+    },
+    "overall_evaluation": {
+      "summary": "Evelyn R. Hart is an Assistant Professor of Human-Centered AI at Northbridge Institute of Technology with a Ph.D. in Computer Science from University of Calder. Her research focuses on model calibration, causal evaluation, and clinician-facing decision support, with a strong publication record and active funding.",
+      "strengths": [
+        "Strong publication record with 9 papers, including first-author and single-author works",
+        "Secured significant research funding as PI and Co-PI",
+        "Active in academic service as reviewer and program committee member",
+        "Interdisciplinary research combining machine learning and healthcare"
+      ],
+      "risks": [
+        "Total citation count not provided in CV",
+        "No code repositories or software artifacts mentioned"
+      ],
+      "dimensions": [
+        {
+          "dimension": "Research Impact",
+          "assessment": "High: 9 publications with citation counts ranging from 11 to 64, indicating substantial impact in the field.",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Citations: 41, 28, 18, 64, 22, 31, 37, 52, 11",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "dimension": "Funding",
+          "assessment": "Strong: PI on two grants totaling GBP 495,000 and Co-I on one grant of GBP 180,000.",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "PI, Adaptation-Aware Decision Support for Community Clinics, Arcadia Health Research Council, 2025 - 2028, GBP 420,000. PI, Human-in-the-Loop Calibration for Rare Disease Screening, Northbridge Seed Fund, 2023 - 2025, GBP 75,000. Co-I, Responsible Deployment of Predictive Models, Calder-Industry Partnership, 2021 - 2023, GBP 180,000.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "dimension": "Academic Service",
+          "assessment": "Active: reviewer for two venues and program committee member for a conference.",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Reviewer for Responsible Machine Learning Review (2023 - Present) and Clinical Data Science Forum (2022 - Present). Program committee member, Synthetic AI for Health Conference (2023 - 2026).",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

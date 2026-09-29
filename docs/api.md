@@ -26,6 +26,28 @@ brew install tesseract tesseract-lang poppler
 
 可通过环境变量 `OCR_LANGUAGES`、`OCR_DPI`、`TESSERACT_CMD` 覆盖默认配置。
 
+### 外部核验与网页搜索（Web Search）
+
+外部核验（external verification）按声明类型分层：
+
+- **论文 / 发表（publication）**：用 Crossref 与 OpenAlex（均免费、无需 key）精确
+  核验标题与年份，可自动判定 `confirmed` / `conflict` / `not_found_public`。
+- **非论文声明（奖项 / 经费 / 职位 / 机构等）**：文献数据库无法覆盖，用通用网页搜索
+  补充公开线索。当前默认使用 Bing 的 HTML 结果页（`cn.bing.com`，免费、无需 key），
+  是「无 key 阶段的过渡方案」，可能有速率限制；后续拿到 Tavily / Brave / Serper 等
+  付费 key 时，通过 `WEB_SEARCH_PROVIDER` 切换，无需改动核验逻辑。
+
+网页搜索只能「找公开线索」，不能像文献数据库那样自动认定真伪，因此对这类声明保守地
+产出 `to_verify`（附上 top 结果链接与摘要）或 `not_found_public`，交由人工复核，
+避免把未证实的声明误判为 `confirmed`。
+
+可通过环境变量覆盖搜索后端：
+
+```bash
+# WEB_SEARCH_PROVIDER=bing
+# WEB_SEARCH_BASE_URL=https://cn.bing.com/search
+```
+
 ## 通用约定（Conventions）
 
 ### 日期（Dates）

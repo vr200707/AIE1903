@@ -24,6 +24,7 @@ pydantic_core==2.46.5
 pypdf==6.19.0
 python-docx==1.2.0
 python-dotenv==1.2.1
+python-multipart==0.0.20
 pytesseract==0.3.13
 referencing==0.36.2
 rpds-py==0.27.1

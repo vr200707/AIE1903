@@ -55,6 +55,20 @@
   （pytesseract / pdf2image / Pillow / packaging）。端到端实测：用 Pillow 生成无文字层
   的图片 PDF，`parse_pdf` 正确 OCR 出 `John Doe / PhD in Computer Science`。全仓
   24 项测试全绿；提交并推送 `feature/backend-init`（commit `4105a3b`）。
+- D5 联调骨架 + 通用网页搜索：新增 `app/api.py`（`POST /api/upload`、
+  `POST /api/analyze`、`GET /api/profile`、`GET /health`）与 `app/main.py` 入口，
+  串起「上传 -> 解析（含 OCR）-> 抽取 -> 核验 -> 出档案」完整链路。新增
+  `app/search.py` 免费网页搜索后端（默认 Bing HTML `cn.bing.com`，无需 key），并把
+  非论文声明（奖项/经费/职位/机构/基本信息）核验接入 `app/verify.py`：
+  `verify_profile(verify_web=True)` 用网页搜索补充公开线索，保守产出 `to_verify` /
+  `not_found_public` 供人工复核，不把未证实的声明误判为 `confirmed`。补齐
+  `python-multipart` 依赖；全仓 37 项测试全绿。
+- 端到端实测：对拟造样本 cv_01 跑 `verify_profile(verify_web=True)`，9 篇论文走
+  Crossref/OpenAlex、12 条非论文声明走 Bing 搜索，约 47 秒完成，结果存
+  `outputs/sample_verified_cv01_web.json`。免费 Bing 对编造的英文短词可能返回弱相关
+  线索（如「early」百科），但均标 `to_verify` 不误判，符合保守口径。
+- 澄清用户新给的 key：实测为 DeepSeek 大模型 key（非网页搜索 key），已读验证
+  `/models` 与 `chat/completions` 均 200；网页搜索暂用免费后端，真实搜索 key 待定。
 
 ### 待办（下一步）
 
@@ -71,6 +85,11 @@
 - 尚未 commit：`app/`、`tests/`、`outputs/`、`docs/api.md` 等有大量未提交改动，待确认后
   commit 并 push 到 `feature/backend-init`。
 - D5 联调：启动 FastAPI，与肖一飞端到端打通。
+- `POST /api/qa`（加分项）尚未实现，待下一轮补齐。
+- 免费 Bing 搜索是过渡方案：拿到 Tavily / Brave / Serper 等付费 key 后，在
+  `app/search.py` 新增 provider 并切换 `WEB_SEARCH_PROVIDER`，提升非论文声明线索质量。
+- 与肖一飞端到端联调：`uvicorn app.main:app --reload`，用 `/api/upload` +
+  `/api/analyze` + `/api/profile` 验证前后端数据契约。
 
 ## 2026-09-28
 
