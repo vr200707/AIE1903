@@ -63,6 +63,7 @@ SYSTEM_PROMPT = """\
 6. 日期格式：YYYY、YYYY-MM 或 YYYY-MM-DD；无法确定用 null。年份类字段（year / start_year / end_year）用整数或 null。
 7. 金额 amount 用数字或 null；currency 用三字母 ISO 代码或 null。
 8. 只输出一个 JSON 对象，不要 markdown 代码围栏，不要任何解释文字。
+9. 所有字段值、evidence.evidence 与 overall_evaluation 内容一律使用英文，不随输入语言切换。
 
 输出结构（顶层含 schema_version 与 candidate，candidate 含 6 个模块）：
 {
@@ -203,12 +204,12 @@ def _extract_once(
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"LLM 未返回合法 JSON：{exc}") from exc
+        raise ValueError(f"LLM did not return valid JSON: {exc}") from exc
     if "candidate" in data and isinstance(data.get("schema_version"), str):
         return data
     if "candidate" in data:
         return {"schema_version": "1.0.0", "candidate": data["candidate"]}
-    raise ValueError("LLM 返回中缺少 candidate 字段")
+    raise ValueError("LLM response is missing the candidate field")
 
 
 def extract_profile(
@@ -220,7 +221,7 @@ def extract_profile(
     skipped = [doc.filename for doc in documents if not doc.full_text().strip()]
     usable = [doc for doc in documents if doc.full_text().strip()]
     if not usable:
-        raise ValueError("所有文档都没有可提取的文字层（可能是扫描件），需要先做 OCR。")
+        raise ValueError("No document has an extractable text layer. OCR may be required.")
 
     key = _cache_key(usable)
     cached = _read_cache(key)
@@ -237,7 +238,8 @@ def extract_profile(
 
     if profile is None or last_errors:
         raise ValueError(
-            "抽取结果在重试后仍不符合 schema.json：\n" + "\n".join(last_errors)
+            "Extraction result still does not conform to schema.json after retries:\n"
+            + "\n".join(last_errors)
         )
 
     _write_cache(key, profile)

@@ -131,10 +131,10 @@ def _call_model(system_prompt: str, user_message: str) -> str:
 
 def _validate_payload(payload: Any) -> tuple[str, str, list[str]]:
     if not isinstance(payload, dict):
-        raise ValueError("问答模型未返回 JSON 对象")
+        raise ValueError("Q&A model did not return a JSON object")
     answer = payload.get("answer")
     if not isinstance(answer, str) or not answer.strip():
-        raise ValueError("问答模型返回的 answer 为空")
+        raise ValueError("Q&A model returned an empty answer")
     confidence = payload.get("confidence")
     if confidence not in CONFIDENCE_LEVELS:
         confidence = "low"
@@ -150,7 +150,7 @@ def answer_question(
 ) -> dict[str, Any]:
     """基于档案回答一个自然语言问题，返回 {answer, confidence, evidence}。"""
     if not question or not question.strip():
-        raise ValueError("问题不能为空")
+        raise ValueError("Question cannot be empty")
 
     index, evidence_index = build_evidence_index(profile)
     raw = _call_model(
@@ -159,7 +159,7 @@ def answer_question(
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"问答模型未返回合法 JSON：{exc}") from exc
+        raise ValueError(f"Q&A model did not return valid JSON: {exc}") from exc
 
     answer, confidence, evidence_ids = _validate_payload(payload)
 

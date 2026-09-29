@@ -31,7 +31,7 @@ function n(v: string | null | undefined): string {
 // 日期区间（null 视为"至今"）
 function dateRange(start: DateValue, end: DateValue): string {
   const s = start ?? "?";
-  const e = end ?? "至今";
+  const e = end ?? "Present";
   return `${s} ~ ${e}`;
 }
 
@@ -97,7 +97,7 @@ export default function Home() {
       setProfileId(profile_id);
       setCandidate(candidate);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "分析失败，请重试");
+      setError(e instanceof Error ? e.message : "Analysis failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -124,25 +124,25 @@ export default function Home() {
       <div className="min-h-screen bg-zinc-50 text-zinc-900">
         <header className="border-b border-zinc-200 bg-white">
           <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
-            <h1 className="text-lg font-semibold">候选人档案分析</h1>
+            <h1 className="text-lg font-semibold">Candidate Profile Analysis</h1>
             <nav className="flex gap-4 text-sm">
               <Link href="/" className="font-medium text-zinc-900">
-                档案
+                Profile
               </Link>
               <Link
                 href="/methodology"
                 className="text-zinc-500 hover:text-zinc-900"
               >
-                方法说明
+                Methodology
               </Link>
             </nav>
           </div>
         </header>
         <main className="mx-auto max-w-4xl px-6 py-12">
           <div className="rounded-xl border border-zinc-200 bg-white p-8">
-            <h2 className="text-xl font-bold">上传候选人材料</h2>
+            <h2 className="text-xl font-bold">Upload candidate materials</h2>
             <p className="mt-2 text-sm text-zinc-500">
-              支持 CV、Cover Letter、Research Statement、Teaching Statement（PDF / DOCX，最多 4 份）
+              Supports CV, Cover Letter, Research Statement, and Teaching Statement (PDF / DOCX, up to 4 files)
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <input
@@ -159,11 +159,11 @@ export default function Home() {
                 onClick={() => setCandidate(mockProfile.candidate)}
                 className="rounded-lg border border-zinc-200 px-4 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
               >
-                加载示例数据
+                Load example data
               </button>
             </div>
             {loading && (
-              <p className="mt-4 text-sm text-zinc-500">分析中，请稍候…</p>
+              <p className="mt-4 text-sm text-zinc-500">Analyzing, please wait...</p>
             )}
             {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
           </div>
@@ -242,16 +242,16 @@ export default function Home() {
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <header className="border-b border-zinc-200 bg-white">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
-          <h1 className="text-lg font-semibold">候选人档案分析</h1>
+          <h1 className="text-lg font-semibold">Candidate Profile Analysis</h1>
           <nav className="flex gap-4 text-sm">
             <Link href="/" className="font-medium text-zinc-900">
-              档案
+              Profile
             </Link>
             <Link
               href="/methodology"
               className="text-zinc-500 hover:text-zinc-900"
             >
-              方法说明
+              Methodology
             </Link>
           </nav>
         </div>
@@ -262,7 +262,7 @@ export default function Home() {
         <TagFilter tags={tags} filter={filter} onChange={setFilter} />
 
         {/* 1. 基本信息 */}
-        <Section title="基本信息" hidden={!matches(basicKw)}>
+        <Section title="Basic Information" hidden={!matches(basicKw)}>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h3 className="text-xl font-bold">{n(c.basic_info.name)}</h3>
             <span className="text-zinc-500">{n(c.basic_info.position)}</span>
@@ -272,13 +272,13 @@ export default function Home() {
             {c.basic_info.highest_degree ? ` · ${c.basic_info.highest_degree}` : ""}
           </p>
 
-          <TagRow label="研究方向" items={c.basic_info.research_interests} />
-          <TagRow label="技能" items={c.basic_info.skills} />
-          <TagRow label="优势" items={c.basic_info.strengths} />
+          <TagRow label="Research interests" items={c.basic_info.research_interests} />
+          <TagRow label="Skills" items={c.basic_info.skills} />
+          <TagRow label="Strengths" items={c.basic_info.strengths} />
 
           {c.basic_info.to_verify.length > 0 && (
             <div className="mt-4">
-              <p className="text-xs font-medium text-zinc-400">待核实项</p>
+              <p className="text-xs font-medium text-zinc-400">Items to verify</p>
               <ul className="mt-2 space-y-2">
                 {c.basic_info.to_verify.map((v, i) => (
                   <li
@@ -303,7 +303,7 @@ export default function Home() {
           )}
 
           <div className="mt-4">
-            <p className="text-xs font-medium text-zinc-400">证据来源</p>
+            <p className="text-xs font-medium text-zinc-400">Evidence sources</p>
             <EvidenceList
               items={c.basic_info.evidence}
               onEvidenceClick={setSelectedEvidence} getStatus={getStatus}
@@ -312,10 +312,10 @@ export default function Home() {
         </Section>
 
         {/* 2. 教育与工作 */}
-        <Section title="教育与工作" hidden={!matches(eduKw)}>
-          <h4 className="text-sm font-semibold text-zinc-600">教育经历</h4>
+        <Section title="Education & Work" hidden={!matches(eduKw)}>
+          <h4 className="text-sm font-semibold text-zinc-600">Education</h4>
           {c.education_employment.education.length === 0 ? (
-            <p className="mt-2 text-sm text-zinc-400">无</p>
+            <p className="mt-2 text-sm text-zinc-400">None</p>
           ) : (
             <div className="mt-2 space-y-3">
               {c.education_employment.education.map((ed, i) => (
@@ -325,19 +325,19 @@ export default function Home() {
                     <span className="text-zinc-600">{n(ed.field)}</span>
                   </div>
                   <p className="mt-1 text-sm text-zinc-500">
-                    {n(ed.institution)} · 导师：{n(ed.advisor)}
+                    {n(ed.institution)} · Advisor: {n(ed.advisor)}
                   </p>
                   <p className="text-sm text-zinc-500">
                     {dateRange(ed.start_date, ed.end_date)}
                   </p>
                   {ed.projects.length > 0 && (
                     <p className="mt-1 text-sm text-zinc-600">
-                      项目：{ed.projects.join("、")}
+                      Projects: {ed.projects.join(", ")}
                     </p>
                   )}
                   {ed.outcomes.length > 0 && (
                     <p className="mt-1 text-sm text-zinc-600">
-                      成果：{ed.outcomes.join("、")}
+                      Outcomes: {ed.outcomes.join(", ")}
                     </p>
                   )}
                   <EvidenceList items={ed.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
@@ -346,9 +346,9 @@ export default function Home() {
             </div>
           )}
 
-          <h4 className="mt-6 text-sm font-semibold text-zinc-600">工作经历</h4>
+          <h4 className="mt-6 text-sm font-semibold text-zinc-600">Work experience</h4>
           {c.education_employment.employment.length === 0 ? (
-            <p className="mt-2 text-sm text-zinc-400">无</p>
+            <p className="mt-2 text-sm text-zinc-400">None</p>
           ) : (
             <div className="mt-2 space-y-3">
               {c.education_employment.employment.map((em, i) => (
@@ -362,17 +362,17 @@ export default function Home() {
                   </p>
                   {em.responsibilities.length > 0 && (
                     <p className="mt-1 text-sm text-zinc-600">
-                      职责：{em.responsibilities.join("、")}
+                      Responsibilities: {em.responsibilities.join(", ")}
                     </p>
                   )}
                   {em.projects.length > 0 && (
                     <p className="mt-1 text-sm text-zinc-600">
-                      项目：{em.projects.join("、")}
+                      Projects: {em.projects.join(", ")}
                     </p>
                   )}
                   {em.outcomes.length > 0 && (
                     <p className="mt-1 text-sm text-zinc-600">
-                      成果：{em.outcomes.join("、")}
+                      Outcomes: {em.outcomes.join(", ")}
                     </p>
                   )}
                   <EvidenceList items={em.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
@@ -383,10 +383,10 @@ export default function Home() {
         </Section>
 
         {/* 3. 奖项与经费 */}
-        <Section title="奖项与经费" hidden={!matches(awardsKw)}>
-          <h4 className="text-sm font-semibold text-zinc-600">奖项</h4>
+        <Section title="Awards & Funding" hidden={!matches(awardsKw)}>
+          <h4 className="text-sm font-semibold text-zinc-600">Awards</h4>
           {c.awards_funding.awards.length === 0 ? (
-            <p className="mt-2 text-sm text-zinc-400">无</p>
+            <p className="mt-2 text-sm text-zinc-400">None</p>
           ) : (
             <div className="mt-2 space-y-3">
               {c.awards_funding.awards.map((a, i) => (
@@ -398,7 +398,7 @@ export default function Home() {
                     )}
                   </div>
                   <p className="mt-1 text-sm text-zinc-500">
-                    颁发机构：{n(a.awarding_body)}
+                    Awarding body: {n(a.awarding_body)}
                   </p>
                   <EvidenceList items={a.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
                 </div>
@@ -406,9 +406,9 @@ export default function Home() {
             </div>
           )}
 
-          <h4 className="mt-6 text-sm font-semibold text-zinc-600">经费</h4>
+          <h4 className="mt-6 text-sm font-semibold text-zinc-600">Funding</h4>
           {c.awards_funding.funding.length === 0 ? (
-            <p className="mt-2 text-sm text-zinc-400">无</p>
+            <p className="mt-2 text-sm text-zinc-400">None</p>
           ) : (
             <div className="mt-2 space-y-3">
               {c.awards_funding.funding.map((f, i) => (
@@ -420,11 +420,11 @@ export default function Home() {
                     </span>
                   </div>
                   <p className="mt-1 text-sm text-zinc-500">
-                    资助方：{n(f.funder)} · {dateRange(f.start_date, f.end_date)}
+                    Funder: {n(f.funder)} · {dateRange(f.start_date, f.end_date)}
                   </p>
                   {f.amount != null && (
                     <p className="text-sm text-zinc-500">
-                      金额：{f.amount.toLocaleString()} {f.currency ?? ""}
+                      Amount: {f.amount.toLocaleString()} {f.currency ?? ""}
                     </p>
                   )}
                   <EvidenceList items={f.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
@@ -435,16 +435,16 @@ export default function Home() {
         </Section>
 
         {/* 4. 论文与影响 */}
-        <Section title="论文与影响" hidden={!matches(pubKw)}>
+        <Section title="Publications & Impact" hidden={!matches(pubKw)}>
           <p className="text-sm text-zinc-600">
-            总引用量：{c.publications_impact.total_citations ?? "—"}
+            Total citations: {c.publications_impact.total_citations ?? "—"}
             {c.publications_impact.citation_query_date
-              ? `（查询日期：${c.publications_impact.citation_query_date}）`
+              ? ` (queried: ${c.publications_impact.citation_query_date})`
               : ""}
           </p>
 
           {c.publications_impact.publications.length === 0 ? (
-            <p className="mt-2 text-sm text-zinc-400">无</p>
+            <p className="mt-2 text-sm text-zinc-400">None</p>
           ) : (
             <div className="mt-3 space-y-3">
               {c.publications_impact.publications.map((p, i) => (
@@ -464,7 +464,7 @@ export default function Home() {
                     )}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-zinc-500">
-                    {p.citation_count != null && <span>引用：{p.citation_count}</span>}
+                    {p.citation_count != null && <span>Citations: {p.citation_count}</span>}
                     {p.code_repository && (
                       <a
                         href={p.code_repository}
@@ -472,7 +472,7 @@ export default function Home() {
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:underline"
                       >
-                        代码仓库 ↗
+                        Code repository ↗
                       </a>
                     )}
                     {p.repository_stars != null && <span>Stars：{p.repository_stars}</span>}
@@ -485,9 +485,9 @@ export default function Home() {
         </Section>
 
         {/* 5. 学术服务 */}
-        <Section title="学术服务" hidden={!matches(svcKw)}>
+        <Section title="Academic Service" hidden={!matches(svcKw)}>
           {c.academic_service.services.length === 0 ? (
-            <p className="text-sm text-zinc-400">无</p>
+            <p className="text-sm text-zinc-400">None</p>
           ) : (
             <div className="space-y-3">
               {c.academic_service.services.map((s, i) => (
@@ -500,11 +500,11 @@ export default function Home() {
                     {s.role && <span className="text-sm text-zinc-500">{s.role}</span>}
                   </div>
                   <p className="mt-1 text-sm text-zinc-500">
-                    {s.start_year ?? "?"} ~ {s.end_year ?? "至今"}
+                    {s.start_year ?? "?"} ~ {s.end_year ?? "Present"}
                   </p>
                   {s.research_areas.length > 0 && (
                     <p className="mt-1 text-sm text-zinc-600">
-                      领域：{s.research_areas.join("、")}
+                      Areas: {s.research_areas.join(", ")}
                     </p>
                   )}
                   <EvidenceList items={s.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
@@ -515,14 +515,14 @@ export default function Home() {
         </Section>
 
         {/* 6. 综合评价 */}
-        <Section title="综合评价" hidden={!matches(evalKw)}>
+        <Section title="Overall Evaluation" hidden={!matches(evalKw)}>
           <p className="text-sm text-zinc-700">{n(c.overall_evaluation.summary)}</p>
-          <TagRow label="优势" items={c.overall_evaluation.strengths} />
-          <TagRow label="风险" items={c.overall_evaluation.risks} />
+          <TagRow label="Strengths" items={c.overall_evaluation.strengths} />
+          <TagRow label="Risks" items={c.overall_evaluation.risks} />
 
           {c.overall_evaluation.dimensions.length > 0 && (
             <div className="mt-4">
-              <p className="text-xs font-medium text-zinc-400">各维度评价</p>
+              <p className="text-xs font-medium text-zinc-400">Dimension evaluations</p>
               <div className="mt-2 space-y-3">
                 {c.overall_evaluation.dimensions.map((d, i) => (
                   <div key={i} className="rounded-lg border border-zinc-100 p-4">

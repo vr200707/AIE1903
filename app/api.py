@@ -51,7 +51,7 @@ def _save_upload(files: list[UploadFile], upload_id: str) -> list[dict[str, Any]
         suffix = Path(filename).suffix.lower()
         if suffix not in SUPPORTED_SUFFIXES:
             raise _http_error(
-                422, "unsupported_type", f"不支持的文档类型：{filename}"
+                422, "unsupported_type", f"Unsupported document type: {filename}"
             )
         path = dest / filename
         size = 0
@@ -59,7 +59,7 @@ def _save_upload(files: list[UploadFile], upload_id: str) -> list[dict[str, Any]
             while chunk := upload.file.read(1024 * 1024):
                 size += len(chunk)
                 if size > MAX_FILE_BYTES:
-                    raise _http_error(413, "file_too_large", f"文件过大：{filename}")
+                    raise _http_error(413, "file_too_large", f"File too large: {filename}")
                 out.write(chunk)
         documents.append(
             {
@@ -78,13 +78,13 @@ def _find_entry(*, profile_id: str | None, upload_id: str | None) -> dict[str, A
         for entry in _UPLOADS.values():
             if entry.get("profile_id") == profile_id:
                 return entry
-        raise _http_error(404, "not_found", "profile_id 不存在")
+        raise _http_error(404, "not_found", "profile_id not found")
     if upload_id:
         entry = _UPLOADS.get(upload_id)
         if entry is None:
-            raise _http_error(404, "not_found", "upload_id 不存在")
+            raise _http_error(404, "not_found", "upload_id not found")
         return entry
-    raise _http_error(422, "missing_id", "请提供 profile_id 或 upload_id")
+    raise _http_error(422, "missing_id", "Provide either profile_id or upload_id")
 
 
 @app.get("/health")
@@ -96,7 +96,7 @@ def health() -> dict[str, str]:
 def upload(files: list[UploadFile] = File(...)) -> JSONResponse:
     if not files or len(files) > MAX_FILES:
         raise _http_error(
-            413, "too_many_files", f"每次最多上传 {MAX_FILES} 份文档"
+            413, "too_many_files", f"Upload at most {MAX_FILES} documents"
         )
     upload_id = "upl_" + uuid.uuid4().hex[:12]
     documents = _save_upload(files, upload_id)
@@ -145,7 +145,7 @@ def profile(
 ) -> dict[str, Any]:
     entry = _find_entry(profile_id=profile_id, upload_id=upload_id)
     if "profile" not in entry:
-        raise _http_error(404, "not_analyzed", "档案尚未生成，请先调用 /api/analyze")
+        raise _http_error(404, "not_analyzed", "Profile has not been generated. Call /api/analyze first.")
     stored = entry["profile"]
     return {
         "schema_version": stored["schema_version"],
@@ -157,16 +157,16 @@ def profile(
 def qa(body: dict[str, Any]) -> dict[str, Any]:
     profile_id = body.get("profile_id")
     if not isinstance(profile_id, str) or not profile_id.strip():
-        raise _http_error(422, "missing_profile_id", "请提供 profile_id")
+        raise _http_error(422, "missing_profile_id", "Provide profile_id")
     question = body.get("question")
     if not isinstance(question, str) or not question.strip():
-        raise _http_error(422, "missing_question", "请提供非空的 question")
+        raise _http_error(422, "missing_question", "Provide a non-empty question")
 
     entry = _find_entry(profile_id=profile_id.strip(), upload_id=None)
     if "profile" not in entry:
-        raise _http_error(404, "not_analyzed", "档案尚未生成，请先调用 /api/analyze")
+        raise _http_error(404, "not_analyzed", "Profile has not been generated. Call /api/analyze first.")
 
     try:
         return answer_question(entry["profile"], question)
     except ValueError as exc:
-        raise _http_error(500, "qa_failed", f"问答失败：{exc}") from exc
+        raise _http_error(500, "qa_failed", f"Q&A failed: {exc}") from exc

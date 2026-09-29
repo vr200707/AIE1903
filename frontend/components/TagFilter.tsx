@@ -30,7 +30,7 @@ export function TagFilter({
         <input
           value={filter.search}
           onChange={(e) => onChange({ ...filter, search: e.target.value })}
-          placeholder="搜索关键词（姓名/机构/技能/论文…）"
+          placeholder="Search name, institution, skill, publication..."
           className="flex-1 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm outline-none focus:border-blue-400"
         />
         {hasFilter && (
@@ -38,7 +38,7 @@ export function TagFilter({
             onClick={() => onChange({ tags: [], search: "" })}
             className="text-sm text-zinc-500 hover:text-zinc-700"
           >
-            清空
+            Clear
           </button>
         )}
       </div>
