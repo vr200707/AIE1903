@@ -70,14 +70,22 @@ brew install tesseract tesseract-lang poppler
 
 ### 错误（Errors）
 
-统一使用 HTTP 状态码，响应体为：
+统一使用 HTTP 状态码。**业务错误**（后端主动抛出的错误）响应体为嵌套结构，
+机器可读的 `code` 与人类可读的 `detail` 都在顶层 `detail` 里：
 
 ```json
 {
-  "detail": "可读的错误说明",
-  "code": "validation_error"
+  "detail": {
+    "code": "validation_error",
+    "detail": "可读的错误说明"
+  }
 }
 ```
+
+> 说明：FastAPI 框架自身的参数校验失败（例如字段类型错误、缺少必填字段）时，
+> 响应体的 `detail` 是**数组**（形如 `[{"type":"...","loc":["body","question"],
+> "msg":"...","input":...}]`），与上面的业务错误对象不同。前端需同时兼容：
+> `detail` 为数组（框架校验错误）、对象（业务错误）两种形态。
 
 常见状态码：
 
@@ -89,6 +97,8 @@ brew install tesseract tesseract-lang poppler
 | `413` | 上传文件数量或大小超限 |
 | `422` | 请求体不符合 schema |
 | `500` | 服务器内部错误 |
+
+业务错误的 `code` 取值见各端点章节；`code` 位于 `detail.code`。
 
 ### 缓存（Caching）
 
