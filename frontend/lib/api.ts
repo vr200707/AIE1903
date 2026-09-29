@@ -13,12 +13,16 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     let detail = body?.detail;
-    // FastAPI 422 的 detail 可能是校验错误数组，统一转成可读文本
+    // FastAPI 422 校验错误：detail 是数组，统一转成可读文本
     if (Array.isArray(detail)) {
       detail = detail
         .map((d: { msg?: string }) => d?.msg ?? "")
         .filter(Boolean)
         .join("；");
+    } else if (detail && typeof detail === "object") {
+      // 后端业务错误：detail 是对象 { code, detail }
+      const d = detail as { code?: string; detail?: string };
+      detail = d.detail ?? d.code ?? JSON.stringify(detail);
     }
     throw new Error(
       detail ? `请求失败：${detail}` : `请求失败（${res.status}）`,
