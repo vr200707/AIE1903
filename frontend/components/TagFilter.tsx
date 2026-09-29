@@ -5,7 +5,7 @@ export interface FilterState {
   search: string;
 }
 
-// 标签筛选栏：关键词搜索 + 可点击标签（研究方向/技能/机构/论文等级等）
+// 标签筛选栏：关键词搜索 + 可点击标签
 export function TagFilter({
   tags,
   filter,
@@ -25,18 +25,18 @@ export function TagFilter({
   const hasFilter = filter.tags.length > 0 || filter.search !== "";
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4">
+    <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-xl">
       <div className="flex items-center gap-2">
         <input
           value={filter.search}
           onChange={(e) => onChange({ ...filter, search: e.target.value })}
           placeholder="搜索关键词（姓名/机构/技能/论文…）"
-          className="flex-1 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm outline-none focus:border-blue-400"
+          className="flex-1 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-sm text-white/90 outline-none placeholder:text-white/40 focus:border-teal-400/50"
         />
         {hasFilter && (
           <button
             onClick={() => onChange({ tags: [], search: "" })}
-            className="text-sm text-zinc-500 hover:text-zinc-700"
+            className="text-sm text-white/50 transition-colors hover:text-white/90"
           >
             清空
           </button>
@@ -48,10 +48,10 @@ export function TagFilter({
           <button
             key={t}
             onClick={() => toggleTag(t)}
-            className={`rounded-full px-3 py-1 text-sm transition ${
+            className={`rounded-full px-3 py-1 text-sm transition-all duration-300 ${
               filter.tags.includes(t)
-                ? "bg-blue-600 text-white"
-                : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                ? "bg-gradient-to-r from-teal-400 to-cyan-400 text-white"
+                : "bg-white/10 text-white/70 hover:bg-white/15"
             }`}
           >
             {t}
