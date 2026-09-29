@@ -69,6 +69,20 @@
   线索（如「early」百科），但均标 `to_verify` 不误判，符合保守口径。
 - 澄清用户新给的 key：实测为 DeepSeek 大模型 key（非网页搜索 key），已读验证
   `/models` 与 `chat/completions` 均 200；网页搜索暂用免费后端，真实搜索 key 待定。
+- 排查并解决 PR #3 的合并冲突（「融合出问题了?」）：GitHub 报
+  「This branch has conflicts that must be resolved」，冲突文件只有 `.gitignore`。
+  原因是双方在同一位置（文件末尾）相邻新增忽略规则——我方补 `.cache/`，队友
+  （前端分支）补 `.npm-cache/`、`.appdata/`，Git 无法自动判定。处理方式：本地合并
+  `origin/main`（`806ed98`，含 PR #4/#5/#6），按并集口径保留全部忽略规则，合并提交
+  `ff668b7` 已推送。合并后**无任何 `main` 文件丢失**，37 项测试全绿，PR #3 恢复
+  `MERGEABLE`；页面仍显示 `BLOCKED` 是因为分支保护要求 1 人 approve，与冲突无关。
+- 复核队友已合入 `main` 的前端（Next.js 16 / React 19 / Tailwind 4）：PR #4（D1：TS
+  类型 + mock 数据 + API 封装 + 方法说明页）、PR #5（D2：六大模块 UI）、PR #6（D4：
+  证据弹窗 + 人工修正入口 + 修复「连续修正不生效」与 `replaceEvidence` 的 TS 构建错误）。
+  `frontend/lib/types.ts` 与 `docs/schema.json` 对齐（已含 `CandidateProfile`）；
+  `frontend/lib/api.ts` 的 4 个调用（upload / analyze / profile / qa）与后端契约一致。
+  D5 联调待修的两点：`getProfile()` 返回类型仍写作 `Candidate`（应为 `CandidateProfile`，
+  即 `{ schema_version, candidate }`），以及前端已调用 `/api/qa`、后端尚未实现。
 
 ### 待办（下一步）
 
@@ -90,6 +104,12 @@
   `app/search.py` 新增 provider 并切换 `WEB_SEARCH_PROVIDER`，提升非论文声明线索质量。
 - 与肖一飞端到端联调：`uvicorn app.main:app --reload`，用 `/api/upload` +
   `/api/analyze` + `/api/profile` 验证前后端数据契约。
+- 联调待修 1：`frontend/lib/api.ts` 的 `getProfile()` 返回类型改为 `CandidateProfile`
+  （`Promise<CandidateProfile>`）并补 import——后端 `GET /api/profile` 已定为
+  `{ schema_version, candidate }`。
+- 联调待修 2：`POST /api/qa` 后端尚未实现（前端 `askQuestion` 已在调用），需补齐。
+- 说明：上方两条（「尚未 commit」「样本 PDF 缺失」）已不再适用——改动均已提交推送，
+  样本夹具已就位于 `/Users/steven/Downloads/AIE1903_CV_test_samples_2026-09-29/`。
 
 ## 2026-09-28
 
