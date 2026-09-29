@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { mockProfile } from "@/lib/mock";
-import { uploadFiles, analyze } from "@/lib/api";
+import { uploadFiles, analyze, askQuestion } from "@/lib/api";
 import { Section } from "@/components/Section";
 import { EvidenceList } from "@/components/EvidenceList";
 import { EvidenceBadge } from "@/components/EvidenceBadge";
@@ -15,7 +15,13 @@ import {
   serviceTypeLabel,
   fundingRoleLabel,
 } from "@/lib/labels";
-import type { DateValue, Evidence, EvidenceStatus, Candidate } from "@/lib/types";
+import type {
+  DateValue,
+  Evidence,
+  EvidenceStatus,
+  Candidate,
+  QAResponse,
+} from "@/lib/types";
 
 // 空值兜底显示
 function n(v: string | null | undefined): string {
@@ -65,6 +71,11 @@ export default function Home() {
   const [corrections, setCorrections] = useState<Map<Evidence, EvidenceStatus>>(
     new Map(),
   );
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const [question, setQuestion] = useState("");
+  const [qaResult, setQaResult] = useState<QAResponse | null>(null);
+  const [qaError, setQaError] = useState<string | null>(null);
+  const [qaLoading, setQaLoading] = useState(false);
 
   const getStatus = (e: Evidence): EvidenceStatus =>
     corrections.get(e) ?? e.evidence_status;
@@ -82,12 +93,27 @@ export default function Home() {
     setError(null);
     try {
       const { upload_id } = await uploadFiles(files);
-      const { candidate } = await analyze(upload_id);
+      const { profile_id, candidate } = await analyze(upload_id);
+      setProfileId(profile_id);
       setCandidate(candidate);
     } catch (e) {
       setError(e instanceof Error ? e.message : "分析失败，请重试");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAsk = async () => {
+    if (!profileId || !question.trim()) return;
+    setQaLoading(true);
+    setQaResult(null);
+    setQaError(null);
+    try {
+      setQaResult(await askQuestion(profileId, question.trim()));
+    } catch (e) {
+      setQaError(e instanceof Error ? e.message : "问答失败，请重试");
+    } finally {
+      setQaLoading(false);
     }
   };
 
@@ -509,6 +535,45 @@ export default function Home() {
             </div>
           )}
         </Section>
+
+        {/* 7. 基于证据的问答（加分项，需真实后端） */}
+        {profileId && (
+          <Section title="基于证据的问答">
+            <div className="flex gap-2">
+              <input
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder="输入问题（如：候选人总引用量是多少？）"
+                className="flex-1 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm outline-none focus:border-blue-400"
+              />
+              <button
+                onClick={handleAsk}
+                disabled={qaLoading || !question.trim()}
+                className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm text-white disabled:opacity-50"
+              >
+                {qaLoading ? "思考中…" : "提问"}
+              </button>
+            </div>
+            {qaResult && (
+              <div className="mt-3 rounded-lg border border-zinc-100 bg-zinc-50 p-4">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">回答</span>
+                  <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-600">
+                    置信度：{qaResult.confidence}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-zinc-700">{qaResult.answer}</p>
+                <p className="mt-3 text-xs font-medium text-zinc-400">支撑证据</p>
+                <EvidenceList
+                  items={qaResult.evidence}
+                  onEvidenceClick={setSelectedEvidence}
+                  getStatus={getStatus}
+                />
+              </div>
+            )}
+            {qaError && <p className="mt-2 text-sm text-red-600">{qaError}</p>}
+          </Section>
+        )}
       </main>
 
       <EvidenceModal
