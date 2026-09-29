@@ -41,9 +41,9 @@ def _ensure_tesseract() -> str:
         pytesseract.get_tesseract_version()
     except Exception as exc:  # pytesseract.TesseractNotFoundError 等
         raise RuntimeError(
-            f"未找到 Tesseract 可执行文件（{cmd}）。请先安装："
-            "macOS `brew install tesseract tesseract-lang`，"
-            "Linux `sudo apt install tesseract-ocr tesseract-ocr-chi-sim`。"
+            f"Tesseract executable not found ({cmd}). Install it first: "
+            "macOS: `brew install tesseract tesseract-lang`, "
+            "Linux: `sudo apt install tesseract-ocr tesseract-ocr-chi-sim`."
         ) from exc
     return cmd
 
@@ -72,7 +72,7 @@ def render_pdf_pages(
         )
     except Exception as exc:
         raise RuntimeError(
-            f"无法把 PDF 渲染成图片（需要 Poppler / pdftoppm）：{exc}"
+            f"Unable to render PDF pages. Poppler / pdftoppm is required: {exc}"
         ) from exc
     return list(images)
 

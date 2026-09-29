@@ -106,5 +106,5 @@ def search_web(query: str, *, max_results: int | None = None) -> list[SearchResu
     provider = os.getenv("WEB_SEARCH_PROVIDER", "bing")
     fetcher = _PROVIDERS.get(provider)
     if fetcher is None:
-        raise ValueError(f"未知的网页搜索 provider：{provider}")
+        raise ValueError(f"Unknown web search provider: {provider}")
     return fetcher(query, max_results=max_results or MAX_RESULTS)

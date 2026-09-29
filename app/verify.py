@@ -191,7 +191,7 @@ def _verification_evidence(
 def _authors_label(authors: list[str]) -> str:
     if not authors:
         return ""
-    return "，作者：" + "、".join(authors)
+    return ", Authors: " + ", ".join(authors)
 
 
 def verify_publication(
@@ -216,9 +216,9 @@ def verify_publication(
                 status="to_verify",
                 source_url=None,
                 text=(
-                    "核验服务暂时不可用，未能联网检索公开来源（"
+                    "Verification services are unavailable and public sources could not be queried ("
                     + "；".join(errors)
-                    + "），该声明暂标记为待核验。"
+                    + "). The claim is marked as to_verify."
                 ),
                 query_date=query_date,
             )
@@ -236,7 +236,7 @@ def verify_publication(
                 source="ExternalVerifier",
                 status="not_found_public",
                 source_url=None,
-                text="在 Crossref / OpenAlex 中均未检索到标题匹配的论文，公开来源暂无法证实该声明。",
+                text="No matching paper title was found in Crossref or OpenAlex, so the claim cannot yet be confirmed publicly.",
                 query_date=query_date,
             )
         )
@@ -258,8 +258,8 @@ def verify_publication(
                 status="to_verify",
                 source_url=chosen.url,
                 text=(
-                    f"公开来源中仅检索到标题部分相似的论文：{chosen.title}"
-                    f"{_authors_label(chosen.authors)}，相似度不足以认定是同一篇，请人工复核。"
+                    f"Only a partially similar paper title was found: {chosen.title}"
+                    f"{_authors_label(chosen.authors)}. The similarity is insufficient to confirm identity and requires human review."
                 ),
                 query_date=query_date,
             )
@@ -267,23 +267,23 @@ def verify_publication(
         return verified
 
     is_confirmed = _year_consistent(claimed_year, chosen.year)
-    venue_text = f"，发表载体：{chosen.venue}" if chosen.venue else ""
+    venue_text = f", Venue: {chosen.venue}" if chosen.venue else ""
     authors_text = _authors_label(chosen.authors)
 
     if is_confirmed:
         status = "confirmed"
-        year_text = f"，年份：{chosen.year}" if chosen.year else ""
+        year_text = f", Year: {chosen.year}" if chosen.year else ""
         text = (
-            f"在 {chosen.source} 检索到标题匹配的论文：{chosen.title}"
+            f"A matching paper title was found in {chosen.source}: {chosen.title}"
             f"{venue_text}{authors_text}{year_text}。"
         )
     else:
         status = "conflict"
-        claimed_text = claimed_year if claimed_year is not None else "未知"
-        found_text = chosen.year if chosen.year is not None else "未知"
+        claimed_text = claimed_year if claimed_year is not None else "Unknown"
+        found_text = chosen.year if chosen.year is not None else "Unknown"
         text = (
-            f"简历标注年份 {claimed_text}，{chosen.source} 记录为 {found_text}，两者不一致。"
-            f"匹配论文：{chosen.title}{venue_text}{authors_text}，请人工复核。"
+            f"The CV states year {claimed_text}, while {chosen.source} records {found_text}."
+            f" Matched paper: {chosen.title}{venue_text}{authors_text}. Human review is required."
         )
 
     verified["evidence"].append(
@@ -345,7 +345,7 @@ def verify_text_claim(
         results = search(claim_text, max_results=max_results)
     except Exception as exc:  # 网络 / 服务异常不判为造假。
         return _web_evidence(
-            f"网页搜索服务暂时不可用（{type(exc).__name__}），该声明暂标记为待核验。",
+            f"Web search is temporarily unavailable ({type(exc).__name__}). The claim is marked as to_verify.",
             "to_verify",
             None,
             query_date,
@@ -353,7 +353,7 @@ def verify_text_claim(
 
     if not results:
         return _web_evidence(
-            f"公开网页搜索未找到与「{claim_text}」相关的信息，暂无法证实该声明。",
+            f"No public web result was found for \"{claim_text}\", so the claim cannot yet be confirmed.",
             "not_found_public",
             None,
             query_date,
@@ -361,11 +361,11 @@ def verify_text_claim(
 
     top = results[0]
     snippet = (top.snippet or "")[:160]
-    text = f"网页搜索找到相关线索：{top.title}（{snippet}）。"
+    text = f"Web search found a relevant lead: {top.title} ({snippet})."
     others = "；".join(r.title for r in results[1:3] if r.title)
     if others:
-        text += f" 另有相关结果：{others}。"
-    text += " 网页搜索无法自动确认真伪，请人工打开链接核对权威来源。"
+        text += f" Other results: {others}."
+    text += " Web search cannot automatically confirm truth; open the source links for human review."
     return _web_evidence(text, "to_verify", top.url, query_date)
 
 

@@ -105,4 +105,4 @@ def parse_document(path: str | Path) -> ParsedDocument:
         return parse_pdf(path)
     if suffix == ".docx":
         return parse_docx(path)
-    raise ValueError(f"不支持的文档类型：{suffix or '（无扩展名）'}")
+    raise ValueError(f"Unsupported document type: {suffix or 'no extension'}")

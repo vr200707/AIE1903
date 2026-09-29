@@ -27,14 +27,14 @@ export function EvidenceList({
               <span className="font-medium text-zinc-700">{e.source}</span>
               <EvidenceBadge status={getStatus ? getStatus(e) : e.evidence_status} />
               {e.page != null && (
-                <span className="text-xs text-zinc-400">第 {e.page} 页</span>
+                <span className="text-xs text-zinc-400">Page {e.page}</span>
               )}
             </div>
             <p className="mt-1.5 text-zinc-600">{e.evidence}</p>
             <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400">
-              <span>查询日期：{e.query_date}</span>
+              <span>Queried: {e.query_date}</span>
               <span className="text-blue-600 opacity-0 transition group-hover:opacity-100">
-                点击查看详情 ↗
+                View details ↗
               </span>
             </div>
           </button>
