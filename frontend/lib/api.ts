@@ -12,8 +12,16 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
   if (!res.ok) {
     const body = await res.json().catch(() => null);
+    let detail = body?.detail;
+    // FastAPI 422 的 detail 可能是校验错误数组，统一转成可读文本
+    if (Array.isArray(detail)) {
+      detail = detail
+        .map((d: { msg?: string }) => d?.msg ?? "")
+        .filter(Boolean)
+        .join("；");
+    }
     throw new Error(
-      body?.detail ? `请求失败：${body.detail}` : `请求失败（${res.status}）`,
+      detail ? `请求失败：${detail}` : `请求失败（${res.status}）`,
     );
   }
   return res.json() as Promise<T>;
@@ -38,14 +46,21 @@ export async function analyze(uploadId: string): Promise<AnalyzeResponse> {
   });
 }
 
-// 3. 获取结构化档案（profile_id 或 upload_id 二选一）
+// 3. 获取结构化档案（profile_id 或 upload_id 必须且只能传一个）
+// 注意：/api/profile 返回的是裸 Candidate，还是带 profile_id/status 的外层对象，需与后端（沈一）确认。
 export async function getProfile(params: {
   profile_id?: string;
   upload_id?: string;
 }): Promise<Candidate> {
-  const query = params.profile_id
-    ? `profile_id=${params.profile_id}`
-    : `upload_id=${params.upload_id}`;
+  const { profile_id, upload_id } = params;
+  const hasProfile = Boolean(profile_id);
+  const hasUpload = Boolean(upload_id);
+  if (hasProfile === hasUpload) {
+    throw new Error("getProfile 必须且只能传 profile_id 或 upload_id 其中之一");
+  }
+  const query = hasProfile
+    ? `profile_id=${profile_id}`
+    : `upload_id=${upload_id}`;
   return request<Candidate>(`${API_BASE}/api/profile?${query}`);
 }
 
