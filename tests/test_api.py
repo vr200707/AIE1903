@@ -68,6 +68,47 @@ class ApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 422)
 
+    def _seed_profile(self):
+        profile = {"schema_version": "1.0.0", "candidate": {"basic_info": {}}}
+        api._UPLOADS["upl_test"] = {
+            "documents": [],
+            "paths": [],
+            "profile": profile,
+            "profile_id": "prf_test",
+        }
+        return profile
+
+    def test_qa_returns_answer_envelope(self):
+        self._seed_profile()
+        payload = {"answer": "博士。", "confidence": "high", "evidence": []}
+        with mock.patch.object(api, "answer_question", return_value=payload) as patched:
+            response = self.client.post(
+                "/api/qa",
+                json={"profile_id": "prf_test", "question": "他最高学历是什么？"},
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), payload)
+        self.assertEqual(patched.call_args.args[1], "他最高学历是什么？")
+
+    def test_qa_unknown_profile_is_404(self):
+        response = self.client.post(
+            "/api/qa", json={"profile_id": "prf_missing", "question": "hi"}
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_qa_missing_question_is_422(self):
+        self._seed_profile()
+        response = self.client.post("/api/qa", json={"profile_id": "prf_test"})
+        self.assertEqual(response.status_code, 422)
+
+    def test_qa_model_failure_is_500(self):
+        self._seed_profile()
+        with mock.patch.object(api, "answer_question", side_effect=ValueError("boom")):
+            response = self.client.post(
+                "/api/qa", json={"profile_id": "prf_test", "question": "hi"}
+            )
+        self.assertEqual(response.status_code, 500)
+
 
 if __name__ == "__main__":
     unittest.main()

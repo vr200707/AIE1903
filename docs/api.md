@@ -416,6 +416,29 @@ curl "http://localhost:8000/api/profile?profile_id=prf_01J0ZYXWVU"
 }
 ```
 
+实现说明（Implementation notes）：
+
+- 引用防伪：后端先把档案里所有证据统一编号（`E1`、`E2`…）交给模型，模型只能回传
+  内部字段 `evidence_ids`；最终响应里的 `evidence` 由后端按编号从档案中**原样取回**，
+  因此不会出现「引用一个不存在的来源」。不存在的编号会被直接丢弃。
+- 可信度降级：拿不出任何有效证据时，`confidence` 一律降为 `low`；非法取值也回退为
+  `low`。
+- 只依据档案作答：档案里查不到的问题，返回「档案中没有相关信息」+ `confidence: low` +
+  空 `evidence`，不做外部知识补全。档案内部矛盾时要求模型指出矛盾并列出双方证据。
+- 最多返回 8 条证据（`MAX_EVIDENCE_REFS`）。
+
+错误：
+
+| 状态码 | `code` | 场景 |
+|---|---|---|
+| `404` | `not_found` | `profile_id` 不存在 |
+| `404` | `not_analyzed` | 档案尚未生成 |
+| `422` | `missing_profile_id` / `missing_question` | 缺少 `profile_id` 或 `question` |
+| `500` | `qa_failed` | 模型调用失败或返回无法解析的内容 |
+
+实测样例见 `outputs/sample_qa_cv01.json`（4 个问题，覆盖事实直答、需要汇总的提问、
+档案中不存在的信息、英文提问）。
+
 ## 与 schema.json 的关系（Relation to schema.json）
 
 `candidate` 对象的完整字段、枚举与必填规则见

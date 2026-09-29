@@ -4,6 +4,7 @@
 - `POST /api/upload`   上传 1-4 份 PDF/DOCX，返回 `upload_id`；
 - `POST /api/analyze`  解析 -> 抽取 -> 核验，返回档案信封；
 - `GET  /api/profile`  按 `profile_id` 或 `upload_id` 返回档案本体；
+- `POST /api/qa`       基于档案回答自然语言问题（加分项）；
 - `GET  /health`       健康检查（联调用）。
 
 存储为进程内字典 + 落盘上传目录，适合单进程本地联调；生产需替换为持久化存储。
@@ -22,6 +23,7 @@ from fastapi.responses import JSONResponse
 
 from app.extractor import extract_profile
 from app.parser import CONTENT_TYPES, SUPPORTED_SUFFIXES, parse_document
+from app.qa import answer_question
 from app.verify import verify_profile
 
 
@@ -149,3 +151,22 @@ def profile(
         "schema_version": stored["schema_version"],
         "candidate": stored["candidate"],
     }
+
+
+@app.post("/api/qa")
+def qa(body: dict[str, Any]) -> dict[str, Any]:
+    profile_id = body.get("profile_id")
+    if not isinstance(profile_id, str) or not profile_id.strip():
+        raise _http_error(422, "missing_profile_id", "请提供 profile_id")
+    question = body.get("question")
+    if not isinstance(question, str) or not question.strip():
+        raise _http_error(422, "missing_question", "请提供非空的 question")
+
+    entry = _find_entry(profile_id=profile_id.strip(), upload_id=None)
+    if "profile" not in entry:
+        raise _http_error(404, "not_analyzed", "档案尚未生成，请先调用 /api/analyze")
+
+    try:
+        return answer_question(entry["profile"], question)
+    except ValueError as exc:
+        raise _http_error(500, "qa_failed", f"问答失败：{exc}") from exc

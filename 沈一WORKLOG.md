@@ -83,6 +83,23 @@
   `frontend/lib/api.ts` 的 4 个调用（upload / analyze / profile / qa）与后端契约一致。
   D5 联调待修的两点：`getProfile()` 返回类型仍写作 `Candidate`（应为 `CandidateProfile`，
   即 `{ schema_version, candidate }`），以及前端已调用 `/api/qa`、后端尚未实现。
+- 补齐 `POST /api/qa`（D5 加分项，见 [docs/api.md](docs/api.md) 第 4 节）：新增
+  [app/qa.py](app/qa.py) 并接入 `app/api.py`。设计要点：
+  - **引用防伪**：先把档案里所有证据统一编号（E1、E2…）连同档案 JSON 一起交给模型，
+    模型只能回传 `evidence_ids`；最终 `evidence` 由后端按编号从档案**原样取回**，
+    模型无法编造来源。不存在的编号直接丢弃。
+  - **可信度降级**：一条有效证据都拿不出时，`confidence` 一律降为 `low`；非法取值回退 `low`。
+  - **只依据档案作答**：查不到的问题返回「档案中没有相关信息」+ `low` + 空证据；
+    档案内部矛盾时要求指出矛盾并列出双方证据编号。
+  - 错误码：`422 missing_profile_id / missing_question`、`404 not_found / not_analyzed`、
+    `500 qa_failed`。
+- `/api/qa` 实测（真实 DeepSeek 调用，4 个问题）：事实直答 → `high` + 3 条证据；
+  需要汇总的问题（论文篇数/总引用量）→ `medium` + 8 条证据，并主动说明
+  `total_citations` 为 `null`、不臆造汇总值；档案中不存在的「图灵奖」→ `low` + 空证据；
+  英文提问正常作答。结果存 `outputs/sample_qa_cv01.json`。全仓 52 项测试全绿。
+- 测试：新增 [tests/test_qa.py](tests/test_qa.py)（编号完整性、证据回填、幻觉编号丢弃、
+  去重、非法 confidence 回退、空问题/空回答/坏 JSON 报错、证据条数上限），并在
+  `tests/test_api.py` 补 `/api/qa` 的 200/404/422/500 四项。
 
 ### 待办（下一步）
 
@@ -107,7 +124,7 @@
 - 联调待修 1：`frontend/lib/api.ts` 的 `getProfile()` 返回类型改为 `CandidateProfile`
   （`Promise<CandidateProfile>`）并补 import——后端 `GET /api/profile` 已定为
   `{ schema_version, candidate }`。
-- 联调待修 2：`POST /api/qa` 后端尚未实现（前端 `askQuestion` 已在调用），需补齐。
+- ~~联调待修 2：`POST /api/qa` 后端尚未实现~~ → 已完成（见上方 `app/qa.py`）。
 - 说明：上方两条（「尚未 commit」「样本 PDF 缺失」）已不再适用——改动均已提交推送，
   样本夹具已就位于 `/Users/steven/Downloads/AIE1903_CV_test_samples_2026-09-29/`。
 
