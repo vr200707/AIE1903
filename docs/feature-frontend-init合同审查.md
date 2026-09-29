@@ -2,14 +2,17 @@
 
 > 审查人：赵越
 > 审查日期：2026-09-29
-> 被审查提交：`a71cc23853378d34cddba42c3f8286b7a0f17e35`
+> 初查提交：`a71cc23853378d34cddba42c3f8286b7a0f17e35`
+> 复查提交：`97fe290d994e4197b22b42df3551a54438dd6a85`
+> 开放 PR：#4
 > 对照合同：`docs/schema.json` 1.0.0、`docs/api.md`
 
 ## 审查结论摘要
 
 前端 D1 的类型、mock 数据和四个 API 函数总体与合同对齐，mock 数据已经通过
-JSON Schema 实际校验。当前不能直接批准合并，主要原因是根目录 `.gitignore`
-存在合并冲突，另有三个需要在联调前确认的接口边界问题。
+JSON Schema 实际校验。初查发现的 `.gitignore` 合并冲突、`getProfile()` 参数边界
+和 422 错误文本处理均已在后续提交修复。当前只剩 `/api/profile` 的精确返回包装层
+需要沈一确认，确认后即可进入正式 PR review。
 
 ## 检查结果
 
@@ -22,13 +25,11 @@ JSON Schema 实际校验。当前不能直接批准合并，主要原因是根�
 
 ### 2. 合并冲突
 
-- 结果：发现问题。
-- `git merge-tree --write-tree origin/main origin/feature/frontend-init`
-  报告根目录 `.gitignore` 内容冲突。
-- 前端分支基于旧版 `main`，缺少主分支新增的 Python 忽略规则；自身增加了
-  `.npm-cache/` 和 `.appdata/`。
-- 解决时应同时保留 `venv/`、`__pycache__/`、后端相关忽略规则，以及前端新增的
-  `.npm-cache/`、`.appdata/`。该修改应由前端分支负责人完成。
+- 结果：已修复。
+- commit `4a70a93` 已将 `main` 合入前端分支，并同时保留 `venv/`、
+  `__pycache__/`、`*.pyc`、`.npm-cache/` 和 `.appdata/`。
+- 重新执行 `git merge-tree --write-tree origin/main origin/feature/frontend-init`
+  可以正常生成合并树，没有报告冲突。
 
 ### 3. TypeScript 类型
 
@@ -51,27 +52,24 @@ JSON Schema 实际校验。当前不能直接批准合并，主要原因是根�
 
 ### 5. API 客户端
 
-- 结果：路径和请求体基本对齐，存在三个边界风险。
+- 结果：路径和请求体对齐，剩余一个后端确认项。
 - `/api/upload` 使用 `files` multipart 字段，与文档一致。
 - `/api/analyze` 使用 `upload_id`，与文档一致。
+- `getProfile()` 已增加“恰好传一个 ID”的校验，不会再生成
+  `upload_id=undefined`。
+- 错误处理已兼容 FastAPI 422 的 `detail` 数组，并转换为可读文本。
 - `/api/profile` 的返回类型是裸 `Candidate`；文档写的是
   “与 `/api/analyze` 返回的 `candidate` 结构一致”，需要与后端确认后端实际是否
   返回裸对象，还是返回带 `profile_id/status` 的外层对象。
-- `getProfile()` 没有校验“恰好传一个 ID”。两个参数都缺失时会请求
-  `upload_id=undefined`；两个都传入时静默优先使用 `profile_id`。
-- 错误处理假定 `detail` 一定是字符串；FastAPI 默认 422 可能是数组，需要与后端
-  统一错误处理格式。
 
-## 合并前建议
+## 后续建议
 
-1. 前端负责人先把 `main` 合入或 rebase 到 `feature/frontend-init`，解决
-   `.gitignore` 冲突。
-2. `getProfile()` 在发请求前检查参数数量，避免生成 `undefined` 查询值。
-3. 沈一确认 `/api/profile` 的精确响应结构和 FastAPI 422 错误体。
-4. 肖一飞为 `feature/frontend-init` 建立 GitHub PR；当前开放 PR 只有 #3，
-   因此暂时不能提交正式 GitHub review 或 approve。
+1. 沈一确认 `/api/profile` 的精确响应结构。
+2. 确认后在 PR #4 提交正式 GitHub review。
+3. 正式批准前至少执行一次前端构建或联调验证。
 
 ## 未验证项
 
+- 已确认开放 PR 为 #4，头部提交为 `97fe290`。
 - 本轮没有安装 Next.js 依赖，也没有执行 `npm run build` 或浏览器端运行测试。
 - 本轮目标是合同、隐私和合并预检；页面视觉和交互功能留待 D2。
