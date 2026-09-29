@@ -47,6 +47,14 @@
   - 对拟造样本 `cv_01` 全量跑通：9 篇论文 7 篇 `not_found_public`、2 篇 `to_verify`
     （均为「标题部分重叠的无关论文」），无 `confirmed` 假阳性；结果通过 schema 校验，
     存为 `outputs/sample_verified_cv01.json`（即 D4 交付给肖一飞的完整样本档案）。
+- 接入 OCR（光学字符识别，Optical Character Recognition）：新增 `app/ocr.py` 与
+  `tests/test_ocr.py`（3 项测试），并在 `app/parser.py` 的 `parse_pdf` 中做自动回退——
+  某页 pypdf 提取不到文字（扫描件/纯图片 PDF）时，先经 Poppler 渲染成图片、再用
+  Tesseract 识别（默认 `chi_sim+eng`，支持中文与英文）。本机已安装
+  `tesseract` / `tesseract-lang`（Popper 已有），并写入 `requirements.txt`
+  （pytesseract / pdf2image / Pillow / packaging）。端到端实测：用 Pillow 生成无文字层
+  的图片 PDF，`parse_pdf` 正确 OCR 出 `John Doe / PhD in Computer Science`。全仓
+  24 项测试全绿；提交并推送 `feature/backend-init`（commit `4105a3b`）。
 
 ### 待办（下一步）
 
@@ -56,8 +64,10 @@
   冲突需 OCR 才能判定、中文/双语/德文风格兼容）。
 - 奖项/经费/职位/机构等非论文声明仍需通用网页搜索（Tavily / Brave / SerpAPI 等，需单独
   key），当前未接；论文核验已与这部分解耦，拿到 key 后按同一 evidence 契约扩展。
-- 扫描件 `cv_09` 无文字层，是否接 OCR（pytesseract / pdf2image）待定；跨文档冲突
-  （`cv_08` 与 `cv_09` 的博士毕业年份、当前职位）需 OCR 后才能测。
+- 扫描件 `cv_09` 无文字层的 OCR 已接入（见上方「已完成」）；但样本 PDF 当前不在本机
+  磁盘上（`/Users/steven/Downloads/AIE1903_CV_test_samples_2026-09-29/` 缺失），
+  待用户重新提供样本后，即可实测 `cv_09` 的中文识别，并验证 `cv_08` / `cv_09`
+  跨文档冲突（博士毕业年份、当前职位）。
 - 尚未 commit：`app/`、`tests/`、`outputs/`、`docs/api.md` 等有大量未提交改动，待确认后
   commit 并 push 到 `feature/backend-init`。
 - D5 联调：启动 FastAPI，与肖一飞端到端打通。

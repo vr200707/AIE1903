@@ -13,6 +13,19 @@
 | 文件上传格式 | `multipart/form-data` |
 | 文档上限 | 每次上传最多 4 份（PDF 或 DOCX） |
 
+### 扫描件预处理（OCR）
+
+扫描版或纯图片 PDF（没有文字层）无法直接读取文字。后端在解析时会自动对这类页面
+做光学字符识别（Optical Character Recognition, OCR），默认识别简体中文
+（chi_sim）与英文（eng）。运行环境需安装 Tesseract 与 Poppler：
+
+```bash
+# macOS
+brew install tesseract tesseract-lang poppler
+```
+
+可通过环境变量 `OCR_LANGUAGES`、`OCR_DPI`、`TESSERACT_CMD` 覆盖默认配置。
+
 ## 通用约定（Conventions）
 
 ### 日期（Dates）

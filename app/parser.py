@@ -13,6 +13,8 @@ from pathlib import Path
 from docx import Document
 from pypdf import PdfReader
 
+from app.ocr import render_pdf_pages, ocr_image
+
 
 SUPPORTED_SUFFIXES = {".pdf", ".docx"}
 
@@ -49,10 +51,23 @@ def _normalize_text(text: str | None) -> str:
 def parse_pdf(path: str | Path) -> ParsedDocument:
     path = Path(path)
     reader = PdfReader(str(path))
-    pages = [
-        PageText(page_number=index, text=_normalize_text(page.extract_text()))
-        for index, page in enumerate(reader.pages, start=1)
-    ]
+    pages: list[PageText] = []
+    for index, page in enumerate(reader.pages, start=1):
+        pages.append(
+            PageText(page_number=index, text=_normalize_text(page.extract_text()))
+        )
+
+    # 扫描件没有文字层：对没有文字的页做 OCR，补齐文本。
+    empty_numbers = [p.page_number for p in pages if not p.text and p.page_number]
+    if empty_numbers:
+        first = min(empty_numbers)
+        # render_pdf_pages 渲染 first..last 的连续区间，返回按页码升序排列的图片。
+        images = render_pdf_pages(path, page_numbers=empty_numbers)
+        by_number = {first + offset: image for offset, image in enumerate(images)}
+        for page in pages:
+            if page.page_number in by_number and not page.text:
+                page.text = _normalize_text(ocr_image(by_number[page.page_number]))
+
     return ParsedDocument(
         filename=path.name,
         content_type=CONTENT_TYPES[".pdf"],
