@@ -25,7 +25,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
       detail = d.detail ?? d.code ?? JSON.stringify(detail);
     }
     throw new Error(
-      detail ? `请求失败：${detail}` : `请求失败（${res.status}）`,
+      detail ? `Request failed: ${detail}` : `Request failed (${res.status})`,
     );
   }
   return res.json() as Promise<T>;
@@ -60,7 +60,7 @@ export async function getProfile(params: {
   const hasProfile = Boolean(profile_id);
   const hasUpload = Boolean(upload_id);
   if (hasProfile === hasUpload) {
-    throw new Error("getProfile 必须且只能传 profile_id 或 upload_id 其中之一");
+    throw new Error("getProfile requires exactly one of profile_id or upload_id");
   }
   const query = hasProfile
     ? `profile_id=${profile_id}`

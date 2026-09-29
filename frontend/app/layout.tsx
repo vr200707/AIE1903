@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "候选人档案分析系统",
-  description: "AI 辅助高校教师招聘系统 - 候选人档案智能分析",
+  title: "Candidate Profile Analysis",
+  description: "AI-assisted faculty hiring workflow with evidence-grounded candidate profiles",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

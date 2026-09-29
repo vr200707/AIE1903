@@ -29,11 +29,11 @@ export function EvidenceModal({
         onClick={(ev) => ev.stopPropagation()}
       >
         <div className="flex items-start justify-between">
-          <h3 className="text-lg font-semibold text-white/90">证据详情</h3>
+          <h3 className="text-lg font-semibold text-white/90">Evidence details</h3>
           <button
             onClick={onClose}
             className="text-xl leading-none text-white/50 transition-colors hover:text-white/90"
-            aria-label="关闭"
+            aria-label="Close"
           >
             ×
           </button>
@@ -49,24 +49,24 @@ export function EvidenceModal({
 
           <dl className="space-y-1 text-xs text-white/40">
             <div className="flex gap-2">
-              <dt className="w-20 shrink-0">查询日期</dt>
+              <dt className="w-20 shrink-0">Queried</dt>
               <dd>{e.query_date}</dd>
             </div>
             {e.page != null && (
               <div className="flex gap-2">
-                <dt className="w-20 shrink-0">页码</dt>
-                <dd>第 {e.page} 页</dd>
+                <dt className="w-20 shrink-0">Page</dt>
+                <dd>{e.page}</dd>
               </div>
             )}
             {e.source_type && (
               <div className="flex gap-2">
-                <dt className="w-20 shrink-0">来源类型</dt>
+                <dt className="w-20 shrink-0">Source type</dt>
                 <dd>{e.source_type}</dd>
               </div>
             )}
             {e.notes && (
               <div className="flex gap-2">
-                <dt className="w-20 shrink-0">备注</dt>
+                <dt className="w-20 shrink-0">Notes</dt>
                 <dd>{e.notes}</dd>
               </div>
             )}
@@ -79,14 +79,14 @@ export function EvidenceModal({
               rel="noopener noreferrer"
               className="inline-block rounded-lg bg-gradient-to-r from-teal-400 to-cyan-400 px-3 py-1.5 text-white transition-opacity hover:opacity-90"
             >
-              查看原文 ↗
+              View source ↗
             </a>
           )}
 
           {onCorrect && (
             <div className="border-t border-white/10 pt-3">
               <p className="text-xs font-medium text-white/40">
-                人工修正证据状态
+                Correct evidence status
               </p>
               <select
                 value={status}

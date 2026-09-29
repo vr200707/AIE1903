@@ -29,14 +29,14 @@ export function EvidenceList({
                 status={getStatus ? getStatus(e) : e.evidence_status}
               />
               {e.page != null && (
-                <span className="text-xs text-white/40">第 {e.page} 页</span>
+                <span className="text-xs text-white/40">Page {e.page}</span>
               )}
             </div>
             <p className="mt-1.5 text-white/60">{e.evidence}</p>
             <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-white/40">
-              <span>查询日期：{e.query_date}</span>
+              <span>Queried: {e.query_date}</span>
               <span className="text-teal-300 opacity-0 transition-opacity group-hover:opacity-100">
-                点击查看详情 ↗
+                View details ↗
               </span>
             </div>
           </button>

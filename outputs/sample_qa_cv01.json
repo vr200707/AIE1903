@@ -1,0 +1,151 @@
+{
+  "schema_version": "1.0.0",
+  "profile_source": "outputs/sample_verified_cv01_web.json",
+  "note": "D5 加分项 /api/qa 实测样例：evidence 由后端按 evidence_ids 从档案取回，模型无法编造来源。",
+  "results": [
+    {
+      "question": "候选人的最高学历和毕业院校是什么？",
+      "answer": "候选人的最高学历是 Ph.D.（计算机科学博士），毕业院校是 University of Calder（2015–2019）。",
+      "confidence": "high",
+      "evidence": [
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "EVELYN R. HART, Ph.D. Assistant Professor of Human-Centered AI Northbridge Institute of Technology, Department of Computer Science",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 1,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "Ph.D., Computer Science University of Calder 2015 - 2019",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 1,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "Ph.D., Computer Science University of Calder 2015 - 2019 Dissertation: Robust Prediction under Distribution Shift",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 1,
+          "source_type": "resume"
+        }
+      ]
+    },
+    {
+      "question": "他总共有多少篇论文、总引用量是多少？",
+      "answer": "档案中列出了 9 篇论文（引用数分别为 41、28、18、64、22、31、37、52、11）。但档案中 total_citations 字段为 null，未给出总引用量；overall_evaluation 的 risks 也明确指出「Total citation count not provided in CV」。因此总引用量在档案中没有相关信息。",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "Hart, E. R., Imani, N., and Bell, J. (2025). Calibration drift in clinical decision support after deployment. Journal of Responsible Machine Learning, 12(2), 101-119. Citations: 41.",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 2,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "Hart, E. R., and Patel, S. (2024). When does causal evaluation change model selection? Proceedings of the Synthetic AI for Health Conference, 88-101. Citations: 28.",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 2,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "Imani, N., Hart, E. R., and Olsen, M. (2024). Uncertainty communication for high-stakes predictions. Clinical Data Science Forum, 7(1), 33-49. Citations: 18.",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 2,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "Hart, E. R., Chen, L., and Ward, P. (2023). A benchmark for temporal robustness in tabular healthcare models. Journal of Applied Machine Learning, 9(4), 410-432. Citations: 64.",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 2,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "Hart, E. R. (2023). Distribution shift is not only a data problem. Responsible Machine Learning Review, 5(3), 201-218. Citations: 22.",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 2,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "Olsen, M., Hart, E. R., and Imani, N. (2022). Participatory model evaluation with clinical teams. Proceedings of the Northbridge Symposium on Computing, 144-153. Citations: 31.",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 2,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "Hart, E. R., and Bell, J. (2021). Risk-aware abstention for rare disease screening. Health Data Science Letters, 4(2), 77-91. Citations: 37.",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 2,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "Patel, S., Hart, E. R., and Ward, P. (2020). Robustness under subgroup shift with limited labels. Journal of Statistical Learning, 14(1), 5-27. Citations: 52.",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 2,
+          "source_type": "resume"
+        }
+      ]
+    },
+    {
+      "question": "他有没有获得过图灵奖？",
+      "answer": "档案中没有相关信息。档案中列出的奖项包括 Early Career Research Prize（2024）、Best Paper Award（2023）和 Outstanding Doctoral Dissertation（2020），未提及图灵奖。",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "question": "What is the candidate's current position?",
+      "answer": "Evelyn R. Hart is currently an Assistant Professor of Human-Centered AI at Northbridge Institute of Technology (Department of Computer Science).",
+      "confidence": "high",
+      "evidence": [
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "EVELYN R. HART, Ph.D. Assistant Professor of Human-Centered AI Northbridge Institute of Technology, Department of Computer Science",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 1,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "Assistant Professor, Computer Science Northbridge Institute of Technology 2022 - Present",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 1,
+          "source_type": "resume"
+        }
+      ]
+    }
+  ]
+}

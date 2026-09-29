@@ -8,41 +8,41 @@ import type {
 } from "./types";
 
 export const evidenceStatusLabel: Record<EvidenceStatus, string> = {
-  confirmed: "已确认",
-  not_found_public: "未找到公开证据",
-  to_verify: "待核实",
-  conflict: "冲突",
+  confirmed: "Confirmed",
+  not_found_public: "Not found publicly",
+  to_verify: "To verify",
+  conflict: "Conflict",
 };
 
 export const authorRoleLabel: Record<AuthorRole, string> = {
-  first_author: "第一作者",
-  co_first_author: "共同第一作者",
-  corresponding_author: "通讯作者",
-  co_corresponding_author: "共同通讯作者",
-  middle_author: "中间作者",
-  single_author: "独立作者",
-  unknown: "未知",
+  first_author: "First author",
+  co_first_author: "Co-first author",
+  corresponding_author: "Corresponding author",
+  co_corresponding_author: "Co-corresponding author",
+  middle_author: "Middle author",
+  single_author: "Sole author",
+  unknown: "Unknown",
 };
 
 export const venueTypeLabel: Record<VenueType, string> = {
-  journal: "期刊",
-  conference: "会议",
-  workshop: "研讨会",
-  preprint: "预印本",
-  other: "其他",
-  unknown: "未知",
+  journal: "Journal",
+  conference: "Conference",
+  workshop: "Workshop",
+  preprint: "Preprint",
+  other: "Other",
+  unknown: "Unknown",
 };
 
 export const serviceTypeLabel: Record<ServiceType, string> = {
-  reviewer: "审稿人",
-  editor: "编辑",
-  program_committee: "程序委员会",
-  other: "其他",
+  reviewer: "Reviewer",
+  editor: "Editor",
+  program_committee: "Program committee",
+  other: "Other",
 };
 
 export const fundingRoleLabel: Record<FundingRole, string> = {
   PI: "PI",
   "Co-PI": "Co-PI",
-  participant: "参与者",
-  unknown: "未知",
+  participant: "Participant",
+  unknown: "Unknown",
 };

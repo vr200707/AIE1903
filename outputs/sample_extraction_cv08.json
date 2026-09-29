@@ -1,0 +1,498 @@
+{
+  "schema_version": "1.0.0",
+  "candidate": {
+    "basic_info": {
+      "name": "QIAO WEN | 温乔",
+      "institution": "Northbridge AI Lab",
+      "position": "Senior Research Scientist",
+      "research_interests": [
+        "Multimodal retrieval",
+        "Evaluation of generative systems",
+        "Document understanding",
+        "Cross-lingual search",
+        "可解释评估",
+        "多模态检索",
+        "生成系统评测",
+        "跨语言搜索"
+      ],
+      "highest_degree": "Ph.D.",
+      "skills": [
+        "Python",
+        "PyTorch",
+        "Hugging Face",
+        "SQL",
+        "information retrieval",
+        "multilingual NLP",
+        "evaluation design",
+        "research supervision",
+        "英语（工作语言）",
+        "普通话（母语）"
+      ],
+      "strengths": [],
+      "to_verify": [],
+      "evidence": [
+        {
+          "source": "cv_08_bilingual_academic_zh_en.docx",
+          "source_url": null,
+          "evidence": "QIAO WEN  |  温乔\nSenior Research Scientist | Multimodal Retrieval and Evaluation\nqiao.wen@example.edu | +86 10 5550 0188 | Beijing / Toronto | qiao-wen.example",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": null,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_08_bilingual_academic_zh_en.docx",
+          "source_url": null,
+          "evidence": "RESEARCH INTERESTS / 研究方向\nMultimodal retrieval, evaluation of generative systems, document understanding, cross-lingual search. 可解释评估、多模态检索、生成系统评测、跨语言搜索。",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": null,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_08_bilingual_academic_zh_en.docx",
+          "source_url": null,
+          "evidence": "Ph.D. Computer Science | Northbridge Institute of Technology | 2016 - 2020 | Advisor: Prof. Arden Lee.",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": null,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_08_bilingual_academic_zh_en.docx",
+          "source_url": null,
+          "evidence": "SKILLS / 技能\nPython, PyTorch, Hugging Face, SQL, information retrieval, multilingual NLP, evaluation design, research supervision. 英语（工作语言）、普通话（母语）。",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": null,
+          "source_type": "resume"
+        }
+      ]
+    },
+    "education_employment": {
+      "education": [
+        {
+          "degree": "Ph.D.",
+          "field": "Computer Science",
+          "institution": "Northbridge Institute of Technology",
+          "advisor": "Prof. Arden Lee",
+          "start_date": "2016",
+          "end_date": "2020",
+          "projects": [],
+          "outcomes": [
+            "Dissertation: Cross-Lingual Evidence Retrieval for Scientific Question Answering."
+          ],
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "Ph.D. Computer Science | Northbridge Institute of Technology | 2016 - 2020 | Advisor: Prof. Arden Lee. Dissertation: Cross-Lingual Evidence Retrieval for Scientific Question Answering.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "degree": "M.Sc.",
+          "field": "Information Systems",
+          "institution": "Westmere University",
+          "advisor": null,
+          "start_date": "2013",
+          "end_date": "2016",
+          "projects": [],
+          "outcomes": [
+            "Thesis: Evaluation Metrics for Ranked Document Summaries."
+          ],
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "M.Sc. Information Systems | Westmere University | 2013 - 2016 | Thesis: Evaluation Metrics for Ranked Document Summaries.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "degree": "B.Eng.",
+          "field": "Software Engineering",
+          "institution": "Xinhai University",
+          "advisor": null,
+          "start_date": "2009",
+          "end_date": "2013",
+          "projects": [],
+          "outcomes": [
+            "Graduation project: Chinese-English Patent Search."
+          ],
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "B.Eng. Software Engineering | Xinhai University | 2009 - 2013 | Graduation project: Chinese-English Patent Search.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        }
+      ],
+      "employment": [
+        {
+          "institution": "Northbridge AI Lab",
+          "position": "Senior Research Scientist",
+          "start_date": "2023",
+          "end_date": null,
+          "responsibilities": [],
+          "projects": [],
+          "outcomes": [],
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "Senior Research Scientist, Northbridge AI Lab, 2023 - Present",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "institution": "Northbridge AI Lab",
+          "position": "Research Scientist",
+          "start_date": "2020",
+          "end_date": "2023",
+          "responsibilities": [],
+          "projects": [],
+          "outcomes": [],
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "Research Scientist, Northbridge AI Lab, 2020 - 2023",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "institution": "University of Calder",
+          "position": "Visiting Researcher",
+          "start_date": "2019",
+          "end_date": "2019",
+          "responsibilities": [],
+          "projects": [],
+          "outcomes": [],
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "Visiting Researcher, University of Calder, 2019",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        }
+      ]
+    },
+    "awards_funding": {
+      "awards": [],
+      "funding": [
+        {
+          "project_name": "Reliable Multimodal Retrieval",
+          "funder": null,
+          "start_date": "2025",
+          "end_date": "2028",
+          "amount": 680000,
+          "currency": "CNY",
+          "role": "PI",
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "PI | Reliable Multimodal Retrieval | 2025 - 2028 | CNY 680,000",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "project_name": "Cross-Lingual Evaluation Suite",
+          "funder": null,
+          "start_date": "2023",
+          "end_date": "2025",
+          "amount": 210000,
+          "currency": "CAD",
+          "role": "Co-PI",
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "Co-I | Cross-Lingual Evaluation Suite | 2023 - 2025 | CAD 210,000",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        }
+      ]
+    },
+    "publications_impact": {
+      "publications": [
+        {
+          "title": "Evidence-aware evaluation for multimodal question answering",
+          "year": 2025,
+          "author_role": "first_author",
+          "venue": "Journal of Multimodal Research",
+          "venue_type": "journal",
+          "ranking": null,
+          "citation_count": 46,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "Wen, Q., Lee, A., and Gomez, P. (2025). Evidence-aware evaluation for multimodal question answering. Journal of Multimodal Research, 8(2), 101-128. Citations: 46.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "title": "Cross-lingual retrieval under limited parallel data",
+          "year": 2024,
+          "author_role": "first_author",
+          "venue": "Proceedings of the Synthetic Information Retrieval Conference",
+          "venue_type": "conference",
+          "ranking": null,
+          "citation_count": 33,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "Wen, Q., and Zhao, M. (2024). Cross-lingual retrieval under limited parallel data. Proceedings of the Synthetic Information Retrieval Conference, 220-233. Citations: 33.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "title": "When do image captions help document retrieval?",
+          "year": 2024,
+          "author_role": "middle_author",
+          "venue": "Findings of the Northbridge NLP Forum",
+          "venue_type": "conference",
+          "ranking": null,
+          "citation_count": 19,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "Gomez, P., Wen, Q., and Lee, A. (2024). When do image captions help document retrieval? Findings of the Northbridge NLP Forum, 55-69. Citations: 19.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "title": "Evaluation metrics for evidence-grounded summaries",
+          "year": 2022,
+          "author_role": "single_author",
+          "venue": "Journal of Applied Language Technology",
+          "venue_type": "journal",
+          "ranking": null,
+          "citation_count": 57,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "Wen, Q. (2022). Evaluation metrics for evidence-grounded summaries. Journal of Applied Language Technology, 5(4), 410-431. Citations: 57.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        }
+      ],
+      "total_citations": null,
+      "citation_query_date": null
+    },
+    "academic_service": {
+      "services": [
+        {
+          "service_type": "reviewer",
+          "organization_or_venue": "Synthetic Information Retrieval Conference",
+          "role": "Reviewer",
+          "start_year": 2023,
+          "end_year": 2026,
+          "research_areas": [],
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "Reviewer: Synthetic Information Retrieval Conference (2023 - 2026); Journal of Applied Language Technology (2021 - Present).",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "service_type": "reviewer",
+          "organization_or_venue": "Journal of Applied Language Technology",
+          "role": "Reviewer",
+          "start_year": 2021,
+          "end_year": null,
+          "research_areas": [],
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "Reviewer: Synthetic Information Retrieval Conference (2023 - 2026); Journal of Applied Language Technology (2021 - Present).",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "service_type": "program_committee",
+          "organization_or_venue": "Northbridge NLP Forum",
+          "role": "Program committee member",
+          "start_year": 2024,
+          "end_year": 2024,
+          "research_areas": [],
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "Program committee member: Northbridge NLP Forum (2024).",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        }
+      ]
+    },
+    "overall_evaluation": {
+      "summary": "QIAO WEN is a Senior Research Scientist at Northbridge AI Lab with a Ph.D. in Computer Science from Northbridge Institute of Technology. His research focuses on multimodal retrieval, evaluation of generative systems, document understanding, and cross-lingual search. He has published four selected papers with citation counts ranging from 19 to 57, and has secured funding as PI and Co-I. He also serves as a reviewer and program committee member.",
+      "strengths": [
+        "Strong academic background with a Ph.D. in Computer Science and a dissertation on cross-lingual evidence retrieval.",
+        "Current senior research position at an AI lab, indicating industry research leadership.",
+        "Research interests align with hot topics in multimodal retrieval and evaluation.",
+        "Secured funding as PI (CNY 680,000) and Co-I (CAD 210,000), demonstrating ability to attract research grants.",
+        "Active in academic service as reviewer for conferences and journals, and program committee member.",
+        "Publications in both journals and conferences with moderate citation counts."
+      ],
+      "risks": [
+        "Total citation count is not provided; only individual paper citations are listed.",
+        "No awards or honors are mentioned in the resume.",
+        "Funding amounts are listed but funders are not specified, which may require verification.",
+        "Citation counts are self-reported and lack a query date, so they may be outdated or unverified."
+      ],
+      "dimensions": [
+        {
+          "dimension": "Research Impact",
+          "assessment": "Moderate research impact as evidenced by four publications with citation counts between 19 and 57. However, total citations and h-index are not provided.",
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "1. Wen, Q., Lee, A., and Gomez, P. (2025). Evidence-aware evaluation for multimodal question answering. Journal of Multimodal Research, 8(2), 101-128. Citations: 46.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            },
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "4. Wen, Q. (2022). Evaluation metrics for evidence-grounded summaries. Journal of Applied Language Technology, 5(4), 410-431. Citations: 57.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "dimension": "Funding",
+          "assessment": "Has secured funding as PI and Co-I, with amounts specified in CNY and CAD. Funders are not named.",
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "PI | Reliable Multimodal Retrieval | 2025 - 2028 | CNY 680,000",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            },
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "Co-I | Cross-Lingual Evaluation Suite | 2023 - 2025 | CAD 210,000",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "dimension": "Academic Service",
+          "assessment": "Serves as reviewer for a conference and a journal, and as a program committee member for a forum.",
+          "evidence": [
+            {
+              "source": "cv_08_bilingual_academic_zh_en.docx",
+              "source_url": null,
+              "evidence": "Reviewer: Synthetic Information Retrieval Conference (2023 - 2026); Journal of Applied Language Technology (2021 - Present). Program committee member: Northbridge NLP Forum (2024).",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": null,
+              "source_type": "resume"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

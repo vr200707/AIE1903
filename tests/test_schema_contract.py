@@ -1,0 +1,90 @@
+import json
+import re
+import unittest
+from pathlib import Path
+
+
+SCHEMA_PATH = Path(__file__).parents[1] / "docs" / "schema.json"
+
+
+class SchemaContractTests(unittest.TestCase):
+    def setUp(self):
+        self.schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+
+    def test_defines_all_six_candidate_modules(self):
+        candidate = self.schema["properties"]["candidate"]
+        expected = {
+            "basic_info",
+            "education_employment",
+            "awards_funding",
+            "publications_impact",
+            "academic_service",
+            "overall_evaluation",
+        }
+        self.assertEqual(set(candidate["properties"]), expected)
+        self.assertEqual(set(candidate["required"]), expected)
+
+    def test_evidence_contract_has_required_fields_and_status_enum(self):
+        evidence = self.schema["$defs"]["evidence"]
+        self.assertEqual(
+            set(evidence["required"]),
+            {
+                "source",
+                "source_url",
+                "evidence",
+                "evidence_status",
+                "query_date",
+            },
+        )
+        self.assertEqual(
+            evidence["properties"]["evidence_status"]["enum"],
+            ["confirmed", "not_found_public", "to_verify", "conflict"],
+        )
+
+    def test_source_url_reserves_a_nullable_clickable_provenance_link(self):
+        source_url = self.schema["$defs"]["evidence"]["properties"]["source_url"]
+        self.assertEqual(source_url["anyOf"][1], {"type": "null"})
+        url_rule = source_url["anyOf"][0]
+        self.assertEqual(url_rule["format"], "uri")
+        pattern = url_rule["pattern"]
+        self.assertIsNotNone(re.fullmatch(pattern, "https://example.com/paper/123"))
+        self.assertIsNotNone(re.fullmatch(pattern, "http://127.0.0.1:8000/source"))
+        self.assertIsNone(re.fullmatch(pattern, "not a uri"))
+        self.assertIsNone(re.fullmatch(pattern, "https://?"))
+        self.assertIsNone(re.fullmatch(pattern, "http://["))
+
+    def test_all_object_schemas_are_strict_and_refs_are_resolved(self):
+        object_schemas = []
+
+        def visit(value):
+            if isinstance(value, dict):
+                if value.get("type") == "object":
+                    object_schemas.append(value)
+                    self.assertIs(value.get("additionalProperties"), False)
+                ref = value.get("$ref")
+                if ref and ref.startswith("#/$defs/"):
+                    self.assertIn(ref.removeprefix("#/$defs/"), self.schema["$defs"])
+                for child in value.values():
+                    visit(child)
+            elif isinstance(value, list):
+                for child in value:
+                    visit(child)
+
+        visit(self.schema)
+        self.assertGreater(len(object_schemas), 1)
+
+    def test_partial_date_pattern_rejects_out_of_range_months_and_days(self):
+        pattern = self.schema["$defs"]["date_value"]["anyOf"][0]["pattern"]
+        self.assertIsNotNone(re.fullmatch(pattern, "2024"))
+        self.assertIsNotNone(re.fullmatch(pattern, "2024-02"))
+        self.assertIsNotNone(re.fullmatch(pattern, "2024-02-29"))
+        self.assertIsNotNone(re.fullmatch(pattern, "2024-04-30"))
+        self.assertIsNone(re.fullmatch(pattern, "2024-99"))
+        self.assertIsNone(re.fullmatch(pattern, "2024-02-32"))
+        self.assertIsNone(re.fullmatch(pattern, "2023-02-29"))
+        self.assertIsNone(re.fullmatch(pattern, "2024-02-31"))
+        self.assertIsNone(re.fullmatch(pattern, "2024-04-31"))
+
+
+if __name__ == "__main__":
+    unittest.main()

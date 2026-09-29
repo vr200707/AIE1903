@@ -31,7 +31,7 @@ function n(v: string | null | undefined): string {
 // 日期区间（null 视为"至今"）
 function dateRange(start: DateValue, end: DateValue): string {
   const s = start ?? "?";
-  const e = end ?? "至今";
+  const e = end ?? "Present";
   return `${s} ~ ${e}`;
 }
 
@@ -68,17 +68,17 @@ function Header() {
           <span className="animate-float grid h-8 w-8 place-items-center rounded-full bg-yellow-300 text-lg shadow-lg shadow-yellow-400/40">
             ⚡
           </span>
-          候选人档案分析
+          Candidate Profile Analysis
         </h1>
         <nav className="flex gap-4 text-sm">
           <Link href="/" className="font-medium text-white/90">
-            档案
+            Profile
           </Link>
           <Link
             href="/methodology"
             className="text-white/50 transition-colors hover:text-white/90"
           >
-            方法说明
+            Methodology
           </Link>
         </nav>
       </div>
@@ -121,7 +121,7 @@ export default function Home() {
       setProfileId(profile_id);
       setCandidate(candidate);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "分析失败，请重试");
+      setError(e instanceof Error ? e.message : "Analysis failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -135,7 +135,7 @@ export default function Home() {
     try {
       setQaResult(await askQuestion(profileId, question.trim()));
     } catch (e) {
-      setQaError(e instanceof Error ? e.message : "问答失败，请重试");
+      setQaError(e instanceof Error ? e.message : "Q&A failed. Please try again.");
     } finally {
       setQaLoading(false);
     }
@@ -161,24 +161,24 @@ export default function Home() {
           <div className="animate-fade-in-up max-w-3xl text-left">
             {/* 小标：宽字距 */}
             <p className="text-xs font-medium uppercase tracking-[0.45em] text-white/50">
-              AIE1903 · AI 辅助高校教师招聘系统
+              AIE1903 · AI-assisted faculty hiring workflow
             </p>
 
             {/* 超大标题 */}
             <h2 className="mt-8 text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl lg:text-8xl">
-              候选人：我们等待
+              Candidate Profile Analysis
               <br />
-              <span className="text-teal-400">你</span>
-              的到来
+              <span className="text-teal-400">Upload</span>
+              and review
             </h2>
 
             <p className="mt-8 max-w-xl text-base text-white/50 sm:text-lg">
-              上传 CV、求职信、研究陈述、教学陈述，AI 生成结构化、可溯源、可筛选的候选人档案
+              Upload CV, cover letter, research statement, and teaching statement to generate a structured, evidence-grounded candidate profile.
             </p>
 
             <div className="mt-12 flex flex-wrap items-center gap-5">
               <label className="animate-float cursor-pointer rounded-full bg-white px-9 py-3.5 text-sm font-medium text-black shadow-lg shadow-black/40 transition hover:bg-white/85">
-                选择文件
+                Choose files
                 <input
                   type="file"
                   multiple
@@ -195,17 +195,17 @@ export default function Home() {
                 className="animate-float rounded-full border border-white/20 px-9 py-3.5 text-sm text-white/70 transition hover:bg-white/10"
                 style={{ animationDelay: "0.3s" }}
               >
-                加载示例数据
+                Load example data
               </button>
             </div>
 
             {/* 数字步骤：宽字距 */}
             <p className="mt-16 text-xs uppercase tracking-[0.5em] text-white/30">
-              01 上传&ensp;·&ensp;02 分析&ensp;·&ensp;03 档案
+              01 Upload&ensp;·&ensp;02 Analyze&ensp;·&ensp;03 Profile
             </p>
 
             {loading && (
-              <p className="mt-6 text-sm text-white/50">分析中，请稍候…</p>
+              <p className="mt-6 text-sm text-white/50">Analyzing, please wait...</p>
             )}
             {error && <p className="mt-6 text-sm text-rose-400">{error}</p>}
           </div>
@@ -290,7 +290,7 @@ export default function Home() {
 
         <div className="space-y-6">
         {/* 1. 基本信息 */}
-        <Section title="基本信息" hidden={!matches(basicKw)}>
+        <Section title="Basic Information" hidden={!matches(basicKw)}>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h3 className="text-xl font-bold">{n(c.basic_info.name)}</h3>
             <span className="text-white/50">{n(c.basic_info.position)}</span>
@@ -300,13 +300,13 @@ export default function Home() {
             {c.basic_info.highest_degree ? ` · ${c.basic_info.highest_degree}` : ""}
           </p>
 
-          <TagRow label="研究方向" items={c.basic_info.research_interests} />
-          <TagRow label="技能" items={c.basic_info.skills} />
-          <TagRow label="优势" items={c.basic_info.strengths} />
+          <TagRow label="Research interests" items={c.basic_info.research_interests} />
+          <TagRow label="Skills" items={c.basic_info.skills} />
+          <TagRow label="Strengths" items={c.basic_info.strengths} />
 
           {c.basic_info.to_verify.length > 0 && (
             <div className="mt-4">
-              <p className="text-xs font-medium text-white/40">待核实项</p>
+              <p className="text-xs font-medium text-white/40">Items to verify</p>
               <ul className="mt-2 space-y-2">
                 {c.basic_info.to_verify.map((v, i) => (
                   <li
@@ -332,7 +332,7 @@ export default function Home() {
           )}
 
           <div className="mt-4">
-            <p className="text-xs font-medium text-white/40">证据来源</p>
+            <p className="text-xs font-medium text-white/40">Evidence sources</p>
             <EvidenceList
               items={c.basic_info.evidence}
               onEvidenceClick={setSelectedEvidence}
@@ -342,10 +342,10 @@ export default function Home() {
         </Section>
 
         {/* 2. 教育与工作 */}
-        <Section title="教育与工作" hidden={!matches(eduKw)}>
-          <h4 className="text-sm font-semibold text-white/70">教育经历</h4>
+        <Section title="Education & Work" hidden={!matches(eduKw)}>
+          <h4 className="text-sm font-semibold text-white/70">Education</h4>
           {c.education_employment.education.length === 0 ? (
-            <p className="mt-2 text-sm text-white/40">无</p>
+            <p className="mt-2 text-sm text-white/40">None</p>
           ) : (
             <div className="mt-2 space-y-3">
               {c.education_employment.education.map((ed, i) => (
@@ -355,19 +355,19 @@ export default function Home() {
                     <span className="text-white/70">{n(ed.field)}</span>
                   </div>
                   <p className="mt-1 text-sm text-white/50">
-                    {n(ed.institution)} · 导师：{n(ed.advisor)}
+                    {n(ed.institution)} · Advisor: {n(ed.advisor)}
                   </p>
                   <p className="text-sm text-white/50">
                     {dateRange(ed.start_date, ed.end_date)}
                   </p>
                   {ed.projects.length > 0 && (
                     <p className="mt-1 text-sm text-white/70">
-                      项目：{ed.projects.join("、")}
+                      Projects: {ed.projects.join(", ")}
                     </p>
                   )}
                   {ed.outcomes.length > 0 && (
                     <p className="mt-1 text-sm text-white/70">
-                      成果：{ed.outcomes.join("、")}
+                      Outcomes: {ed.outcomes.join(", ")}
                     </p>
                   )}
                   <EvidenceList items={ed.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
@@ -376,9 +376,9 @@ export default function Home() {
             </div>
           )}
 
-          <h4 className="mt-6 text-sm font-semibold text-white/70">工作经历</h4>
+          <h4 className="mt-6 text-sm font-semibold text-white/70">Work experience</h4>
           {c.education_employment.employment.length === 0 ? (
-            <p className="mt-2 text-sm text-white/40">无</p>
+            <p className="mt-2 text-sm text-white/40">None</p>
           ) : (
             <div className="mt-2 space-y-3">
               {c.education_employment.employment.map((em, i) => (
@@ -392,17 +392,17 @@ export default function Home() {
                   </p>
                   {em.responsibilities.length > 0 && (
                     <p className="mt-1 text-sm text-white/70">
-                      职责：{em.responsibilities.join("、")}
+                      Responsibilities: {em.responsibilities.join(", ")}
                     </p>
                   )}
                   {em.projects.length > 0 && (
                     <p className="mt-1 text-sm text-white/70">
-                      项目：{em.projects.join("、")}
+                      Projects: {em.projects.join(", ")}
                     </p>
                   )}
                   {em.outcomes.length > 0 && (
                     <p className="mt-1 text-sm text-white/70">
-                      成果：{em.outcomes.join("、")}
+                      Outcomes: {em.outcomes.join(", ")}
                     </p>
                   )}
                   <EvidenceList items={em.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
@@ -413,10 +413,10 @@ export default function Home() {
         </Section>
 
         {/* 3. 奖项与经费 */}
-        <Section title="奖项与经费" hidden={!matches(awardsKw)}>
-          <h4 className="text-sm font-semibold text-white/70">奖项</h4>
+        <Section title="Awards & Funding" hidden={!matches(awardsKw)}>
+          <h4 className="text-sm font-semibold text-white/70">Awards</h4>
           {c.awards_funding.awards.length === 0 ? (
-            <p className="mt-2 text-sm text-white/40">无</p>
+            <p className="mt-2 text-sm text-white/40">None</p>
           ) : (
             <div className="mt-2 space-y-3">
               {c.awards_funding.awards.map((a, i) => (
@@ -428,7 +428,7 @@ export default function Home() {
                     )}
                   </div>
                   <p className="mt-1 text-sm text-white/50">
-                    颁发机构：{n(a.awarding_body)}
+                    Awarding body: {n(a.awarding_body)}
                   </p>
                   <EvidenceList items={a.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
                 </div>
@@ -436,9 +436,9 @@ export default function Home() {
             </div>
           )}
 
-          <h4 className="mt-6 text-sm font-semibold text-white/70">经费</h4>
+          <h4 className="mt-6 text-sm font-semibold text-white/70">Funding</h4>
           {c.awards_funding.funding.length === 0 ? (
-            <p className="mt-2 text-sm text-white/40">无</p>
+            <p className="mt-2 text-sm text-white/40">None</p>
           ) : (
             <div className="mt-2 space-y-3">
               {c.awards_funding.funding.map((f, i) => (
@@ -450,11 +450,11 @@ export default function Home() {
                     </span>
                   </div>
                   <p className="mt-1 text-sm text-white/50">
-                    资助方：{n(f.funder)} · {dateRange(f.start_date, f.end_date)}
+                    Funder: {n(f.funder)} · {dateRange(f.start_date, f.end_date)}
                   </p>
                   {f.amount != null && (
                     <p className="text-sm text-white/50">
-                      金额：{f.amount.toLocaleString()} {f.currency ?? ""}
+                      Amount: {f.amount.toLocaleString()} {f.currency ?? ""}
                     </p>
                   )}
                   <EvidenceList items={f.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
@@ -465,16 +465,16 @@ export default function Home() {
         </Section>
 
         {/* 4. 论文与影响 */}
-        <Section title="论文与影响" hidden={!matches(pubKw)}>
+        <Section title="Publications & Impact" hidden={!matches(pubKw)}>
           <p className="text-sm text-white/70">
-            总引用量：{c.publications_impact.total_citations ?? "—"}
+            Total citations: {c.publications_impact.total_citations ?? "—"}
             {c.publications_impact.citation_query_date
-              ? `（查询日期：${c.publications_impact.citation_query_date}）`
+              ? ` (queried: ${c.publications_impact.citation_query_date})`
               : ""}
           </p>
 
           {c.publications_impact.publications.length === 0 ? (
-            <p className="mt-2 text-sm text-white/40">无</p>
+            <p className="mt-2 text-sm text-white/40">None</p>
           ) : (
             <div className="mt-3 space-y-3">
               {c.publications_impact.publications.map((p, i) => (
@@ -494,7 +494,7 @@ export default function Home() {
                     )}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-white/50">
-                    {p.citation_count != null && <span>引用：{p.citation_count}</span>}
+                    {p.citation_count != null && <span>Citations: {p.citation_count}</span>}
                     {p.code_repository && (
                       <a
                         href={p.code_repository}
@@ -502,7 +502,7 @@ export default function Home() {
                         rel="noopener noreferrer"
                         className="text-teal-300 hover:underline"
                       >
-                        代码仓库 ↗
+                        Code repository ↗
                       </a>
                     )}
                     {p.repository_stars != null && <span>Stars：{p.repository_stars}</span>}
@@ -515,9 +515,9 @@ export default function Home() {
         </Section>
 
         {/* 5. 学术服务 */}
-        <Section title="学术服务" hidden={!matches(svcKw)}>
+        <Section title="Academic Service" hidden={!matches(svcKw)}>
           {c.academic_service.services.length === 0 ? (
-            <p className="text-sm text-white/40">无</p>
+            <p className="text-sm text-white/40">None</p>
           ) : (
             <div className="space-y-3">
               {c.academic_service.services.map((s, i) => (
@@ -530,11 +530,11 @@ export default function Home() {
                     {s.role && <span className="text-sm text-white/50">{s.role}</span>}
                   </div>
                   <p className="mt-1 text-sm text-white/50">
-                    {s.start_year ?? "?"} ~ {s.end_year ?? "至今"}
+                    {s.start_year ?? "?"} ~ {s.end_year ?? "Present"}
                   </p>
                   {s.research_areas.length > 0 && (
                     <p className="mt-1 text-sm text-white/70">
-                      领域：{s.research_areas.join("、")}
+                      Areas: {s.research_areas.join(", ")}
                     </p>
                   )}
                   <EvidenceList items={s.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
@@ -545,14 +545,14 @@ export default function Home() {
         </Section>
 
         {/* 6. 综合评价 */}
-        <Section title="综合评价" hidden={!matches(evalKw)}>
+        <Section title="Overall Evaluation" hidden={!matches(evalKw)}>
           <p className="text-sm text-white/70">{n(c.overall_evaluation.summary)}</p>
-          <TagRow label="优势" items={c.overall_evaluation.strengths} />
-          <TagRow label="风险" items={c.overall_evaluation.risks} />
+          <TagRow label="Strengths" items={c.overall_evaluation.strengths} />
+          <TagRow label="Risks" items={c.overall_evaluation.risks} />
 
           {c.overall_evaluation.dimensions.length > 0 && (
             <div className="mt-4">
-              <p className="text-xs font-medium text-white/40">各维度评价</p>
+              <p className="text-xs font-medium text-white/40">Dimension evaluations</p>
               <div className="mt-2 space-y-3">
                 {c.overall_evaluation.dimensions.map((d, i) => (
                   <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
@@ -569,12 +569,12 @@ export default function Home() {
 
         {/* 7. 基于证据的问答（加分项，需真实后端） */}
         {profileId && (
-          <Section title="基于证据的问答">
+          <Section title="Evidence-based Q&A">
             <div className="flex gap-2">
               <input
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                placeholder="输入问题（如：候选人总引用量是多少？）"
+                placeholder="Ask a question, such as: What is the candidate's total citation count?"
                 className="flex-1 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-sm text-white/90 outline-none placeholder:text-white/40 focus:border-teal-400/50"
               />
               <button
@@ -582,19 +582,19 @@ export default function Home() {
                 disabled={qaLoading || !question.trim()}
                 className="rounded-lg bg-gradient-to-r from-teal-400 to-cyan-400 px-4 py-1.5 text-sm text-white transition-opacity disabled:opacity-50"
               >
-                {qaLoading ? "思考中…" : "提问"}
+                {qaLoading ? "Thinking..." : "Ask"}
               </button>
             </div>
             {qaResult && (
               <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">回答</span>
+                  <span className="font-medium">Answer</span>
                   <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/70">
-                    置信度：{qaResult.confidence}
+                    Confidence: {qaResult.confidence}
                   </span>
                 </div>
                 <p className="mt-2 text-sm text-white/70">{qaResult.answer}</p>
-                <p className="mt-3 text-xs font-medium text-white/40">支撑证据</p>
+                <p className="mt-3 text-xs font-medium text-white/40">Supporting evidence</p>
                 <EvidenceList
                   items={qaResult.evidence}
                   onEvidenceClick={setSelectedEvidence}
