@@ -100,6 +100,18 @@
 - 测试：新增 [tests/test_qa.py](tests/test_qa.py)（编号完整性、证据回填、幻觉编号丢弃、
   去重、非法 confidence 回退、空问题/空回答/坏 JSON 报错、证据条数上限），并在
   `tests/test_api.py` 补 `/api/qa` 的 200/404/422/500 四项。
+- 处理肖一飞 review 反馈的三项（P0-1 / P1-2 / P1-3）：
+  - P0-1 后端合并：核实 PR #3 已合并进 `main`（`9dc386d`），该条已闭环；另合并已 approve
+    且 clean 的前端 PR #7（`getProfile` 返回类型改为 `CandidateProfile` + 前端接入真实
+    upload/analyze 联调接线）。
+  - P1-2 OCR 测试跨平台：`tests/test_ocr.py` 的字体路径改为按平台探测候选（macOS /
+    Windows / Linux）并检查 tesseract，缺任一项时跳过图像类测试、纯逻辑测试照常跑。
+  - P1-3 错误契约：后端 `app/api.py` 实际返回嵌套 `{"detail":{"code","detail"}}`，而
+    `docs/api.md` 原写平铺 `{"detail":"...","code":"..."}`。决策为「改文档对齐后端」——
+    后端已按嵌套落地、前端也已按对象形态兼容，改文档是零风险最小改动；并在文档注明
+    FastAPI 自身校验错误时 `detail` 为数组，前端需兼容数组 / 对象两种形态。
+  - 上述两处代码/文档修复开新 PR #10（`codex/fix-ocr-font-and-error-docs`），全仓 52 项
+    测试通过。
 
 ### 待办（下一步）
 
