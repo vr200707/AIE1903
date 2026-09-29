@@ -1,0 +1,667 @@
+{
+  "schema_version": "1.0.0",
+  "candidate": {
+    "basic_info": {
+      "name": "Evelyn R. Hart",
+      "institution": "Northbridge Institute of Technology",
+      "position": "Assistant Professor of Human-Centered AI",
+      "research_interests": [
+        "Human-Centered AI",
+        "Model calibration",
+        "Causal evaluation",
+        "Clinician-facing decision support",
+        "Robust prediction under distribution shift"
+      ],
+      "highest_degree": "Ph.D.",
+      "skills": [
+        "Python",
+        "R",
+        "SQL",
+        "PyTorch",
+        "scikit-learn",
+        "causal inference",
+        "calibration",
+        "data visualization",
+        "research supervision",
+        "grant writing"
+      ],
+      "strengths": [
+        "Interdisciplinary research leadership",
+        "Teaching machine learning",
+        "Grant writing and funding acquisition"
+      ],
+      "to_verify": [],
+      "evidence": [
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "EVELYN R. HART, Ph.D. Assistant Professor of Human-Centered AI Northbridge Institute of Technology, Department of Computer Science",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 1,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "I study how machine-learning systems behave when they encounter changes in people, workflows, and data. My current work combines model calibration, causal evaluation, and clinician-facing decision support.",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 1,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "Ph.D., Computer Science University of Calder 2015 - 2019",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 1,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "Python, R, SQL, PyTorch, scikit-learn, causal inference, calibration, data visualization, research supervision, grant writing.",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 2,
+          "source_type": "resume"
+        },
+        {
+          "source": "cv_01_academic_standard_en.pdf",
+          "source_url": null,
+          "evidence": "I teach machine learning and lead a small interdisciplinary research group.",
+          "evidence_status": "confirmed",
+          "query_date": "2026-09-29",
+          "page": 1,
+          "source_type": "resume"
+        }
+      ]
+    },
+    "education_employment": {
+      "education": [
+        {
+          "degree": "Ph.D.",
+          "field": "Computer Science",
+          "institution": "University of Calder",
+          "advisor": null,
+          "start_date": "2015",
+          "end_date": "2019",
+          "projects": [],
+          "outcomes": [
+            "Dissertation: Robust Prediction under Distribution Shift"
+          ],
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Ph.D., Computer Science University of Calder 2015 - 2019 Dissertation: Robust Prediction under Distribution Shift",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "degree": "M.Sc.",
+          "field": "Statistics",
+          "institution": "University of Calder",
+          "advisor": null,
+          "start_date": "2013",
+          "end_date": "2015",
+          "projects": [],
+          "outcomes": [
+            "Thesis: Semi-supervised Risk Estimation"
+          ],
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "M.Sc., Statistics University of Calder 2013 - 2015 Thesis: Semi-supervised Risk Estimation",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "degree": "B.Sc.",
+          "field": "Mathematics",
+          "institution": "Westmere College",
+          "advisor": null,
+          "start_date": "2009",
+          "end_date": "2013",
+          "projects": [],
+          "outcomes": [
+            "First-class honours"
+          ],
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "B.Sc., Mathematics Westmere College 2009 - 2013 First-class honours",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        }
+      ],
+      "employment": [
+        {
+          "institution": "Northbridge Institute of Technology",
+          "position": "Assistant Professor, Computer Science",
+          "start_date": "2022",
+          "end_date": null,
+          "responsibilities": [
+            "Teaching machine learning",
+            "Leading a small interdisciplinary research group"
+          ],
+          "projects": [],
+          "outcomes": [],
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Assistant Professor, Computer Science Northbridge Institute of Technology 2022 - Present",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            },
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "I teach machine learning and lead a small interdisciplinary research group.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "institution": "Calder Centre for Clinical AI",
+          "position": "Postdoctoral Research Associate, Health Data Science",
+          "start_date": "2019",
+          "end_date": "2022",
+          "responsibilities": [],
+          "projects": [],
+          "outcomes": [],
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Postdoctoral Research Associate, Health Data Science Calder Centre for Clinical AI 2019 - 2022",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        }
+      ]
+    },
+    "awards_funding": {
+      "awards": [
+        {
+          "name": "Early Career Research Prize",
+          "year": 2024,
+          "awarding_body": "Calder Society for Computing",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Early Career Research Prize, Calder Society for Computing, 2024.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "name": "Best Paper Award",
+          "year": 2023,
+          "awarding_body": "Synthetic AI for Health Conference",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Best Paper Award, Synthetic AI for Health Conference, 2023.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "name": "Outstanding Doctoral Dissertation",
+          "year": 2020,
+          "awarding_body": "University of Calder",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Outstanding Doctoral Dissertation, University of Calder, 2020.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        }
+      ],
+      "funding": [
+        {
+          "project_name": "Adaptation-Aware Decision Support for Community Clinics",
+          "funder": "Arcadia Health Research Council",
+          "start_date": "2025",
+          "end_date": "2028",
+          "amount": 420000,
+          "currency": "GBP",
+          "role": "PI",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "PI, Adaptation-Aware Decision Support for Community Clinics, Arcadia Health Research Council, 2025 - 2028, GBP 420,000.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "project_name": "Human-in-the-Loop Calibration for Rare Disease Screening",
+          "funder": "Northbridge Seed Fund",
+          "start_date": "2023",
+          "end_date": "2025",
+          "amount": 75000,
+          "currency": "GBP",
+          "role": "PI",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "PI, Human-in-the-Loop Calibration for Rare Disease Screening, Northbridge Seed Fund, 2023 - 2025, GBP 75,000.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "project_name": "Responsible Deployment of Predictive Models",
+          "funder": "Calder-Industry Partnership",
+          "start_date": "2021",
+          "end_date": "2023",
+          "amount": 180000,
+          "currency": "GBP",
+          "role": "Co-PI",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Co-I, Responsible Deployment of Predictive Models, Calder-Industry Partnership, 2021 - 2023, GBP 180,000.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        }
+      ]
+    },
+    "publications_impact": {
+      "publications": [
+        {
+          "title": "Calibration drift in clinical decision support after deployment",
+          "year": 2025,
+          "author_role": "first_author",
+          "venue": "Journal of Responsible Machine Learning",
+          "venue_type": "journal",
+          "ranking": null,
+          "citation_count": 41,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Hart, E. R., Imani, N., and Bell, J. (2025). Calibration drift in clinical decision support after deployment. Journal of Responsible Machine Learning, 12(2), 101-119. Citations: 41.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "title": "When does causal evaluation change model selection?",
+          "year": 2024,
+          "author_role": "first_author",
+          "venue": "Proceedings of the Synthetic AI for Health Conference",
+          "venue_type": "conference",
+          "ranking": null,
+          "citation_count": 28,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Hart, E. R., and Patel, S. (2024). When does causal evaluation change model selection? Proceedings of the Synthetic AI for Health Conference, 88-101. Citations: 28.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "title": "Uncertainty communication for high-stakes predictions",
+          "year": 2024,
+          "author_role": "middle_author",
+          "venue": "Clinical Data Science Forum",
+          "venue_type": "journal",
+          "ranking": null,
+          "citation_count": 18,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Imani, N., Hart, E. R., and Olsen, M. (2024). Uncertainty communication for high-stakes predictions. Clinical Data Science Forum, 7(1), 33-49. Citations: 18.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "title": "A benchmark for temporal robustness in tabular healthcare models",
+          "year": 2023,
+          "author_role": "first_author",
+          "venue": "Journal of Applied Machine Learning",
+          "venue_type": "journal",
+          "ranking": null,
+          "citation_count": 64,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Hart, E. R., Chen, L., and Ward, P. (2023). A benchmark for temporal robustness in tabular healthcare models. Journal of Applied Machine Learning, 9(4), 410-432. Citations: 64.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "title": "Distribution shift is not only a data problem",
+          "year": 2023,
+          "author_role": "single_author",
+          "venue": "Responsible Machine Learning Review",
+          "venue_type": "journal",
+          "ranking": null,
+          "citation_count": 22,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Hart, E. R. (2023). Distribution shift is not only a data problem. Responsible Machine Learning Review, 5(3), 201-218. Citations: 22.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "title": "Participatory model evaluation with clinical teams",
+          "year": 2022,
+          "author_role": "middle_author",
+          "venue": "Proceedings of the Northbridge Symposium on Computing",
+          "venue_type": "conference",
+          "ranking": null,
+          "citation_count": 31,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Olsen, M., Hart, E. R., and Imani, N. (2022). Participatory model evaluation with clinical teams. Proceedings of the Northbridge Symposium on Computing, 144-153. Citations: 31.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "title": "Risk-aware abstention for rare disease screening",
+          "year": 2021,
+          "author_role": "first_author",
+          "venue": "Health Data Science Letters",
+          "venue_type": "journal",
+          "ranking": null,
+          "citation_count": 37,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Hart, E. R., and Bell, J. (2021). Risk-aware abstention for rare disease screening. Health Data Science Letters, 4(2), 77-91. Citations: 37.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "title": "Robustness under subgroup shift with limited labels",
+          "year": 2020,
+          "author_role": "middle_author",
+          "venue": "Journal of Statistical Learning",
+          "venue_type": "journal",
+          "ranking": null,
+          "citation_count": 52,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Patel, S., Hart, E. R., and Ward, P. (2020). Robustness under subgroup shift with limited labels. Journal of Statistical Learning, 14(1), 5-27. Citations: 52.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "title": "Semi-supervised risk estimation under unobserved confounding",
+          "year": 2019,
+          "author_role": "single_author",
+          "venue": "Calder Computing Monographs",
+          "venue_type": "other",
+          "ranking": null,
+          "citation_count": 11,
+          "citation_query_date": null,
+          "code_repository": null,
+          "repository_stars": null,
+          "stars_query_date": null,
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Hart, E. R. (2019). Semi-supervised risk estimation under unobserved confounding. Calder Computing Monographs, 3, 1-38. Citations: 11.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            }
+          ]
+        }
+      ],
+      "total_citations": null,
+      "citation_query_date": null
+    },
+    "academic_service": {
+      "services": [
+        {
+          "service_type": "reviewer",
+          "organization_or_venue": "Responsible Machine Learning Review",
+          "role": "Reviewer",
+          "start_year": 2023,
+          "end_year": null,
+          "research_areas": [],
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Reviewer for Responsible Machine Learning Review (2023 - Present)",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "service_type": "reviewer",
+          "organization_or_venue": "Clinical Data Science Forum",
+          "role": "Reviewer",
+          "start_year": 2022,
+          "end_year": null,
+          "research_areas": [],
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Clinical Data Science Forum (2022 - Present)",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "service_type": "program_committee",
+          "organization_or_venue": "Synthetic AI for Health Conference",
+          "role": "Program committee member",
+          "start_year": 2023,
+          "end_year": 2026,
+          "research_areas": [],
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Program committee member, Synthetic AI for Health Conference (2023 - 2026).",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        }
+      ]
+    },
+    "overall_evaluation": {
+      "summary": "Evelyn R. Hart is an Assistant Professor of Human-Centered AI at Northbridge Institute of Technology with a Ph.D. in Computer Science from University of Calder. Her research focuses on model calibration, causal evaluation, and clinician-facing decision support, with a strong publication record and active funding.",
+      "strengths": [
+        "Strong publication record with 9 papers, including first-author and single-author works",
+        "Secured significant research funding as PI and Co-PI",
+        "Active in academic service as reviewer and program committee member",
+        "Interdisciplinary research combining machine learning and healthcare"
+      ],
+      "risks": [
+        "Total citation count not provided in CV",
+        "No code repositories or software artifacts mentioned"
+      ],
+      "dimensions": [
+        {
+          "dimension": "Research Impact",
+          "assessment": "High: 9 publications with citation counts ranging from 11 to 64, indicating substantial impact in the field.",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Citations: 41, 28, 18, 64, 22, 31, 37, 52, 11",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 2,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "dimension": "Funding",
+          "assessment": "Strong: PI on two grants totaling GBP 495,000 and Co-I on one grant of GBP 180,000.",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "PI, Adaptation-Aware Decision Support for Community Clinics, Arcadia Health Research Council, 2025 - 2028, GBP 420,000. PI, Human-in-the-Loop Calibration for Rare Disease Screening, Northbridge Seed Fund, 2023 - 2025, GBP 75,000. Co-I, Responsible Deployment of Predictive Models, Calder-Industry Partnership, 2021 - 2023, GBP 180,000.",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        },
+        {
+          "dimension": "Academic Service",
+          "assessment": "Active: reviewer for two venues and program committee member for a conference.",
+          "evidence": [
+            {
+              "source": "cv_01_academic_standard_en.pdf",
+              "source_url": null,
+              "evidence": "Reviewer for Responsible Machine Learning Review (2023 - Present) and Clinical Data Science Forum (2022 - Present). Program committee member, Synthetic AI for Health Conference (2023 - 2026).",
+              "evidence_status": "confirmed",
+              "query_date": "2026-09-29",
+              "page": 1,
+              "source_type": "resume"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
