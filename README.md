@@ -10,10 +10,9 @@ the result through a web interface with evidence links and manual correction.
 
 ## Project Status
 
-The backend implementation is currently tracked on `feature/backend-init`
-(PR #7), and the final frontend `getProfile` type correction is on
-`feature/frontend-init`. Merge those changes into `main` before running the
-full-stack workflow from the default branch.
+The backend implementation is merged into `main`. The D5 frontend integration
+is delivered through PR #7; this README reflects the resulting full-stack
+setup.
 
 ## Core Features
 
@@ -154,9 +153,9 @@ macOS or Linux:
 NEXT_PUBLIC_API_BASE=http://localhost:8000 npm run dev
 ```
 
-The checked-in profile page currently uses synthetic data from
-`frontend/lib/mock.ts`. During full-stack integration, replace that source with
-the API client functions in `frontend/lib/api.ts`.
+The profile page supports live document upload and analysis through
+`frontend/lib/api.ts`. It also provides a "Load example data" action backed by
+`frontend/lib/mock.ts` for offline previews.
 
 ## API Overview
 
@@ -166,9 +165,7 @@ the API client functions in `frontend/lib/api.ts`.
 | `POST` | `/api/upload` | Upload one to four PDF or DOCX files |
 | `POST` | `/api/analyze` | Parse, extract, and verify an uploaded document set |
 | `GET` | `/api/profile` | Return a stored profile by `profile_id` or `upload_id` |
-
-`POST /api/qa` is documented as an optional Q&A extension, but it is not
-implemented in the current backend.
+| `POST` | `/api/qa` | Answer a natural-language question with evidence |
 
 ### Upload
 
@@ -190,6 +187,14 @@ curl -X POST http://localhost:8000/api/analyze \
 
 ```bash
 curl "http://localhost:8000/api/profile?profile_id=prf_example"
+```
+
+### Ask a Question
+
+```bash
+curl -X POST http://localhost:8000/api/qa \
+  -H "Content-Type: application/json" \
+  -d '{"profile_id":"prf_example","question":"What are the candidate's research interests?"}'
 ```
 
 `/api/analyze` returns:
@@ -290,11 +295,10 @@ tools available before running OCR-specific tests.
   in a production database.
 - `/api/analyze` is synchronous and may take time when external verification
   is enabled.
-- `/api/qa` is specified but not implemented.
-- The frontend still uses mock data on the profile page and needs full API
-  integration.
-- Browser calls from the Next.js origin to the FastAPI origin require CORS
-  middleware or a development proxy.
+- Business error payloads currently use a nested `detail` object; the frontend
+  handles it, but the contract should be aligned before release.
+- The Next.js rewrite proxy avoids CORS in local development. A deployment
+  outside the Next.js server still needs an equivalent proxy or CORS policy.
 - OCR depends on external Tesseract and Poppler installations.
 
 ## Collaboration
