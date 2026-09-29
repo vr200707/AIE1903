@@ -1,15 +1,17 @@
 "use client";
 
-import type { Evidence } from "@/lib/types";
+import type { Evidence, EvidenceStatus } from "@/lib/types";
 import { EvidenceBadge } from "./EvidenceBadge";
 
 // 证据列表：每条可点击，点击后通过 onEvidenceClick 打开证据详情弹窗
 export function EvidenceList({
   items,
   onEvidenceClick,
+  getStatus,
 }: {
   items: Evidence[];
   onEvidenceClick?: (e: Evidence) => void;
+  getStatus?: (e: Evidence) => EvidenceStatus;
 }) {
   if (items.length === 0) return null;
   return (
@@ -23,7 +25,7 @@ export function EvidenceList({
           >
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium text-zinc-700">{e.source}</span>
-              <EvidenceBadge status={e.evidence_status} />
+              <EvidenceBadge status={getStatus ? getStatus(e) : e.evidence_status} />
               {e.page != null && (
                 <span className="text-xs text-zinc-400">第 {e.page} 页</span>
               )}

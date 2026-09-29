@@ -33,27 +33,7 @@ function nonEmpty(xs: (string | null | undefined)[]): string[] {
   return xs.filter((x): x is string => Boolean(x));
 }
 
-// 深拷贝并替换目标 evidence 的 evidence_status（用于人工修正）
-function replaceEvidence<T>(
-  value: T,
-  target: Evidence,
-  status: EvidenceStatus,
-): T {
-  if (Array.isArray(value)) {
-    return value.map((v) => replaceEvidence(v, target, status)) as unknown as T;
-  }
-  if (value && typeof value === "object") {
-    if (value === target) {
-      return { ...value, evidence_status: status } as unknown as T;
-    }
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      out[k] = replaceEvidence(v, target, status);
-    }
-    return out as unknown as T;
-  }
-  return value;
-}
+
 
 // 标签行（研究方向 / 技能 / 优势等）
 function TagRow({ label, items }: { label: string; items: string[] }) {
@@ -76,13 +56,22 @@ function TagRow({ label, items }: { label: string; items: string[] }) {
 }
 
 export default function Home() {
-  const [c, setCandidate] = useState(mockProfile.candidate);
+  const c = mockProfile.candidate;
   const [filter, setFilter] = useState<FilterState>({ tags: [], search: "" });
   const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(null);
+  const [corrections, setCorrections] = useState<Map<Evidence, EvidenceStatus>>(
+    new Map(),
+  );
+
+  const getStatus = (e: Evidence): EvidenceStatus =>
+    corrections.get(e) ?? e.evidence_status;
 
   const correctEvidence = (target: Evidence, status: EvidenceStatus) => {
-    setCandidate((prev) => replaceEvidence(prev, target, status));
-    setSelectedEvidence({ ...target, evidence_status: status });
+    setCorrections((prev) => {
+      const next = new Map(prev);
+      next.set(target, status);
+      return next;
+    });
   };
 
   // 可筛选标签（研究方向 + 技能 + 机构 + 论文等级）
@@ -207,7 +196,7 @@ export default function Home() {
                     <p className="mt-1 text-zinc-500">{v.reason}</p>
                     <EvidenceList
                       items={v.evidence}
-                      onEvidenceClick={setSelectedEvidence}
+                      onEvidenceClick={setSelectedEvidence} getStatus={getStatus}
                     />
                   </li>
                 ))}
@@ -219,7 +208,7 @@ export default function Home() {
             <p className="text-xs font-medium text-zinc-400">证据来源</p>
             <EvidenceList
               items={c.basic_info.evidence}
-              onEvidenceClick={setSelectedEvidence}
+              onEvidenceClick={setSelectedEvidence} getStatus={getStatus}
             />
           </div>
         </Section>
@@ -253,7 +242,7 @@ export default function Home() {
                       成果：{ed.outcomes.join("、")}
                     </p>
                   )}
-                  <EvidenceList items={ed.evidence} onEvidenceClick={setSelectedEvidence} />
+                  <EvidenceList items={ed.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
                 </div>
               ))}
             </div>
@@ -288,7 +277,7 @@ export default function Home() {
                       成果：{em.outcomes.join("、")}
                     </p>
                   )}
-                  <EvidenceList items={em.evidence} onEvidenceClick={setSelectedEvidence} />
+                  <EvidenceList items={em.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
                 </div>
               ))}
             </div>
@@ -313,7 +302,7 @@ export default function Home() {
                   <p className="mt-1 text-sm text-zinc-500">
                     颁发机构：{n(a.awarding_body)}
                   </p>
-                  <EvidenceList items={a.evidence} onEvidenceClick={setSelectedEvidence} />
+                  <EvidenceList items={a.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
                 </div>
               ))}
             </div>
@@ -340,7 +329,7 @@ export default function Home() {
                       金额：{f.amount.toLocaleString()} {f.currency ?? ""}
                     </p>
                   )}
-                  <EvidenceList items={f.evidence} onEvidenceClick={setSelectedEvidence} />
+                  <EvidenceList items={f.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
                 </div>
               ))}
             </div>
@@ -390,7 +379,7 @@ export default function Home() {
                     )}
                     {p.repository_stars != null && <span>Stars：{p.repository_stars}</span>}
                   </div>
-                  <EvidenceList items={p.evidence} onEvidenceClick={setSelectedEvidence} />
+                  <EvidenceList items={p.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
                 </div>
               ))}
             </div>
@@ -420,7 +409,7 @@ export default function Home() {
                       领域：{s.research_areas.join("、")}
                     </p>
                   )}
-                  <EvidenceList items={s.evidence} onEvidenceClick={setSelectedEvidence} />
+                  <EvidenceList items={s.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
                 </div>
               ))}
             </div>
@@ -441,7 +430,7 @@ export default function Home() {
                   <div key={i} className="rounded-lg border border-zinc-100 p-4">
                     <p className="font-semibold">{d.dimension}</p>
                     <p className="mt-1 text-sm text-zinc-600">{d.assessment}</p>
-                    <EvidenceList items={d.evidence} onEvidenceClick={setSelectedEvidence} />
+                    <EvidenceList items={d.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
                   </div>
                 ))}
               </div>
@@ -454,6 +443,7 @@ export default function Home() {
         evidence={selectedEvidence}
         onClose={() => setSelectedEvidence(null)}
         onCorrect={correctEvidence}
+        getStatus={getStatus}
       />
     </div>
   );

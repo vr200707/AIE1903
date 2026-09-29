@@ -9,13 +9,16 @@ export function EvidenceModal({
   evidence,
   onClose,
   onCorrect,
+  getStatus,
 }: {
   evidence: Evidence | null;
   onClose: () => void;
   onCorrect?: (e: Evidence, status: EvidenceStatus) => void;
+  getStatus?: (e: Evidence) => EvidenceStatus;
 }) {
   if (!evidence) return null;
   const e = evidence;
+  const status = getStatus ? getStatus(e) : e.evidence_status;
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
@@ -39,7 +42,7 @@ export function EvidenceModal({
         <div className="mt-4 space-y-3 text-sm">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-zinc-700">{e.source}</span>
-            <EvidenceBadge status={e.evidence_status} />
+            <EvidenceBadge status={status} />
           </div>
 
           <p className="text-zinc-600">{e.evidence}</p>
@@ -86,7 +89,7 @@ export function EvidenceModal({
                 人工修正证据状态
               </p>
               <select
-                value={e.evidence_status}
+                value={status}
                 onChange={(ev) => onCorrect(e, ev.target.value as EvidenceStatus)}
                 className="mt-1.5 w-full rounded-lg border border-zinc-200 px-2 py-1.5 text-sm outline-none focus:border-blue-400"
               >
