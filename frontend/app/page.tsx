@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { mockProfile } from "@/lib/mock";
+import { uploadFiles, analyze } from "@/lib/api";
 import { Section } from "@/components/Section";
 import { EvidenceList } from "@/components/EvidenceList";
 import { EvidenceBadge } from "@/components/EvidenceBadge";
@@ -14,7 +15,7 @@ import {
   serviceTypeLabel,
   fundingRoleLabel,
 } from "@/lib/labels";
-import type { DateValue, Evidence, EvidenceStatus } from "@/lib/types";
+import type { DateValue, Evidence, EvidenceStatus, Candidate } from "@/lib/types";
 
 // 空值兜底显示
 function n(v: string | null | undefined): string {
@@ -56,7 +57,9 @@ function TagRow({ label, items }: { label: string; items: string[] }) {
 }
 
 export default function Home() {
-  const c = mockProfile.candidate;
+  const [candidate, setCandidate] = useState<Candidate | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterState>({ tags: [], search: "" });
   const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(null);
   const [corrections, setCorrections] = useState<Map<Evidence, EvidenceStatus>>(
@@ -73,6 +76,75 @@ export default function Home() {
       return next;
     });
   };
+
+  const handleFiles = async (files: File[]) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { upload_id } = await uploadFiles(files);
+      const { candidate } = await analyze(upload_id);
+      setCandidate(candidate);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "分析失败，请重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const c = candidate;
+
+  if (!c) {
+    return (
+      <div className="min-h-screen bg-zinc-50 text-zinc-900">
+        <header className="border-b border-zinc-200 bg-white">
+          <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
+            <h1 className="text-lg font-semibold">候选人档案分析</h1>
+            <nav className="flex gap-4 text-sm">
+              <Link href="/" className="font-medium text-zinc-900">
+                档案
+              </Link>
+              <Link
+                href="/methodology"
+                className="text-zinc-500 hover:text-zinc-900"
+              >
+                方法说明
+              </Link>
+            </nav>
+          </div>
+        </header>
+        <main className="mx-auto max-w-4xl px-6 py-12">
+          <div className="rounded-xl border border-zinc-200 bg-white p-8">
+            <h2 className="text-xl font-bold">上传候选人材料</h2>
+            <p className="mt-2 text-sm text-zinc-500">
+              支持 CV、Cover Letter、Research Statement、Teaching Statement（PDF / DOCX，最多 4 份）
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.docx"
+                onChange={(ev) => {
+                  const files = Array.from(ev.target.files ?? []);
+                  if (files.length > 0) handleFiles(files);
+                }}
+                className="text-sm"
+              />
+              <button
+                onClick={() => setCandidate(mockProfile.candidate)}
+                className="rounded-lg border border-zinc-200 px-4 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
+              >
+                加载示例数据
+              </button>
+            </div>
+            {loading && (
+              <p className="mt-4 text-sm text-zinc-500">分析中，请稍候…</p>
+            )}
+            {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   // 可筛选标签（研究方向 + 技能 + 机构 + 论文等级）
   const tags = Array.from(

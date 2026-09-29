@@ -5,8 +5,8 @@ import type {
   QAResponse,
 } from "./types";
 
-// 后端 Base URL：联调时用环境变量 NEXT_PUBLIC_API_BASE 覆盖
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
+// 统一走同源相对路径 /api/*，由 Next.js rewrites 代理到后端（见 next.config.ts），避免 CORS
+const API_BASE = "";
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
