@@ -1,5 +1,5 @@
 import type {
-  Candidate,
+  CandidateProfile,
   UploadResponse,
   AnalyzeResponse,
   QAResponse,
@@ -47,11 +47,11 @@ export async function analyze(uploadId: string): Promise<AnalyzeResponse> {
 }
 
 // 3. 获取结构化档案（profile_id 或 upload_id 必须且只能传一个）
-// 注意：/api/profile 返回的是裸 Candidate，还是带 profile_id/status 的外层对象，需与后端（沈一）确认。
+// 返回带 schema_version 的 CandidateProfile（已与沈一确认）。
 export async function getProfile(params: {
   profile_id?: string;
   upload_id?: string;
-}): Promise<Candidate> {
+}): Promise<CandidateProfile> {
   const { profile_id, upload_id } = params;
   const hasProfile = Boolean(profile_id);
   const hasUpload = Boolean(upload_id);
@@ -61,7 +61,7 @@ export async function getProfile(params: {
   const query = hasProfile
     ? `profile_id=${profile_id}`
     : `upload_id=${upload_id}`;
-  return request<Candidate>(`${API_BASE}/api/profile?${query}`);
+  return request<CandidateProfile>(`${API_BASE}/api/profile?${query}`);
 }
 
 // 4. 问答（加分项）
