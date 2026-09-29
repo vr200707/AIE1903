@@ -323,7 +323,26 @@ curl -X POST http://localhost:8000/api/upload \
 curl "http://localhost:8000/api/profile?profile_id=prf_01J0ZYXWVU"
 ```
 
-响应 `200 OK`：与 `/api/analyze` 返回的 `candidate` 结构一致。
+响应 `200 OK`：返回符合 `schema.json` 的档案对象（顶层为 `schema_version` + `candidate`）：
+
+```json
+{
+  "schema_version": "1.0.0",
+  "candidate": {
+    "basic_info": {},
+    "education_employment": {},
+    "awards_funding": {},
+    "publications_impact": {},
+    "academic_service": {},
+    "overall_evaluation": {}
+  }
+}
+```
+
+> 与 `/api/analyze` 的区别：`/api/analyze` 返回操作结果信封
+> `{ profile_id, status, schema_version, candidate }`；`/api/profile`
+> 只返回可独立校验的档案本体 `{ schema_version, candidate }`，
+> 与 `schema.json` 的顶层结构完全一致。
 
 ### 4. 问答（加分项） — `POST /api/qa`
 
