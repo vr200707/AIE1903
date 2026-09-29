@@ -14,7 +14,7 @@ import {
   serviceTypeLabel,
   fundingRoleLabel,
 } from "@/lib/labels";
-import type { DateValue, Evidence } from "@/lib/types";
+import type { DateValue, Evidence, EvidenceStatus } from "@/lib/types";
 
 // 空值兜底显示
 function n(v: string | null | undefined): string {
@@ -31,6 +31,28 @@ function dateRange(start: DateValue, end: DateValue): string {
 // 过滤空值，返回 string[]
 function nonEmpty(xs: (string | null | undefined)[]): string[] {
   return xs.filter((x): x is string => Boolean(x));
+}
+
+// 深拷贝并替换目标 evidence 的 evidence_status（用于人工修正）
+function replaceEvidence<T>(
+  value: T,
+  target: Evidence,
+  status: EvidenceStatus,
+): T {
+  if (Array.isArray(value)) {
+    return value.map((v) => replaceEvidence(v, target, status)) as unknown as T;
+  }
+  if (value && typeof value === "object") {
+    if (value === target) {
+      return { ...value, evidence_status: status } as unknown as T;
+    }
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = replaceEvidence(v, target, status);
+    }
+    return out as unknown as T;
+  }
+  return value;
 }
 
 // 标签行（研究方向 / 技能 / 优势等）
@@ -54,9 +76,14 @@ function TagRow({ label, items }: { label: string; items: string[] }) {
 }
 
 export default function Home() {
-  const c = mockProfile.candidate;
+  const [c, setCandidate] = useState(mockProfile.candidate);
   const [filter, setFilter] = useState<FilterState>({ tags: [], search: "" });
   const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(null);
+
+  const correctEvidence = (target: Evidence, status: EvidenceStatus) => {
+    setCandidate((prev) => replaceEvidence(prev, target, status));
+    setSelectedEvidence({ ...target, evidence_status: status });
+  };
 
   // 可筛选标签（研究方向 + 技能 + 机构 + 论文等级）
   const tags = Array.from(
@@ -426,6 +453,7 @@ export default function Home() {
       <EvidenceModal
         evidence={selectedEvidence}
         onClose={() => setSelectedEvidence(null)}
+        onCorrect={correctEvidence}
       />
     </div>
   );

@@ -1,15 +1,18 @@
 "use client";
 
-import type { Evidence } from "@/lib/types";
+import type { Evidence, EvidenceStatus } from "@/lib/types";
 import { EvidenceBadge } from "./EvidenceBadge";
+import { evidenceStatusLabel } from "@/lib/labels";
 
-// 证据详情弹窗：点击证据后展示完整来源、原文、状态、查询日期与溯源链接
+// 证据详情弹窗：展示完整证据 + 支持人工修正证据状态
 export function EvidenceModal({
   evidence,
   onClose,
+  onCorrect,
 }: {
   evidence: Evidence | null;
   onClose: () => void;
+  onCorrect?: (e: Evidence, status: EvidenceStatus) => void;
 }) {
   if (!evidence) return null;
   const e = evidence;
@@ -75,6 +78,27 @@ export function EvidenceModal({
             >
               查看原文 ↗
             </a>
+          )}
+
+          {onCorrect && (
+            <div className="border-t border-zinc-100 pt-3">
+              <p className="text-xs font-medium text-zinc-400">
+                人工修正证据状态
+              </p>
+              <select
+                value={e.evidence_status}
+                onChange={(ev) => onCorrect(e, ev.target.value as EvidenceStatus)}
+                className="mt-1.5 w-full rounded-lg border border-zinc-200 px-2 py-1.5 text-sm outline-none focus:border-blue-400"
+              >
+                {(Object.keys(evidenceStatusLabel) as EvidenceStatus[]).map(
+                  (val) => (
+                    <option key={val} value={val}>
+                      {evidenceStatusLabel[val]}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
           )}
         </div>
       </div>
