@@ -141,6 +141,17 @@ export default function Home() {
     }
   };
 
+  const resetToHome = () => {
+    setCandidate(null);
+    setProfileId(null);
+    setFilter({ tags: [], search: "" });
+    setSelectedEvidence(null);
+    setCorrections(new Map());
+    setQaResult(null);
+    setQaError(null);
+    setQuestion("");
+  };
+
   const c = candidate;
 
   if (!c) {
@@ -284,13 +295,22 @@ export default function Home() {
       <Header />
 
       <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
-        <div className="animate-fade-in-up">
+        <div className="animate-fade-in-up flex items-center justify-between">
+          <button
+            onClick={resetToHome}
+            className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-4 py-2 text-sm text-white/70 backdrop-blur transition hover:bg-white/10 hover:text-white"
+          >
+            <span className="transition-transform group-hover:-translate-x-0.5">←</span>
+            Back to home
+          </button>
+        </div>
+        <div className="animate-fade-in-up" style={{ animationDelay: "0.05s" }}>
           <TagFilter tags={tags} filter={filter} onChange={setFilter} />
         </div>
 
         <div className="space-y-6">
         {/* 1. 基本信息 */}
-        <Section title="Basic Information" hidden={!matches(basicKw)}>
+        <Section title="Basic Information" hidden={!matches(basicKw)} delay={0.1}>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h3 className="text-xl font-bold">{n(c.basic_info.name)}</h3>
             <span className="text-white/50">{n(c.basic_info.position)}</span>
@@ -342,7 +362,7 @@ export default function Home() {
         </Section>
 
         {/* 2. 教育与工作 */}
-        <Section title="Education & Work" hidden={!matches(eduKw)}>
+        <Section title="Education & Work" hidden={!matches(eduKw)} delay={0.15}>
           <h4 className="text-sm font-semibold text-white/70">Education</h4>
           {c.education_employment.education.length === 0 ? (
             <p className="mt-2 text-sm text-white/40">None</p>
@@ -413,7 +433,7 @@ export default function Home() {
         </Section>
 
         {/* 3. 奖项与经费 */}
-        <Section title="Awards & Funding" hidden={!matches(awardsKw)}>
+        <Section title="Awards & Funding" hidden={!matches(awardsKw)} delay={0.2}>
           <h4 className="text-sm font-semibold text-white/70">Awards</h4>
           {c.awards_funding.awards.length === 0 ? (
             <p className="mt-2 text-sm text-white/40">None</p>
@@ -465,7 +485,7 @@ export default function Home() {
         </Section>
 
         {/* 4. 论文与影响 */}
-        <Section title="Publications & Impact" hidden={!matches(pubKw)}>
+        <Section title="Publications & Impact" hidden={!matches(pubKw)} delay={0.25}>
           <p className="text-sm text-white/70">
             Total citations: {c.publications_impact.total_citations ?? "—"}
             {c.publications_impact.citation_query_date
@@ -515,7 +535,7 @@ export default function Home() {
         </Section>
 
         {/* 5. 学术服务 */}
-        <Section title="Academic Service" hidden={!matches(svcKw)}>
+        <Section title="Academic Service" hidden={!matches(svcKw)} delay={0.3}>
           {c.academic_service.services.length === 0 ? (
             <p className="text-sm text-white/40">None</p>
           ) : (
@@ -545,7 +565,7 @@ export default function Home() {
         </Section>
 
         {/* 6. 综合评价 */}
-        <Section title="Overall Evaluation" hidden={!matches(evalKw)}>
+        <Section title="Overall Evaluation" hidden={!matches(evalKw)} delay={0.35}>
           <p className="text-sm text-white/70">{n(c.overall_evaluation.summary)}</p>
           <TagRow label="Strengths" items={c.overall_evaluation.strengths} />
           <TagRow label="Risks" items={c.overall_evaluation.risks} />
@@ -569,7 +589,7 @@ export default function Home() {
 
         {/* 7. 基于证据的问答（加分项，需真实后端） */}
         {profileId && (
-          <Section title="Evidence-based Q&A">
+          <Section title="Evidence-based Q&A" delay={0.4}>
             <div className="flex gap-2">
               <input
                 value={question}
