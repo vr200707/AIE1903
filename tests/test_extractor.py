@@ -24,6 +24,29 @@ class ExtractorUnitTests(unittest.TestCase):
         self.assertIn("[第 1 页]", rendered)
         self.assertIn("Hello CV", rendered)
 
+    def test_compress_text_collapses_whitespace_and_dedups(self):
+        text = (
+            "=== 文档：cv.pdf ===\n"
+            "[第 1 页]\n"
+            "Jialun   Cao\n\n"
+            "----------------------------------------\n"
+            "Jialun Cao\n"
+            "[第 2 页]\n"
+            "·\n"
+        )
+        compressed = extractor._compress_text(text, max_chars=10000)
+        self.assertEqual(compressed.count("Jialun Cao"), 1)
+        self.assertNotIn("----------------------------------------", compressed)
+        self.assertNotIn("\n·\n", compressed)
+
+    def test_compress_text_truncates_middle_when_over_budget(self):
+        text = "\n".join(f"line {i}" for i in range(100))
+        compressed = extractor._compress_text(text, max_chars=300)
+        self.assertLess(len(compressed), len(text))
+        self.assertIn("context compressed", compressed)
+        self.assertIn("line 0", compressed)
+        self.assertIn("line 99", compressed)
+
     def test_validate_profile_rejects_missing_modules(self):
         bad = {"schema_version": "1.0.0", "candidate": {}}
         errors = extractor._validate_profile(bad)

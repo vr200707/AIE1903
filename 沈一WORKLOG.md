@@ -22,10 +22,20 @@
   employment 8 / awards 6 / funding 4 / services 19，schema 校验通过，约 57 秒。
 - 新增 5 项拆分抽取单测（枚举解析、分批合并、标题去重、缓存 key 区分、端到端编排），
   全仓 57 项测试通过。
+- 定位「Request Failed(500)」：抓后端 uvicorn 日志确认拆分修复后 `/api/analyze` 已多次
+  返回 `200 OK`（另有 `/api/qa 200`），说明分析链路本身是通的；此前 500 的根因是旧版
+  单次输出被 `deepseek-chat` 8192 输出上限截断导致 JSON 解析失败，已被拆分抽取修复。
+  实测 `verify_profile(verify_web=True)` 单独耗时约 213 秒（46 篇论文逐篇查 Crossref/
+  OpenAlex 约 92 次 + 非论文声明 Bing 网页搜索约 22 次），是当前「慢」的主要瓶颈。
+- 新增自动上下文压缩 `app/extractor.py::_compress_text`：折叠空白、去纯分隔线/孤立符号
+  噪声行、逐字重复行去重（页眉页脚）、超过 `EXTRACT_MAX_CONTEXT_CHARS`（默认 60000 字符）
+  时保留头尾并截断中间；压缩参数纳入缓存 key。新增 2 项单测，全仓 59 项测试通过。
+- 前端标题「Candidate Profile Analysis」旁加 `v2.0` 标识，便于确认打开的是更新后的页面。
 
 ### 待办
 
 - 在网页端（localhost:3000）上传真实 CV 走一遍「上传→分析→档案」，确认前端渲染正常。
+- 优化核验速度：`verify_profile` 目前串行请求，可改并发 + 前端请求超时/进度提示。
 - 后续真实数据注意：真实候选人 PII 与抽取结果不提交仓库。
 
 ## 2026-09-29

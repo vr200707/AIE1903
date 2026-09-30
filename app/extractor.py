@@ -58,6 +58,16 @@ def _base_url() -> str:
     return os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
 
+def _max_context_chars() -> int:
+    """返回上下文压缩的字符预算（可用环境变量 EXTRACT_MAX_CONTEXT_CHARS 覆盖）。"""
+    _load_dotenv()
+    raw = os.getenv("EXTRACT_MAX_CONTEXT_CHARS", "60000")
+    try:
+        return max(1000, int(raw))
+    except (TypeError, ValueError):
+        return 60000
+
+
 _EVIDENCE_RULES = """\
 evidence 对象字段：source(string), source_url(url|null), evidence(string),
 evidence_status("confirmed"|"to_verify"|"conflict"), query_date(date),
@@ -196,6 +206,44 @@ def _render_documents(documents: list[ParsedDocument]) -> str:
     return "\n\n".join(blocks)
 
 
+def _compress_text(text: str, *, max_chars: int) -> str:
+    """压缩文档文本以降低送入 LLM 的上下文 token 用量。
+
+    采取保守的压缩，不改变关键事实：
+    1. 折叠多余空白（OCR 常见）；
+    2. 丢弃纯分隔线 / 孤立标点等噪声行；
+    3. 去除逐字重复的行（页眉页脚常被 OCR 逐页重复）；
+    4. 若仍超过 max_chars，保留头部与尾部、截断中间并显式标注（简历关键信息
+       通常在开头，论文/参考文献通常在中后部）。
+    """
+    seen: set[str] = set()
+    lines: list[str] = []
+    for raw in text.splitlines():
+        line = re.sub(r"\s+", " ", raw).strip()
+        if not line:
+            continue
+        if re.fullmatch(r"[-_=~#*•·]{2,}", line):
+            continue
+        if len(line) == 1 and not line.isalnum():
+            continue
+        if line in seen:
+            continue
+        seen.add(line)
+        lines.append(line)
+
+    compressed = "\n".join(lines)
+    if len(compressed) <= max_chars:
+        return compressed
+
+    head_size = int(max_chars * 0.7)
+    tail_size = max_chars - head_size
+    return (
+        compressed[:head_size]
+        + "\n[… context compressed: middle truncated …]\n"
+        + compressed[-tail_size:]
+    )
+
+
 def _validate_profile(profile: dict[str, Any]) -> list[str]:
     schema = _load_schema()
     validator = Draft202012Validator(schema)
@@ -211,12 +259,14 @@ def _cache_key(
     documents: list[ParsedDocument],
     *,
     papers_per_chunk: int,
+    context_max_chars: int | None = None,
 ) -> str:
     schema = _load_schema()
     schema_version = schema["properties"]["schema_version"]["const"]
     payload = {
         "extraction_strategy": EXTRACTION_STRATEGY,
         "papers_per_chunk": papers_per_chunk,
+        "context_max_chars": context_max_chars,
         "schema_version": schema_version,
         "model": _model_name(),
         "documents": [
@@ -378,6 +428,7 @@ def extract_profile(
     *,
     max_retries: int = 2,
     papers_per_chunk: int = PUBLICATIONS_PER_CHUNK,
+    compress: bool = True,
 ) -> tuple[dict[str, Any], list[str]]:
     """从一批文档抽取结构化档案，返回 (profile, 无文字层被跳过的文件名列表)。"""
     skipped = [doc.filename for doc in documents if not doc.full_text().strip()]
@@ -385,12 +436,19 @@ def extract_profile(
     if not usable:
         raise ValueError("No document has an extractable text layer. OCR may be required.")
 
-    key = _cache_key(usable, papers_per_chunk=papers_per_chunk)
+    context_max_chars = _max_context_chars() if compress else None
+    key = _cache_key(
+        usable,
+        papers_per_chunk=papers_per_chunk,
+        context_max_chars=context_max_chars,
+    )
     cached = _read_cache(key)
     if cached is not None:
         return cached, skipped
 
     rendered = _render_documents(usable)
+    if compress:
+        rendered = _compress_text(rendered, max_chars=context_max_chars)
     candidate = _extract_meta(rendered, max_retries)
 
     titles = _enumerate_titles(rendered) if "publication" in rendered.lower() else []
