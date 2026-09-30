@@ -69,6 +69,9 @@ function Header() {
             ⚡
           </span>
           Candidate Profile Analysis
+          <span className="rounded-full bg-teal-400/20 px-2.5 py-0.5 text-xs font-semibold text-teal-300">
+            v2.0
+          </span>
         </h1>
         <nav className="flex gap-4 text-sm">
           <Link href="/" className="font-medium text-white/90">
