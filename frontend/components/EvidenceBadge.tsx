@@ -2,15 +2,17 @@ import type { EvidenceStatus } from "@/lib/types";
 import { evidenceStatusLabel } from "@/lib/labels";
 
 const COLOR: Record<EvidenceStatus, string> = {
-  confirmed: "bg-green-100 text-green-700",
-  not_found_public: "bg-amber-100 text-amber-700",
-  to_verify: "bg-blue-100 text-blue-700",
-  conflict: "bg-red-100 text-red-700",
+  confirmed: "border-emerald-400/20 bg-emerald-500/15 text-emerald-300",
+  not_found_public: "border-amber-400/20 bg-amber-500/15 text-amber-300",
+  to_verify: "border-sky-400/20 bg-sky-500/15 text-sky-300",
+  conflict: "border-rose-400/20 bg-rose-500/15 text-rose-300",
 };
 
 export function EvidenceBadge({ status }: { status: EvidenceStatus }) {
   return (
-    <span className={`rounded px-1.5 py-0.5 text-xs ${COLOR[status]}`}>
+    <span
+      className={`rounded-md border px-1.5 py-0.5 text-xs ${COLOR[status]}`}
+    >
       {evidenceStatusLabel[status]}
     </span>
   );

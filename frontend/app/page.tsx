@@ -40,25 +40,49 @@ function nonEmpty(xs: (string | null | undefined)[]): string[] {
   return xs.filter((x): x is string => Boolean(x));
 }
 
-
-
 // 标签行（研究方向 / 技能 / 优势等）
 function TagRow({ label, items }: { label: string; items: string[] }) {
   if (items.length === 0) return null;
   return (
     <div className="mt-4">
-      <p className="text-xs font-medium text-zinc-400">{label}</p>
+      <p className="text-xs font-medium text-white/40">{label}</p>
       <div className="mt-1.5 flex flex-wrap gap-2">
         {items.map((x) => (
           <span
             key={x}
-            className="rounded-full bg-zinc-100 px-3 py-1 text-sm text-zinc-700"
+            className="rounded-full bg-white/10 px-3 py-1 text-sm text-white/70"
           >
             {x}
           </span>
         ))}
       </div>
     </div>
+  );
+}
+
+function Header() {
+  return (
+    <header className="sticky top-0 z-10 border-b border-white/10 bg-[#06060f]/70 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        <h1 className="flex items-center gap-2.5 text-lg font-semibold text-white">
+          <span className="animate-float grid h-8 w-8 place-items-center rounded-full bg-yellow-300 text-lg shadow-lg shadow-yellow-400/40">
+            ⚡
+          </span>
+          Candidate Profile Analysis
+        </h1>
+        <nav className="flex gap-4 text-sm">
+          <Link href="/" className="font-medium text-white/90">
+            Profile
+          </Link>
+          <Link
+            href="/methodology"
+            className="text-white/50 transition-colors hover:text-white/90"
+          >
+            Methodology
+          </Link>
+        </nav>
+      </div>
+    </header>
   );
 }
 
@@ -111,7 +135,7 @@ export default function Home() {
     try {
       setQaResult(await askQuestion(profileId, question.trim()));
     } catch (e) {
-      setQaError(e instanceof Error ? e.message : "问答失败，请重试");
+      setQaError(e instanceof Error ? e.message : "Q&A failed. Please try again.");
     } finally {
       setQaLoading(false);
     }
@@ -121,51 +145,69 @@ export default function Home() {
 
   if (!c) {
     return (
-      <div className="min-h-screen bg-zinc-50 text-zinc-900">
-        <header className="border-b border-zinc-200 bg-white">
-          <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
-            <h1 className="text-lg font-semibold">Candidate Profile Analysis</h1>
-            <nav className="flex gap-4 text-sm">
-              <Link href="/" className="font-medium text-zinc-900">
-                Profile
-              </Link>
-              <Link
-                href="/methodology"
-                className="text-zinc-500 hover:text-zinc-900"
-              >
-                Methodology
-              </Link>
-            </nav>
-          </div>
-        </header>
-        <main className="mx-auto max-w-4xl px-6 py-12">
-          <div className="rounded-xl border border-zinc-200 bg-white p-8">
-            <h2 className="text-xl font-bold">Upload candidate materials</h2>
-            <p className="mt-2 text-sm text-zinc-500">
-              Supports CV, Cover Letter, Research Statement, and Teaching Statement (PDF / DOCX, up to 4 files)
+      <div className="relative flex min-h-screen flex-col overflow-hidden bg-black text-white">
+        {/* 黑白教师照片背景 */}
+        <img
+          src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=black%20and%20white%20photo%20of%20a%20university%20professor%20teaching%20in%20a%20lecture%20hall%2C%20dramatic%20lighting%2C%20monochrome&image_size=landscape_16_9"
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover opacity-50"
+        />
+        {/* 暗色遮罩：左侧渐暗，保证文字可读 */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/20" />
+
+        <Header />
+
+        <main className="relative flex flex-1 flex-col justify-center px-8 py-12 sm:px-12 lg:px-20">
+          <div className="animate-fade-in-up max-w-3xl text-left">
+            {/* 小标：宽字距 */}
+            <p className="text-xs font-medium uppercase tracking-[0.45em] text-white/50">
+              AIE1903 · AI-assisted faculty hiring workflow
             </p>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <input
-                type="file"
-                multiple
-                accept=".pdf,.docx"
-                onChange={(ev) => {
-                  const files = Array.from(ev.target.files ?? []);
-                  if (files.length > 0) handleFiles(files);
-                }}
-                className="text-sm"
-              />
+
+            {/* 超大标题 */}
+            <h2 className="mt-8 text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl lg:text-8xl">
+              Candidate Profile Analysis
+              <br />
+              <span className="text-teal-400">Upload</span>
+              and review
+            </h2>
+
+            <p className="mt-8 max-w-xl text-base text-white/50 sm:text-lg">
+              Upload CV, cover letter, research statement, and teaching statement to generate a structured, evidence-grounded candidate profile.
+            </p>
+
+            <div className="mt-12 flex flex-wrap items-center gap-5">
+              <label className="animate-float cursor-pointer rounded-full bg-white px-9 py-3.5 text-sm font-medium text-black shadow-lg shadow-black/40 transition hover:bg-white/85">
+                Choose files
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.docx"
+                  className="hidden"
+                  onChange={(ev) => {
+                    const files = Array.from(ev.target.files ?? []);
+                    if (files.length > 0) handleFiles(files);
+                  }}
+                />
+              </label>
               <button
                 onClick={() => setCandidate(mockProfile.candidate)}
-                className="rounded-lg border border-zinc-200 px-4 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
+                className="animate-float rounded-full border border-white/20 px-9 py-3.5 text-sm text-white/70 transition hover:bg-white/10"
+                style={{ animationDelay: "0.3s" }}
               >
                 Load example data
               </button>
             </div>
+
+            {/* 数字步骤：宽字距 */}
+            <p className="mt-16 text-xs uppercase tracking-[0.5em] text-white/30">
+              01 Upload&ensp;·&ensp;02 Analyze&ensp;·&ensp;03 Profile
+            </p>
+
             {loading && (
-              <p className="mt-4 text-sm text-zinc-500">Analyzing, please wait...</p>
+              <p className="mt-6 text-sm text-white/50">Analyzing, please wait...</p>
             )}
-            {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+            {error && <p className="mt-6 text-sm text-rose-400">{error}</p>}
           </div>
         </main>
       </div>
@@ -184,7 +226,6 @@ export default function Home() {
     ),
   );
 
-  // 每个模块的可搜索关键词
   const basicKw = nonEmpty([
     c.basic_info.name,
     c.basic_info.institution,
@@ -239,35 +280,22 @@ export default function Home() {
     kw.some((k) => terms.some((t) => k.toLowerCase().includes(t)));
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900">
-      <header className="border-b border-zinc-200 bg-white">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
-          <h1 className="text-lg font-semibold">Candidate Profile Analysis</h1>
-          <nav className="flex gap-4 text-sm">
-            <Link href="/" className="font-medium text-zinc-900">
-              Profile
-            </Link>
-            <Link
-              href="/methodology"
-              className="text-zinc-500 hover:text-zinc-900"
-            >
-              Methodology
-            </Link>
-          </nav>
+    <div className="min-h-screen text-white/90">
+      <Header />
+
+      <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
+        <div className="animate-fade-in-up">
+          <TagFilter tags={tags} filter={filter} onChange={setFilter} />
         </div>
-      </header>
 
-      <main className="mx-auto max-w-4xl space-y-6 px-6 py-8">
-        {/* 标签筛选 */}
-        <TagFilter tags={tags} filter={filter} onChange={setFilter} />
-
+        <div className="space-y-6">
         {/* 1. 基本信息 */}
         <Section title="Basic Information" hidden={!matches(basicKw)}>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h3 className="text-xl font-bold">{n(c.basic_info.name)}</h3>
-            <span className="text-zinc-500">{n(c.basic_info.position)}</span>
+            <span className="text-white/50">{n(c.basic_info.position)}</span>
           </div>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-white/50">
             {n(c.basic_info.institution)}
             {c.basic_info.highest_degree ? ` · ${c.basic_info.highest_degree}` : ""}
           </p>
@@ -278,23 +306,24 @@ export default function Home() {
 
           {c.basic_info.to_verify.length > 0 && (
             <div className="mt-4">
-              <p className="text-xs font-medium text-zinc-400">Items to verify</p>
+              <p className="text-xs font-medium text-white/40">Items to verify</p>
               <ul className="mt-2 space-y-2">
                 {c.basic_info.to_verify.map((v, i) => (
                   <li
                     key={i}
-                    className="rounded-lg border border-zinc-100 bg-zinc-50 p-3 text-sm"
+                    className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm"
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">{v.claim}</span>
+                      <span className="font-medium text-white/85">{v.claim}</span>
                       {v.evidence.map((e, j) => (
                         <EvidenceBadge key={j} status={e.evidence_status} />
                       ))}
                     </div>
-                    <p className="mt-1 text-zinc-500">{v.reason}</p>
+                    <p className="mt-1 text-white/50">{v.reason}</p>
                     <EvidenceList
                       items={v.evidence}
-                      onEvidenceClick={setSelectedEvidence} getStatus={getStatus}
+                      onEvidenceClick={setSelectedEvidence}
+                      getStatus={getStatus}
                     />
                   </li>
                 ))}
@@ -303,40 +332,41 @@ export default function Home() {
           )}
 
           <div className="mt-4">
-            <p className="text-xs font-medium text-zinc-400">Evidence sources</p>
+            <p className="text-xs font-medium text-white/40">Evidence sources</p>
             <EvidenceList
               items={c.basic_info.evidence}
-              onEvidenceClick={setSelectedEvidence} getStatus={getStatus}
+              onEvidenceClick={setSelectedEvidence}
+              getStatus={getStatus}
             />
           </div>
         </Section>
 
         {/* 2. 教育与工作 */}
         <Section title="Education & Work" hidden={!matches(eduKw)}>
-          <h4 className="text-sm font-semibold text-zinc-600">Education</h4>
+          <h4 className="text-sm font-semibold text-white/70">Education</h4>
           {c.education_employment.education.length === 0 ? (
-            <p className="mt-2 text-sm text-zinc-400">None</p>
+            <p className="mt-2 text-sm text-white/40">None</p>
           ) : (
             <div className="mt-2 space-y-3">
               {c.education_employment.education.map((ed, i) => (
-                <div key={i} className="rounded-lg border border-zinc-100 p-4">
+                <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     <span className="font-semibold">{n(ed.degree)}</span>
-                    <span className="text-zinc-600">{n(ed.field)}</span>
+                    <span className="text-white/70">{n(ed.field)}</span>
                   </div>
-                  <p className="mt-1 text-sm text-zinc-500">
+                  <p className="mt-1 text-sm text-white/50">
                     {n(ed.institution)} · Advisor: {n(ed.advisor)}
                   </p>
-                  <p className="text-sm text-zinc-500">
+                  <p className="text-sm text-white/50">
                     {dateRange(ed.start_date, ed.end_date)}
                   </p>
                   {ed.projects.length > 0 && (
-                    <p className="mt-1 text-sm text-zinc-600">
+                    <p className="mt-1 text-sm text-white/70">
                       Projects: {ed.projects.join(", ")}
                     </p>
                   )}
                   {ed.outcomes.length > 0 && (
-                    <p className="mt-1 text-sm text-zinc-600">
+                    <p className="mt-1 text-sm text-white/70">
                       Outcomes: {ed.outcomes.join(", ")}
                     </p>
                   )}
@@ -346,32 +376,32 @@ export default function Home() {
             </div>
           )}
 
-          <h4 className="mt-6 text-sm font-semibold text-zinc-600">Work experience</h4>
+          <h4 className="mt-6 text-sm font-semibold text-white/70">Work experience</h4>
           {c.education_employment.employment.length === 0 ? (
-            <p className="mt-2 text-sm text-zinc-400">None</p>
+            <p className="mt-2 text-sm text-white/40">None</p>
           ) : (
             <div className="mt-2 space-y-3">
               {c.education_employment.employment.map((em, i) => (
-                <div key={i} className="rounded-lg border border-zinc-100 p-4">
+                <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     <span className="font-semibold">{n(em.position)}</span>
-                    <span className="text-zinc-600">{n(em.institution)}</span>
+                    <span className="text-white/70">{n(em.institution)}</span>
                   </div>
-                  <p className="mt-1 text-sm text-zinc-500">
+                  <p className="mt-1 text-sm text-white/50">
                     {dateRange(em.start_date, em.end_date)}
                   </p>
                   {em.responsibilities.length > 0 && (
-                    <p className="mt-1 text-sm text-zinc-600">
+                    <p className="mt-1 text-sm text-white/70">
                       Responsibilities: {em.responsibilities.join(", ")}
                     </p>
                   )}
                   {em.projects.length > 0 && (
-                    <p className="mt-1 text-sm text-zinc-600">
+                    <p className="mt-1 text-sm text-white/70">
                       Projects: {em.projects.join(", ")}
                     </p>
                   )}
                   {em.outcomes.length > 0 && (
-                    <p className="mt-1 text-sm text-zinc-600">
+                    <p className="mt-1 text-sm text-white/70">
                       Outcomes: {em.outcomes.join(", ")}
                     </p>
                   )}
@@ -384,20 +414,20 @@ export default function Home() {
 
         {/* 3. 奖项与经费 */}
         <Section title="Awards & Funding" hidden={!matches(awardsKw)}>
-          <h4 className="text-sm font-semibold text-zinc-600">Awards</h4>
+          <h4 className="text-sm font-semibold text-white/70">Awards</h4>
           {c.awards_funding.awards.length === 0 ? (
-            <p className="mt-2 text-sm text-zinc-400">None</p>
+            <p className="mt-2 text-sm text-white/40">None</p>
           ) : (
             <div className="mt-2 space-y-3">
               {c.awards_funding.awards.map((a, i) => (
-                <div key={i} className="rounded-lg border border-zinc-100 p-4">
+                <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">{a.name}</span>
                     {a.year != null && (
-                      <span className="text-sm text-zinc-500">{a.year}</span>
+                      <span className="text-sm text-white/50">{a.year}</span>
                     )}
                   </div>
-                  <p className="mt-1 text-sm text-zinc-500">
+                  <p className="mt-1 text-sm text-white/50">
                     Awarding body: {n(a.awarding_body)}
                   </p>
                   <EvidenceList items={a.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
@@ -406,24 +436,24 @@ export default function Home() {
             </div>
           )}
 
-          <h4 className="mt-6 text-sm font-semibold text-zinc-600">Funding</h4>
+          <h4 className="mt-6 text-sm font-semibold text-white/70">Funding</h4>
           {c.awards_funding.funding.length === 0 ? (
-            <p className="mt-2 text-sm text-zinc-400">None</p>
+            <p className="mt-2 text-sm text-white/40">None</p>
           ) : (
             <div className="mt-2 space-y-3">
               {c.awards_funding.funding.map((f, i) => (
-                <div key={i} className="rounded-lg border border-zinc-100 p-4">
+                <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">{f.project_name}</span>
-                    <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-600">
+                    <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/70">
                       {fundingRoleLabel[f.role]}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm text-zinc-500">
+                  <p className="mt-1 text-sm text-white/50">
                     Funder: {n(f.funder)} · {dateRange(f.start_date, f.end_date)}
                   </p>
                   {f.amount != null && (
-                    <p className="text-sm text-zinc-500">
+                    <p className="text-sm text-white/50">
                       Amount: {f.amount.toLocaleString()} {f.currency ?? ""}
                     </p>
                   )}
@@ -436,7 +466,7 @@ export default function Home() {
 
         {/* 4. 论文与影响 */}
         <Section title="Publications & Impact" hidden={!matches(pubKw)}>
-          <p className="text-sm text-zinc-600">
+          <p className="text-sm text-white/70">
             Total citations: {c.publications_impact.total_citations ?? "—"}
             {c.publications_impact.citation_query_date
               ? ` (queried: ${c.publications_impact.citation_query_date})`
@@ -444,33 +474,33 @@ export default function Home() {
           </p>
 
           {c.publications_impact.publications.length === 0 ? (
-            <p className="mt-2 text-sm text-zinc-400">None</p>
+            <p className="mt-2 text-sm text-white/40">None</p>
           ) : (
             <div className="mt-3 space-y-3">
               {c.publications_impact.publications.map((p, i) => (
-                <div key={i} className="rounded-lg border border-zinc-100 p-4">
+                <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
                   <p className="font-semibold">{p.title}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-zinc-500">
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-white/50">
                     {p.year != null && <span>{p.year}</span>}
                     <span>{authorRoleLabel[p.author_role]}</span>
                     <span>{n(p.venue)}</span>
-                    <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-600">
+                    <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/70">
                       {venueTypeLabel[p.venue_type]}
                     </span>
                     {p.ranking && (
-                      <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-600">
+                      <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/70">
                         {p.ranking}
                       </span>
                     )}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-zinc-500">
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-white/50">
                     {p.citation_count != null && <span>Citations: {p.citation_count}</span>}
                     {p.code_repository && (
                       <a
                         href={p.code_repository}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
+                        className="text-teal-300 hover:underline"
                       >
                         Code repository ↗
                       </a>
@@ -487,23 +517,23 @@ export default function Home() {
         {/* 5. 学术服务 */}
         <Section title="Academic Service" hidden={!matches(svcKw)}>
           {c.academic_service.services.length === 0 ? (
-            <p className="text-sm text-zinc-400">None</p>
+            <p className="text-sm text-white/40">None</p>
           ) : (
             <div className="space-y-3">
               {c.academic_service.services.map((s, i) => (
-                <div key={i} className="rounded-lg border border-zinc-100 p-4">
+                <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">{s.organization_or_venue}</span>
-                    <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-600">
+                    <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/70">
                       {serviceTypeLabel[s.service_type]}
                     </span>
-                    {s.role && <span className="text-sm text-zinc-500">{s.role}</span>}
+                    {s.role && <span className="text-sm text-white/50">{s.role}</span>}
                   </div>
-                  <p className="mt-1 text-sm text-zinc-500">
+                  <p className="mt-1 text-sm text-white/50">
                     {s.start_year ?? "?"} ~ {s.end_year ?? "Present"}
                   </p>
                   {s.research_areas.length > 0 && (
-                    <p className="mt-1 text-sm text-zinc-600">
+                    <p className="mt-1 text-sm text-white/70">
                       Areas: {s.research_areas.join(", ")}
                     </p>
                   )}
@@ -516,18 +546,18 @@ export default function Home() {
 
         {/* 6. 综合评价 */}
         <Section title="Overall Evaluation" hidden={!matches(evalKw)}>
-          <p className="text-sm text-zinc-700">{n(c.overall_evaluation.summary)}</p>
+          <p className="text-sm text-white/70">{n(c.overall_evaluation.summary)}</p>
           <TagRow label="Strengths" items={c.overall_evaluation.strengths} />
           <TagRow label="Risks" items={c.overall_evaluation.risks} />
 
           {c.overall_evaluation.dimensions.length > 0 && (
             <div className="mt-4">
-              <p className="text-xs font-medium text-zinc-400">Dimension evaluations</p>
+              <p className="text-xs font-medium text-white/40">Dimension evaluations</p>
               <div className="mt-2 space-y-3">
                 {c.overall_evaluation.dimensions.map((d, i) => (
-                  <div key={i} className="rounded-lg border border-zinc-100 p-4">
+                  <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
                     <p className="font-semibold">{d.dimension}</p>
-                    <p className="mt-1 text-sm text-zinc-600">{d.assessment}</p>
+                    <p className="mt-1 text-sm text-white/70">{d.assessment}</p>
                     <EvidenceList items={d.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
                   </div>
                 ))}
@@ -535,35 +565,36 @@ export default function Home() {
             </div>
           )}
         </Section>
+        </div>
 
         {/* 7. 基于证据的问答（加分项，需真实后端） */}
         {profileId && (
-          <Section title="基于证据的问答">
+          <Section title="Evidence-based Q&A">
             <div className="flex gap-2">
               <input
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                placeholder="输入问题（如：候选人总引用量是多少？）"
-                className="flex-1 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm outline-none focus:border-blue-400"
+                placeholder="Ask a question, such as: What is the candidate's total citation count?"
+                className="flex-1 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-sm text-white/90 outline-none placeholder:text-white/40 focus:border-teal-400/50"
               />
               <button
                 onClick={handleAsk}
                 disabled={qaLoading || !question.trim()}
-                className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm text-white disabled:opacity-50"
+                className="rounded-lg bg-gradient-to-r from-teal-400 to-cyan-400 px-4 py-1.5 text-sm text-white transition-opacity disabled:opacity-50"
               >
-                {qaLoading ? "思考中…" : "提问"}
+                {qaLoading ? "Thinking..." : "Ask"}
               </button>
             </div>
             {qaResult && (
-              <div className="mt-3 rounded-lg border border-zinc-100 bg-zinc-50 p-4">
+              <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">回答</span>
-                  <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-600">
-                    置信度：{qaResult.confidence}
+                  <span className="font-medium">Answer</span>
+                  <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/70">
+                    Confidence: {qaResult.confidence}
                   </span>
                 </div>
-                <p className="mt-2 text-sm text-zinc-700">{qaResult.answer}</p>
-                <p className="mt-3 text-xs font-medium text-zinc-400">支撑证据</p>
+                <p className="mt-2 text-sm text-white/70">{qaResult.answer}</p>
+                <p className="mt-3 text-xs font-medium text-white/40">Supporting evidence</p>
                 <EvidenceList
                   items={qaResult.evidence}
                   onEvidenceClick={setSelectedEvidence}
@@ -571,7 +602,7 @@ export default function Home() {
                 />
               </div>
             )}
-            {qaError && <p className="mt-2 text-sm text-red-600">{qaError}</p>}
+            {qaError && <p className="mt-2 text-sm text-rose-300">{qaError}</p>}
           </Section>
         )}
       </main>
