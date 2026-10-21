@@ -7,6 +7,20 @@ Web 界面。
 `main` 分支包含当前可运行的全栈实现。本项目面向课程演示与评估，暂未接入生产级
 数据库、任务队列和权限体系。
 
+> **课程演示声明：** 当前版本使用进程内存储和同步分析接口，不提供生产级鉴权、
+> 数据隔离或持久化。请勿上传真实候选人的简历、联系方式或其他敏感材料。
+> 需要真实数据时必须先完成 P1/P2 的持久化、访问控制和审计改造。
+
+## 运行状态与数据边界
+
+- `/health/live` 检查进程是否存活。
+- `/health/ready` 检查 Schema、上传目录和 DeepSeek 配置，不调用付费模型。
+- `/health/dependencies` 展示 OCR、PDF 渲染、DeepSeek、Crossref、OpenAlex 和
+  Bing 的配置及最近一次调用状态。
+- 外部核验或 OCR 局部失败时，分析会尽量保留已生成档案并返回
+  `completed_with_warnings`；受外部核验影响的事实会标记为 `to_verify`。
+- 上传文件和抽取缓存只用于本机演示：`.cache/` 与 `data/private/` 不进入 Git。
+
 ## 核心能力
 
 - 上传 1 至 4 份 PDF 或 DOCX 文件，单文件上限 10 MB。
@@ -122,6 +136,7 @@ uvicorn app.main:app --reload --port 8000
 
 ```bash
 curl http://localhost:8000/health
+curl http://localhost:8000/health/ready
 ```
 
 预期响应：
@@ -161,7 +176,9 @@ NEXT_PUBLIC_API_BASE=http://<backend-host>:8000
 
 | 方法 | 路径 | 用途 |
 |---|---|---|
-| `GET` | `/health` | 健康检查 |
+| `GET` | `/health/live` | 进程存活检查 |
+| `GET` | `/health/ready` | Schema、存储和模型配置检查 |
+| `GET` | `/health/dependencies` | 外部依赖配置与最近调用状态 |
 | `POST` | `/api/upload` | 上传 PDF/DOCX 并返回 `upload_id` |
 | `POST` | `/api/analyze` | 解析、抽取、核验并返回档案 |
 | `GET` | `/api/profile` | 按 `profile_id` 或 `upload_id` 读取档案 |

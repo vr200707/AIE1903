@@ -62,6 +62,8 @@ class VerifyTextClaimTests(unittest.TestCase):
             "claim", query_date="2026-09-29", search=boom
         )
         self.assertEqual(evidence["evidence_status"], "to_verify")
+        self.assertIn("Reason: RuntimeError", evidence["notes"])
+        self.assertIn("Retryable: yes", evidence["notes"])
 
 
 class VerifyProfileWebTests(unittest.TestCase):

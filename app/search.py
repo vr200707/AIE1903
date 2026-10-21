@@ -23,6 +23,8 @@ from urllib.parse import parse_qs, unquote, urlparse
 import httpx
 from lxml import html as lxml_html
 
+from app import health
+
 
 DEFAULT_BASE_URL = os.getenv("WEB_SEARCH_BASE_URL", "https://cn.bing.com/search")
 USER_AGENT = (
@@ -67,34 +69,39 @@ def _resolve_bing_url(href: str) -> str:
 
 
 def _bing_results(query: str, *, max_results: int) -> list[SearchResult]:
-    response = httpx.get(
-        DEFAULT_BASE_URL,
-        params={"q": query},
-        headers={"User-Agent": USER_AGENT},
-        timeout=HTTP_TIMEOUT,
-        follow_redirects=True,
-    )
-    response.raise_for_status()
-    tree = lxml_html.fromstring(response.text)
-
-    results: list[SearchResult] = []
-    for node in tree.xpath(
-        "//li[contains(concat(' ', normalize-space(@class), ' '), ' b_algo ')]"
-    ):
-        link = node.xpath(".//h2/a")
-        if not link:
-            continue
-        title = _clean(link[0].text_content())
-        url = _resolve_bing_url(link[0].get("href") or "")
-        snippet_nodes = node.xpath(".//p")
-        snippet = _clean(snippet_nodes[0].text_content()) if snippet_nodes else ""
-        if not title or not url:
-            continue
-        results.append(
-            SearchResult(title=title, url=url, snippet=snippet, source="bing")
+    try:
+        response = httpx.get(
+            DEFAULT_BASE_URL,
+            params={"q": query},
+            headers={"User-Agent": USER_AGENT},
+            timeout=HTTP_TIMEOUT,
+            follow_redirects=True,
         )
-        if len(results) >= max_results:
-            break
+        response.raise_for_status()
+        tree = lxml_html.fromstring(response.text)
+
+        results: list[SearchResult] = []
+        for node in tree.xpath(
+            "//li[contains(concat(' ', normalize-space(@class), ' '), ' b_algo ')]"
+        ):
+            link = node.xpath(".//h2/a")
+            if not link:
+                continue
+            title = _clean(link[0].text_content())
+            url = _resolve_bing_url(link[0].get("href") or "")
+            snippet_nodes = node.xpath(".//p")
+            snippet = _clean(snippet_nodes[0].text_content()) if snippet_nodes else ""
+            if not title or not url:
+                continue
+            results.append(
+                SearchResult(title=title, url=url, snippet=snippet, source="bing")
+            )
+            if len(results) >= max_results:
+                break
+    except Exception as exc:
+        health.record_dependency_failure("bing", exc)
+        raise
+    health.record_dependency_success("bing")
     return results
 
 

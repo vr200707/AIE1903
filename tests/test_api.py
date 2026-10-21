@@ -6,6 +6,74 @@ from unittest import mock
 from fastapi.testclient import TestClient
 
 from app import api
+from app.parser import PageText, ParsedDocument
+
+
+def _parsed(text="Extracted candidate text", warnings=None):
+    return ParsedDocument(
+        filename="a.pdf",
+        content_type="application/pdf",
+        pages=[PageText(page_number=1, text=text)],
+        warnings=warnings or [],
+    )
+
+
+def _full_profile():
+    return {
+        "schema_version": "1.0.0",
+        "candidate": {
+            "basic_info": {
+                "name": "Alice",
+                "institution": "Example University",
+                "position": "Associate Professor",
+                "research_interests": [],
+                "highest_degree": "PhD",
+                "skills": [],
+                "strengths": [],
+                "to_verify": [],
+                "evidence": [],
+            },
+            "education_employment": {"education": [], "employment": []},
+            "awards_funding": {
+                "awards": [
+                    {
+                        "name": "Best Paper Award",
+                        "year": 2023,
+                        "awarding_body": "IEEE",
+                        "evidence": [],
+                    }
+                ],
+                "funding": [],
+            },
+            "publications_impact": {
+                "publications": [
+                    {
+                        "title": "Evidence Grounded Systems",
+                        "year": 2024,
+                        "author_role": "first_author",
+                        "venue": "ExampleConf",
+                        "venue_type": "conference",
+                        "ranking": None,
+                        "citation_count": None,
+                        "citation_query_date": None,
+                        "code_repository": None,
+                        "repository_stars": None,
+                        "stars_query_date": None,
+                        "evidence": [],
+                    }
+                ],
+                "total_citations": None,
+                "citation_query_date": None,
+            },
+            "academic_service": {"services": []},
+            "overall_evaluation": {
+                "summary": None,
+                "strengths": [],
+                "risks": [],
+                "dimensions": [],
+            },
+        },
+    }
 
 
 class ApiTests(unittest.TestCase):
@@ -26,6 +94,29 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"status": "ok"})
 
+    def test_liveness_is_independent_of_dependencies(self):
+        response = self.client.get("/health/live")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "ok"})
+
+    def test_ready_returns_503_when_not_ready(self):
+        payload = {"status": "degraded", "checks": {}}
+        with mock.patch.object(
+            api.health_monitor, "check_readiness", return_value=payload
+        ):
+            response = self.client.get("/health/ready")
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["status"], "degraded")
+
+    def test_dependencies_endpoint_returns_observed_state(self):
+        payload = {"deepseek": {"status": "unknown"}}
+        with mock.patch.object(
+            api.health_monitor, "dependency_snapshot", return_value=payload
+        ):
+            response = self.client.get("/health/dependencies")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), payload)
+
     def test_upload_analyze_profile_flow(self):
         upload = self.client.post(
             "/api/upload",
@@ -36,7 +127,7 @@ class ApiTests(unittest.TestCase):
         self.assertTrue(upload_id.startswith("upl_"))
 
         profile = {"schema_version": "1.0.0", "candidate": {"basic_info": {}}}
-        with mock.patch.object(api, "parse_document", return_value=object()), mock.patch.object(
+        with mock.patch.object(api, "parse_document", return_value=_parsed()), mock.patch.object(
             api, "extract_profile", return_value=(profile, [])
         ), mock.patch.object(api, "verify_profile", return_value=profile):
             analyzed = self.client.post("/api/analyze", json={"upload_id": upload_id})
@@ -45,6 +136,7 @@ class ApiTests(unittest.TestCase):
         body = analyzed.json()
         self.assertEqual(body["status"], "completed")
         self.assertEqual(body["schema_version"], "1.0.0")
+        self.assertEqual(body["warnings"], [])
         self.assertTrue(body["profile_id"].startswith("prf_"))
 
         fetched = self.client.get(
@@ -52,6 +144,104 @@ class ApiTests(unittest.TestCase):
         )
         self.assertEqual(fetched.status_code, 200)
         self.assertEqual(fetched.json()["schema_version"], "1.0.0")
+
+    def test_analyze_keeps_other_documents_when_one_parse_fails(self):
+        api._UPLOADS["upl_partial"] = {
+            "documents": [],
+            "paths": ["broken.pdf", "good.pdf"],
+        }
+        with mock.patch.object(
+            api,
+            "parse_document",
+            side_effect=[RuntimeError("broken"), _parsed()],
+        ), mock.patch.object(
+            api, "extract_profile", return_value=(_full_profile(), [])
+        ), mock.patch.object(
+            api, "verify_profile", side_effect=lambda profile, verify_web: profile
+        ):
+            response = self.client.post(
+                "/api/analyze", json={"upload_id": "upl_partial"}
+            )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["status"], "completed_with_warnings")
+        self.assertEqual(body["warnings"][0]["code"], "document_parse_failed")
+        self.assertTrue(body["warnings"][0]["retryable"] is False)
+
+    def test_analyze_keeps_profile_when_verification_crashes(self):
+        api._UPLOADS["upl_verify_fail"] = {
+            "documents": [],
+            "paths": ["good.pdf"],
+        }
+        with mock.patch.object(
+            api, "parse_document", return_value=_parsed()
+        ), mock.patch.object(
+            api, "extract_profile", return_value=(_full_profile(), [])
+        ), mock.patch.object(
+            api, "verify_profile", side_effect=RuntimeError("network")
+        ):
+            response = self.client.post(
+                "/api/analyze", json={"upload_id": "upl_verify_fail"}
+            )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["status"], "completed_with_warnings")
+        self.assertEqual(body["warnings"][0]["code"], "verification_incomplete")
+        publication = body["candidate"]["publications_impact"]["publications"][0]
+        self.assertEqual(publication["evidence"][-1]["evidence_status"], "to_verify")
+        self.assertIn("Retryable: yes", publication["evidence"][-1]["notes"])
+
+    def test_analyze_surfaces_partial_verification_failure(self):
+        profile = _full_profile()
+        publication = profile["candidate"]["publications_impact"]["publications"][0]
+        publication["evidence"].append(
+            {
+                "source": "OpenAlex",
+                "source_url": None,
+                "evidence": "OpenAlex was unavailable.",
+                "evidence_status": "to_verify",
+                "query_date": "2026-10-21",
+                "source_type": "bibliographic_database",
+                "notes": "Reason: RuntimeError. Retryable: yes.",
+            }
+        )
+        api._UPLOADS["upl_partial_verify"] = {
+            "documents": [],
+            "paths": ["good.pdf"],
+        }
+        with mock.patch.object(
+            api, "parse_document", return_value=_parsed()
+        ), mock.patch.object(
+            api, "extract_profile", return_value=(profile, [])
+        ), mock.patch.object(
+            api, "verify_profile", return_value=profile
+        ):
+            response = self.client.post(
+                "/api/analyze", json={"upload_id": "upl_partial_verify"}
+            )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["status"], "completed_with_warnings")
+        self.assertEqual(
+            body["warnings"][0]["code"], "verification_dependency_failed"
+        )
+
+    def test_analyze_rejects_when_all_documents_are_unreadable(self):
+        api._UPLOADS["upl_empty"] = {"documents": [], "paths": ["empty.pdf"]}
+        with mock.patch.object(
+            api, "parse_document", return_value=_parsed(text="")
+        ):
+            response = self.client.post(
+                "/api/analyze", json={"upload_id": "upl_empty"}
+            )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(
+            response.json()["detail"]["code"], "no_readable_documents"
+        )
 
     def test_profile_missing_id_is_422(self):
         response = self.client.get("/api/profile")

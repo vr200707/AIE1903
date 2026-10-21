@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from docx import Document
 
@@ -92,6 +93,21 @@ class ParserTests(unittest.TestCase):
             path.write_bytes(_make_pdf(["Page"]))
             parsed = parse_document(path)
         self.assertEqual(parsed.content_type, "application/pdf")
+
+    def test_parse_pdf_keeps_document_when_ocr_render_fails(self):
+        pdf = _make_pdf([""])
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "scan.pdf"
+            path.write_bytes(pdf)
+            with mock.patch(
+                "app.parser.render_pdf_pages",
+                side_effect=RuntimeError("pdftoppm missing"),
+            ):
+                parsed = parse_pdf(path)
+
+        self.assertEqual(parsed.full_text(), "")
+        self.assertEqual(parsed.warnings[0].code, "pdf_render_failed")
+        self.assertTrue(parsed.warnings[0].retryable)
 
 
 if __name__ == "__main__":

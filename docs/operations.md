@@ -3,9 +3,35 @@
 ## 启动顺序
 
 1. 启动后端：`uvicorn app.main:app --reload --port 8000`
-2. 检查 `http://localhost:8000/health`
-3. 启动前端：`cd frontend && npm run dev`
-4. 检查 `http://localhost:3000`
+2. 检查 `http://localhost:8000/health/live`
+3. 检查 `http://localhost:8000/health/ready`
+4. 启动前端：`cd frontend && npm run dev`
+5. 检查 `http://localhost:3000`
+
+## 健康检查
+
+| 端点 | 用途 | 是否依赖外部网络 |
+|---|---|---|
+| `/health` | 兼容旧脚本，等同于存活检查 | 否 |
+| `/health/live` | 判断 FastAPI 进程是否存活 | 否 |
+| `/health/ready` | 检查 Schema、上传目录和 DeepSeek 配置 | 否 |
+| `/health/dependencies` | 查看各外部依赖的配置和最近调用状态 | 否 |
+
+`/health/ready` 在关键配置缺失或存储不可写时返回 `503`。它不会为了健康检查调用
+DeepSeek、Crossref、OpenAlex 或 Bing，避免产生费用和额外限流。
+
+`/health/dependencies` 中的远程依赖初始状态为 `unknown`，只有实际分析调用后才更新
+为 `ok` 或 `error`。OCR 和 PDF 渲染会额外显示本机可执行文件是否已安装。
+
+## 部分失败行为
+
+- 单份文档损坏时，其他文档仍会继续抽取。
+- OCR 不可用时，已提取的文字层会保留，并在响应中返回可重试警告，不把缺失页面
+  当作已分析内容。
+- Crossref、OpenAlex 或 Bing 失败时，不会把故障解释为候选人声明为假。
+- 外部核验整体异常时，已抽取档案仍会返回，API 状态为
+  `completed_with_warnings`。
+- 所有文档都没有可提取文本时，API 返回 `422 no_readable_documents`。
 
 ## 常见问题
 

@@ -105,6 +105,18 @@ brew install tesseract tesseract-lang poppler
 `analyze` 的结果按 `upload_id` 缓存。相同文档重复调用时直接返回缓存结果，
 避免重复消耗 DeepSeek API。
 
+### 健康检查（Health）
+
+| 端点 | 语义 |
+|---|---|
+| `GET /health/live` | 进程存活检查，成功返回 `200` |
+| `GET /health/ready` | Schema、上传目录和 DeepSeek 配置检查；失败返回 `503` |
+| `GET /health/dependencies` | 返回外部依赖配置和最近一次真实调用状态 |
+| `GET /health` | 兼容旧脚本的存活检查 |
+
+`/health/ready` 和 `/health/dependencies` 不主动调用 DeepSeek 或外部数据源，因此不会
+因健康检查产生模型费用。远程依赖在首次真实调用前显示为 `unknown`。
+
 ## 端点（Endpoints）
 
 ### 1. 上传文档 — `POST /api/upload`
@@ -172,6 +184,7 @@ curl -X POST http://localhost:8000/api/upload \
   "profile_id": "prf_01J0ZYXWVU",
   "status": "completed",
   "schema_version": "1.0.0",
+  "warnings": [],
   "candidate": {
     "basic_info": {
       "name": "张三",
@@ -350,6 +363,21 @@ curl -X POST http://localhost:8000/api/upload \
   }
 }
 ```
+
+当部分文档无法解析、OCR 依赖不可用或外部核验暂时失败时，接口仍返回 `200`，但
+`status` 为 `completed_with_warnings`。`warnings` 中每项包含：
+
+| 字段 | 含义 |
+|---|---|
+| `code` | 机器可读的警告代码 |
+| `stage` | `parsing`、`ocr` 或 `verification` |
+| `message` | 可执行的修复与重试说明 |
+| `retryable` | 是否可以通过重试恢复 |
+| `source` | 相关文件名或 `null` |
+
+对应事实不会被静默丢弃。论文声明和网页核验失败会在 `evidence` 中追加
+`to_verify` 记录，原因和重试提示写入 `notes`。OCR、PDF 渲染或文档解析失败写入
+顶层 `warnings`。所有文档均无可提取文本时返回 `422 no_readable_documents`。
 
 ### 3. 获取结构化档案 — `GET /api/profile`
 
