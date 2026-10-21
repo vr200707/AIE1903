@@ -32,6 +32,7 @@ from typing import Any
 
 import httpx
 
+from app import health
 from app.search import search_web
 
 
@@ -177,7 +178,9 @@ def _search_candidates(title: str) -> tuple[list[_Candidate], list[str]]:
     for name, fetcher in fetchers:
         try:
             candidates.extend(fetcher(title))
+            health.record_dependency_success(name.lower())
         except Exception as exc:  # 网络 / 服务异常不判为造假。
+            health.record_dependency_failure(name.lower(), exc)
             errors.append(f"{name}: {type(exc).__name__}")
     return candidates, errors
 
@@ -189,6 +192,7 @@ def _verification_evidence(
     source_url: str | None,
     text: str,
     query_date: str,
+    notes: str | None = None,
 ) -> dict[str, Any]:
     return {
         "source": source,
@@ -197,6 +201,7 @@ def _verification_evidence(
         "evidence_status": status,
         "query_date": query_date,
         "source_type": "bibliographic_database",
+        "notes": notes,
     }
 
 
@@ -233,6 +238,10 @@ def verify_publication(
                     + "). The claim is marked as to_verify."
                 ),
                 query_date=query_date,
+                notes=(
+                    "Reason: " + "；".join(errors) + ". Retryable: yes. "
+                    "Retry the analysis when the bibliographic services recover."
+                ),
             )
         )
         return verified
@@ -243,13 +252,31 @@ def verify_publication(
         if _title_score(title, c.title) >= MATCH_THRESHOLD
     ]
     if not scored:
+        if errors:
+            status = "to_verify"
+            text = (
+                "At least one bibliographic source was unavailable, so the claim "
+                "could not be conclusively checked. The claim is marked as to_verify."
+            )
+        else:
+            status = "not_found_public"
+            text = (
+                "No matching paper title was found in Crossref or OpenAlex, so the "
+                "claim cannot yet be confirmed publicly."
+            )
         verified["evidence"].append(
             _verification_evidence(
                 source="ExternalVerifier",
-                status="not_found_public",
+                status=status,
                 source_url=None,
-                text="No matching paper title was found in Crossref or OpenAlex, so the claim cannot yet be confirmed publicly.",
+                text=text,
                 query_date=query_date,
+                notes=(
+                    "Reason: " + "；".join(errors) + ". Retryable: yes. "
+                    "Retry the analysis to complete the missing source checks."
+                    if errors
+                    else None
+                ),
             )
         )
         return verified
@@ -274,6 +301,11 @@ def verify_publication(
                     f"{_authors_label(chosen.authors)}. The similarity is insufficient to confirm identity and requires human review."
                 ),
                 query_date=query_date,
+                notes=(
+                    "Reason: " + "；".join(errors) + ". Retryable: yes."
+                    if errors
+                    else None
+                ),
             )
         )
         return verified
@@ -305,6 +337,11 @@ def verify_publication(
             source_url=chosen.url,
             text=text,
             query_date=query_date,
+            notes=(
+                "Reason: " + "；".join(errors) + ". Retryable: yes."
+                if errors
+                else None
+            ),
         )
     )
     return verified
@@ -334,6 +371,7 @@ def _web_evidence(
     status: str,
     source_url: str | None,
     query_date: str,
+    notes: str | None = None,
 ) -> dict[str, Any]:
     return {
         "source": "WebSearch",
@@ -342,6 +380,7 @@ def _web_evidence(
         "evidence_status": status,
         "query_date": query_date,
         "source_type": "other",
+        "notes": notes,
     }
 
 
@@ -369,6 +408,10 @@ def verify_text_claim(
             "to_verify",
             None,
             query_date,
+            (
+                f"Reason: {type(exc).__name__}. Retryable: yes. "
+                "Retry the analysis when the configured web search provider recovers."
+            ),
         )
 
     if not results:
@@ -505,5 +548,60 @@ def verify_profile(
         candidate = _verify_web_claims(
             candidate, query_date=query_date or _today(), search=search
         )
+    verified["candidate"] = candidate
+    return verified
+
+
+def mark_verification_incomplete(
+    profile: dict[str, Any],
+    *,
+    error: BaseException,
+    query_date: str | None = None,
+) -> dict[str, Any]:
+    """Keep an extracted profile usable when external verification crashes."""
+    query_date = query_date or _today()
+    verified = dict(profile)
+    candidate = copy.deepcopy(profile["candidate"])
+    reason = f"External verification stopped unexpectedly ({type(error).__name__})"
+    notes = (
+        f"Reason: {type(error).__name__}. Retryable: yes. "
+        "Retry the analysis before treating verification as complete."
+    )
+
+    publications = (
+        candidate.get("publications_impact", {}).get("publications") or []
+    )
+    for publication in publications:
+        publication.setdefault("evidence", []).append(
+            _verification_evidence(
+                source="ExternalVerifier",
+                status="to_verify",
+                source_url=None,
+                text=(
+                    f"{reason}. The publication remains in the profile, but its "
+                    "external verification is incomplete."
+                ),
+                query_date=query_date,
+                notes=notes,
+            )
+        )
+
+    for claim_text, kind, index in _web_claims_from_profile(candidate):
+        _append_web_evidence(
+            candidate,
+            kind,
+            index,
+            _web_evidence(
+                (
+                    f'{reason}. The claim "{claim_text}" was not checked against '
+                    "public web sources."
+                ),
+                "to_verify",
+                None,
+                query_date,
+                notes,
+            ),
+        )
+
     verified["candidate"] = candidate
     return verified

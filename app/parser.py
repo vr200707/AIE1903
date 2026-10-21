@@ -7,13 +7,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from docx import Document
 from pypdf import PdfReader
 
+from app import health
 from app.ocr import render_pdf_pages, ocr_image
+from app.resilience import AnalysisWarning, warning
 
 
 SUPPORTED_SUFFIXES = {".pdf", ".docx"}
@@ -39,6 +41,7 @@ class ParsedDocument:
     filename: str
     content_type: str
     pages: list[PageText]
+    warnings: list[AnalysisWarning] = field(default_factory=list)
 
     def full_text(self) -> str:
         return "\n".join(page.text for page in self.pages if page.text)
@@ -62,16 +65,56 @@ def parse_pdf(path: str | Path) -> ParsedDocument:
     if empty_numbers:
         first = min(empty_numbers)
         # render_pdf_pages 渲染 first..last 的连续区间，返回按页码升序排列的图片。
-        images = render_pdf_pages(path, page_numbers=empty_numbers)
+        warnings: list[AnalysisWarning] = []
+        try:
+            images = render_pdf_pages(path, page_numbers=empty_numbers)
+            health.record_dependency_success("pdf_renderer")
+        except Exception as exc:
+            health.record_dependency_failure("pdf_renderer", exc)
+            warnings.append(
+                warning(
+                    "pdf_render_failed",
+                    "ocr",
+                    (
+                        "Pages without a text layer could not be rendered for OCR. "
+                        "Install or repair Poppler/pdftoppm, then retry the analysis."
+                    ),
+                    retryable=True,
+                    source=path.name,
+                )
+            )
+            images = []
         by_number = {first + offset: image for offset, image in enumerate(images)}
         for page in pages:
             if page.page_number in by_number and not page.text:
-                page.text = _normalize_text(ocr_image(by_number[page.page_number]))
+                try:
+                    page.text = _normalize_text(
+                        ocr_image(by_number[page.page_number])
+                    )
+                    health.record_dependency_success("ocr")
+                except Exception as exc:
+                    health.record_dependency_failure("ocr", exc)
+                    warnings.append(
+                        warning(
+                            "ocr_failed",
+                            "ocr",
+                            (
+                                f"OCR failed on page {page.page_number}. Install or "
+                                "repair Tesseract and the required language packs, "
+                                "then retry the analysis."
+                            ),
+                            retryable=True,
+                            source=path.name,
+                        )
+                    )
+    else:
+        warnings = []
 
     return ParsedDocument(
         filename=path.name,
         content_type=CONTENT_TYPES[".pdf"],
         pages=pages,
+        warnings=warnings,
     )
 
 

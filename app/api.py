@@ -21,14 +21,26 @@ from typing import Any, Optional
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 
+from app import health as health_monitor
 from app.extractor import extract_profile
-from app.parser import CONTENT_TYPES, SUPPORTED_SUFFIXES, parse_document
+from app.parser import (
+    CONTENT_TYPES,
+    SUPPORTED_SUFFIXES,
+    ParsedDocument,
+    parse_document,
+)
 from app.qa import answer_question
-from app.verify import verify_profile
+from app.resilience import (
+    AnalysisWarning,
+    collect_retryable_verification_warnings,
+    warning,
+)
+from app.verify import mark_verification_incomplete, verify_profile
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 UPLOAD_DIR = PROJECT_ROOT / ".cache" / "uploads"
+SCHEMA_PATH = PROJECT_ROOT / "contracts" / "schema.json"
 MAX_FILES = 4
 MAX_FILE_BYTES = 10 * 1024 * 1024  # 单文件 10MB 上限。
 
@@ -92,6 +104,72 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/health/live")
+def health_live() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.get("/health/ready")
+def health_ready() -> JSONResponse:
+    payload = health_monitor.check_readiness(
+        project_root=PROJECT_ROOT,
+        schema_path=SCHEMA_PATH,
+        upload_dir=UPLOAD_DIR,
+    )
+    status_code = 200 if payload["status"] == "ready" else 503
+    return JSONResponse(status_code=status_code, content=payload)
+
+
+@app.get("/health/dependencies")
+def health_dependencies() -> dict[str, Any]:
+    return health_monitor.dependency_snapshot(project_root=PROJECT_ROOT)
+
+
+def _parse_documents_safely(
+    paths: list[str],
+) -> tuple[list[ParsedDocument], list[AnalysisWarning]]:
+    """Parse independently so one damaged file does not discard other results."""
+    documents: list[ParsedDocument] = []
+    warnings: list[AnalysisWarning] = []
+    for raw_path in paths:
+        path = Path(raw_path)
+        try:
+            document = parse_document(raw_path)
+        except Exception as exc:
+            warnings.append(
+                warning(
+                    "document_parse_failed",
+                    "parsing",
+                    (
+                        f"{path.name} could not be parsed ({type(exc).__name__}). "
+                        "Replace or repair the file, then retry the analysis."
+                    ),
+                    retryable=False,
+                    source=path.name,
+                )
+            )
+            continue
+
+        document_warnings = getattr(document, "warnings", [])
+        warnings.extend(document_warnings)
+        if document.full_text().strip():
+            documents.append(document)
+        elif not document_warnings:
+            warnings.append(
+                warning(
+                    "no_extractable_text",
+                    "parsing",
+                    (
+                        f"{path.name} did not contain extractable text. Use a "
+                        "text-based document or enable OCR, then retry."
+                    ),
+                    retryable=True,
+                    source=path.name,
+                )
+            )
+    return documents, warnings
+
+
 @app.post("/api/upload")
 def upload(files: list[UploadFile] = File(...)) -> JSONResponse:
     if not files or len(files) > MAX_FILES:
@@ -119,22 +197,58 @@ def analyze(body: dict[str, Any]) -> dict[str, Any]:
         profile = entry["profile"]
         return {
             "profile_id": entry["profile_id"],
-            "status": "completed",
+            "status": entry.get("status", "completed"),
             "schema_version": profile["schema_version"],
             "candidate": profile["candidate"],
+            "warnings": entry.get("warnings", []),
         }
 
-    documents = [parse_document(path) for path in entry["paths"]]
-    profile, _skipped = extract_profile(documents)
-    verified = verify_profile(profile, verify_web=True)
+    documents, warnings = _parse_documents_safely(entry["paths"])
+    if not documents:
+        detail = (
+            "No uploaded document contained extractable text. Install OCR "
+            "dependencies or upload a text-based PDF/DOCX and retry."
+        )
+        raise _http_error(422, "no_readable_documents", detail)
+
+    try:
+        profile, _skipped = extract_profile(documents)
+    except Exception as exc:
+        raise _http_error(
+            503,
+            "extraction_failed",
+            f"Structured extraction failed ({type(exc).__name__}). Retry the analysis.",
+        ) from exc
+
+    try:
+        verified = verify_profile(profile, verify_web=True)
+        warnings.extend(collect_retryable_verification_warnings(verified))
+    except Exception as exc:
+        verified = mark_verification_incomplete(profile, error=exc)
+        warnings.append(
+            warning(
+                "verification_incomplete",
+                "verification",
+                (
+                    "External verification stopped unexpectedly. The extracted "
+                    "profile was kept, and affected claims are marked to_verify. "
+                    "Retry the analysis when the services recover."
+                ),
+                retryable=True,
+            )
+        )
+
     profile_id = "prf_" + hashlib.sha256(upload_id.encode()).hexdigest()[:12]
     entry["profile"] = verified
     entry["profile_id"] = profile_id
+    entry["warnings"] = [item.as_dict() for item in warnings]
+    entry["status"] = "completed_with_warnings" if warnings else "completed"
     return {
         "profile_id": profile_id,
-        "status": "completed",
+        "status": entry["status"],
         "schema_version": verified["schema_version"],
         "candidate": verified["candidate"],
+        "warnings": entry["warnings"],
     }
 
 

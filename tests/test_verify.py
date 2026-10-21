@@ -148,6 +148,23 @@ class VerifyPublicationTests(unittest.TestCase):
             )
 
         self.assertEqual(result["evidence"][-1]["evidence_status"], "to_verify")
+        self.assertIn("Retryable: yes", result["evidence"][-1]["notes"])
+
+    def test_partial_source_failure_is_not_reported_as_not_found(self):
+        with mock.patch.object(
+            verify, "_crossref_candidates", return_value=[]
+        ), mock.patch.object(
+            verify, "_openalex_candidates", side_effect=RuntimeError("429")
+        ):
+            result = verify.verify_publication(
+                _pub("A paper that may exist", 2020),
+                query_date="2026-09-29",
+            )
+
+        evidence = result["evidence"][-1]
+        self.assertEqual(evidence["evidence_status"], "to_verify")
+        self.assertIn("OpenAlex", evidence["notes"])
+        self.assertIn("Retryable: yes", evidence["notes"])
 
     def test_does_not_mutate_input(self):
         original = _pub("Deep Residual Learning for Image Recognition", 2016)

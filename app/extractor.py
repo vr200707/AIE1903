@@ -28,6 +28,7 @@ from dotenv import load_dotenv
 from jsonschema import Draft202012Validator
 from openai import OpenAI
 
+from app import health
 from app.parser import ParsedDocument
 
 
@@ -315,14 +316,19 @@ def _write_cache(key: str, profile: dict[str, Any]) -> None:
 def _chat(messages: list[dict[str, str]]) -> str:
     """调用 DeepSeek 并返回原始文本。测试里会替换掉这个函数。"""
     _load_dotenv()
-    client = OpenAI(api_key=os.getenv("DEEPSEEK_API_KEY"), base_url=_base_url())
-    response = client.chat.completions.create(
-        model=_model_name(),
-        messages=messages,
-        temperature=0,
-        max_tokens=_max_output_tokens(),
-        response_format={"type": "json_object"},
-    )
+    try:
+        client = OpenAI(api_key=os.getenv("DEEPSEEK_API_KEY"), base_url=_base_url())
+        response = client.chat.completions.create(
+            model=_model_name(),
+            messages=messages,
+            temperature=0,
+            max_tokens=_max_output_tokens(),
+            response_format={"type": "json_object"},
+        )
+    except Exception as exc:
+        health.record_dependency_failure("deepseek", exc)
+        raise
+    health.record_dependency_success("deepseek")
     return response.choices[0].message.content or "{}"
 
 
