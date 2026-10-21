@@ -7,7 +7,7 @@ Web 界面。
 `main` 分支包含当前可运行的全栈实现。本项目面向课程演示与评估，暂未接入生产级
 数据库、任务队列和权限体系。
 
-> **课程演示声明：** 当前版本使用进程内存储和同步分析接口，不提供生产级鉴权、
+> **课程演示声明：** 当前版本使用进程内存储和后台线程池，不提供生产级鉴权、
 > 数据隔离或持久化。请勿上传真实候选人的简历、联系方式或其他敏感材料。
 > 需要真实数据时必须先完成 P1/P2 的持久化、访问控制和审计改造。
 
@@ -23,7 +23,9 @@ Web 界面。
 
 ## 核心能力
 
-- 上传 1 至 4 份 PDF 或 DOCX 文件，单文件上限 10 MB。
+- 上传 1 至 4 份 PDF 或 DOCX 文件，单文件默认上限 100 MB。
+- 大文件自动按 4 MB 分片上传，绕过 Next.js 代理请求体限制。
+- 分析异步执行，通过状态接口轮询结果，避免代理 30 秒超时。
 - 提取 PDF 文本和页码；对无文字层页面使用 Tesseract OCR 回退。
 - 提取 DOCX 段落和表格内容。
 - 使用 DeepSeek 按数据契约抽取六大候选人模块。
@@ -180,7 +182,11 @@ NEXT_PUBLIC_API_BASE=http://<backend-host>:8000
 | `GET` | `/health/ready` | Schema、存储和模型配置检查 |
 | `GET` | `/health/dependencies` | 外部依赖配置与最近调用状态 |
 | `POST` | `/api/upload` | 上传 PDF/DOCX 并返回 `upload_id` |
-| `POST` | `/api/analyze` | 解析、抽取、核验并返回档案 |
+| `POST` | `/api/upload/init` | 初始化大文件分片上传会话 |
+| `PUT` | `/api/upload/session/{id}/files/{i}/chunks/{j}` | 上传一个文件分片 |
+| `POST` | `/api/upload/session/{id}/complete` | 校验并合并分片 |
+| `POST` | `/api/analyze` | 异步启动解析、抽取和核验 |
+| `GET` | `/api/analyze/{upload_id}` | 查询异步分析状态与结果 |
 | `GET` | `/api/profile` | 按 `profile_id` 或 `upload_id` 读取档案 |
 | `POST` | `/api/qa` | 基于档案与证据回答问题 |
 
@@ -288,7 +294,7 @@ scripts/fixtures/generate_cv_fixtures.py
 ## 当前限制
 
 - 上传和档案存储在进程内，并辅以本地上传目录，不适合生产部署。
-- `/api/analyze` 是同步接口，外部核验启用时请求可能耗时较长。
+- `/api/analyze` 使用进程内线程池和内存状态，服务重启或多进程部署时不会保留任务。
 - 网页搜索依赖公开 HTML 页面，可能受速率限制或页面结构变化影响。
 - OCR 依赖外部的 Tesseract 和 Poppler。
 - `frontend/lib/types.ts` 当前由契约手工维护，需要同步更新。

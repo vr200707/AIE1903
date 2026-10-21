@@ -10,8 +10,8 @@
 | 技术栈 | Python + FastAPI + DeepSeek API |
 | Base URL | `http://localhost:8000` |
 | 内容格式 | JSON，`Content-Type: application/json` |
-| 文件上传格式 | `multipart/form-data` |
-| 文档上限 | 每次上传最多 4 份（PDF 或 DOCX） |
+| 文件上传格式 | 小文件用 `multipart/form-data`；大文件用 `application/octet-stream` 分片 |
+| 文档上限 | 每次上传最多 4 份（PDF 或 DOCX），单文件默认 100 MB |
 
 ### 扫描件预处理（OCR）
 
@@ -93,17 +93,20 @@ brew install tesseract tesseract-lang poppler
 |---|---|
 | `200` | 成功 |
 | `201` | 资源创建成功 |
+| `202` | 异步任务已接受或仍在处理中 |
 | `404` | 资源不存在 |
 | `413` | 上传文件数量或大小超限 |
 | `422` | 请求体不符合 schema |
+| `409` | 上传分片未齐、正在完成或任务尚未完成 |
+| `429` | 活跃分片上传会话过多 |
 | `500` | 服务器内部错误 |
 
 业务错误的 `code` 取值见各端点章节；`code` 位于 `detail.code`。
 
 ### 缓存（Caching）
 
-`analyze` 的结果按 `upload_id` 缓存。相同文档重复调用时直接返回缓存结果，
-避免重复消耗 DeepSeek API。
+`analyze` 的结果按 `upload_id` 缓存。首次调用返回 `202` 并在后台执行；完成后重复
+调用会直接返回缓存结果，避免重复消耗 DeepSeek API。
 
 ### 健康检查（Health）
 
@@ -161,9 +164,68 @@ curl -X POST http://localhost:8000/api/upload \
 }
 ```
 
+### 1b. 大文件分片上传
+
+前端在文件总大小超过 8 MB 时自动改用分片上传。默认每片 4 MB，避免 Next.js
+代理的请求体缓冲上限导致大文件在到达后端前失败。单文件默认上限为 100 MB，可通过
+`MAX_FILE_BYTES` 覆盖。
+
+#### 初始化会话 — `POST /api/upload/init`
+
+```json
+{
+  "files": [
+    {"filename": "candidate_cv.pdf", "total_bytes": 26214400}
+  ]
+}
+```
+
+响应 `201 Created`：
+
+```json
+{
+  "session_id": "chk_01J0ABCDEF",
+  "chunk_size": 4194304,
+  "files": [
+    {
+      "file_index": 0,
+      "filename": "candidate_cv.pdf",
+      "total_bytes": 26214400,
+      "chunk_count": 7
+    }
+  ]
+}
+```
+
+请求中的文件名必须在同一会话内唯一。会话默认 1 小时未活动后过期，可通过
+`CHUNK_SESSION_TTL_SECONDS` 调整；同时最多保留 32 个活跃会话，可通过
+`MAX_CHUNK_SESSIONS` 调整。
+
+#### 上传分片 — `PUT /api/upload/session/{session_id}/files/{file_index}/chunks/{chunk_index}`
+
+请求体为 `application/octet-stream`，每片大小必须与初始化结果一致。响应 `200 OK`：
+
+```json
+{
+  "session_id": "chk_01J0ABCDEF",
+  "file_index": 0,
+  "chunk_index": 0,
+  "bytes": 4194304,
+  "received": 1,
+  "chunk_count": 7
+}
+```
+
+#### 完成上传 — `POST /api/upload/session/{session_id}/complete`
+
+所有分片到齐后调用。服务端校验每个分片的大小，在暂存目录合并后再原子移动到最终
+上传目录。响应与 `POST /api/upload` 相同，为 `201 Created`。缺少分片返回
+`409 incomplete_upload`，会话仍保留供补传；成功后分片会话立即删除。
+
 ### 2. 触发抽取与分析 — `POST /api/analyze`
 
-对已上传的文档执行结构化抽取、外部核验与综合评价，返回结构化档案。
+对已上传的文档异步执行结构化抽取、外部核验与综合评价。首次调用立即返回 `202`，
+不会等待外部核验完成，因此不受 Next.js 代理 30 秒超时限制。
 
 请求体：
 
@@ -177,7 +239,17 @@ curl -X POST http://localhost:8000/api/upload \
 |---|---|---|---|
 | `upload_id` | string | 是 | 由 `/api/upload` 返回 |
 
-响应 `200 OK`（`candidate` 遵循 `schema.json`，示例见下）：
+首次提交响应 `202 Accepted`：
+
+```json
+{
+  "upload_id": "upl_01J0ABCDEF",
+  "status": "processing"
+}
+```
+
+任务进入终态后，`GET /api/analyze/{upload_id}` 或重复调用本接口会返回 `200 OK`
+及下方结果信封（`candidate` 遵循 `schema.json`）：
 
 ```json
 {
@@ -364,8 +436,8 @@ curl -X POST http://localhost:8000/api/upload \
 }
 ```
 
-当部分文档无法解析、OCR 依赖不可用或外部核验暂时失败时，接口仍返回 `200`，但
-`status` 为 `completed_with_warnings`。`warnings` 中每项包含：
+当部分文档无法解析、OCR 依赖不可用或外部核验暂时失败时，任务仍进入终态，查询接口
+返回 `200`，`status` 为 `completed_with_warnings`。`warnings` 中每项包含：
 
 | 字段 | 含义 |
 |---|---|
@@ -377,7 +449,21 @@ curl -X POST http://localhost:8000/api/upload \
 
 对应事实不会被静默丢弃。论文声明和网页核验失败会在 `evidence` 中追加
 `to_verify` 记录，原因和重试提示写入 `notes`。OCR、PDF 渲染或文档解析失败写入
-顶层 `warnings`。所有文档均无可提取文本时返回 `422 no_readable_documents`。
+顶层 `warnings`。所有文档均无可提取文本时，任务状态为 `failed`，`error.code` 为
+`no_readable_documents`。
+
+### 2b. 查询分析状态 — `GET /api/analyze/{upload_id}`
+
+| 状态 | HTTP | 说明 |
+|---|---|---|
+| `pending` | `200` | 文件已上传，尚未提交分析 |
+| `processing` | `202` | 后台正在解析、抽取或核验 |
+| `completed` | `200` | 全部分析完成 |
+| `completed_with_warnings` | `200` | 档案可用，但部分解析或外部核验未完成 |
+| `failed` | `200` | 任务进入失败终态，响应包含 `error.code` 与 `error.detail` |
+
+`failed` 使用 `200` 表示作业状态查询成功，避免轮询客户端把作业失败误当作查询接口
+故障。再次调用 `POST /api/analyze` 可以重试失败的 `upload_id`。
 
 ### 3. 获取结构化档案 — `GET /api/profile`
 

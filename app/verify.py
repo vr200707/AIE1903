@@ -542,11 +542,14 @@ def verify_profile(
     candidate = copy.deepcopy(profile["candidate"])
     publications_impact = candidate["publications_impact"]
     publications_impact["publications"] = verify_publications(
-        publications_impact.get("publications", []), query_date=query_date
+        publications_impact.get("publications", []),
+        query_date=query_date,
     )
     if verify_web:
         candidate = _verify_web_claims(
-            candidate, query_date=query_date or _today(), search=search
+            candidate,
+            query_date=query_date or _today(),
+            search=search,
         )
     verified["candidate"] = candidate
     return verified

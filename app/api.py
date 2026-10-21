@@ -1,8 +1,12 @@
 """D5 联调：FastAPI 端点，把解析、抽取、核验串成完整链路。
 
-端点（与 docs/api.md 对齐）：
-- `POST /api/upload`   上传 1-4 份 PDF/DOCX，返回 `upload_id`；
-- `POST /api/analyze`  解析 -> 抽取 -> 核验，返回档案信封；
+端点（与 docs/api.md 对齐，并扩展大文件分片上传与异步分析）：
+- `POST /api/upload`   上传 1-4 份 PDF/DOCX（小文件，multipart 一次提交）；
+- `POST /api/upload/init`            创建分片上传会话；
+- `PUT  /api/upload/session/{sid}/files/{i}/chunks/{j}`  上传单个分片（raw bytes）；
+- `POST /api/upload/session/{sid}/complete`              校验并合并分片，返回 upload_id；
+- `POST /api/analyze`  异步触发 解析 -> 抽取 -> 核验，立即返回 202；
+- `GET  /api/analyze/{upload_id}`  轮询分析进度与结果（含 warnings）；
 - `GET  /api/profile`  按 `profile_id` 或 `upload_id` 返回档案本体；
 - `POST /api/qa`       基于档案回答自然语言问题（加分项）；
 - `GET  /health`       健康检查（联调用）。
@@ -13,12 +17,16 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import shutil
+import threading
+import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 
 from app import health as health_monitor
@@ -41,47 +49,143 @@ from app.verify import mark_verification_incomplete, verify_profile
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 UPLOAD_DIR = PROJECT_ROOT / ".cache" / "uploads"
 SCHEMA_PATH = PROJECT_ROOT / "contracts" / "schema.json"
+CHUNK_DIR = UPLOAD_DIR / ".chunks"
 MAX_FILES = 4
-MAX_FILE_BYTES = 10 * 1024 * 1024  # 单文件 10MB 上限。
+# 分片大小 4MB，远低于 Next.js 代理默认 10MB 的请求体缓冲上限，
+# 因此任意大文件都能分多次请求稳定传输，不再触碰代理层的 500。
+CHUNK_SIZE = 4 * 1024 * 1024
+# 单文件业务上限（策略性上限，而非传输限制），可通过 MAX_FILE_BYTES 覆盖。
+DEFAULT_MAX_FILE_BYTES = 100 * 1024 * 1024
+DEFAULT_CHUNK_SESSION_TTL_SECONDS = 60 * 60
+DEFAULT_MAX_CHUNK_SESSIONS = 32
+DEFAULT_ANALYSIS_MAX_WORKERS = 4
 
 app = FastAPI(title="AIE1903 Candidate Analysis", version="0.1.0")
 
 # upload_id -> {"documents": [...], "paths": [...], "profile": ..., "profile_id": ...}
 _UPLOADS: dict[str, dict[str, Any]] = {}
+# session_id -> {"chunk_size": int, "files": [{"filename", "total_bytes", "chunk_count", "received": set}]}
+_CHUNK_SESSIONS: dict[str, dict[str, Any]] = {}
+_UPLOAD_LOCK = threading.Lock()
+_CHUNK_LOCK = threading.Lock()
+
+
+class _AnalysisFailure(Exception):
+    def __init__(self, code: str, detail: str) -> None:
+        super().__init__(detail)
+        self.code = code
+        self.detail = detail
+
+
+def _max_file_bytes() -> int:
+    raw = os.getenv("MAX_FILE_BYTES", str(DEFAULT_MAX_FILE_BYTES))
+    try:
+        return max(1024, int(raw))
+    except (TypeError, ValueError):
+        return DEFAULT_MAX_FILE_BYTES
+
+
+def _chunk_session_ttl_seconds() -> int:
+    raw = os.getenv(
+        "CHUNK_SESSION_TTL_SECONDS",
+        str(DEFAULT_CHUNK_SESSION_TTL_SECONDS),
+    )
+    try:
+        return max(60, int(raw))
+    except (TypeError, ValueError):
+        return DEFAULT_CHUNK_SESSION_TTL_SECONDS
+
+
+def _max_chunk_sessions() -> int:
+    raw = os.getenv(
+        "MAX_CHUNK_SESSIONS",
+        str(DEFAULT_MAX_CHUNK_SESSIONS),
+    )
+    try:
+        return max(1, int(raw))
+    except (TypeError, ValueError):
+        return DEFAULT_MAX_CHUNK_SESSIONS
+
+
+def _analysis_max_workers() -> int:
+    raw = os.getenv(
+        "ANALYSIS_MAX_WORKERS",
+        str(DEFAULT_ANALYSIS_MAX_WORKERS),
+    )
+    try:
+        return max(1, int(raw))
+    except (TypeError, ValueError):
+        return DEFAULT_ANALYSIS_MAX_WORKERS
+
+
+_ANALYSIS_POOL = ThreadPoolExecutor(
+    max_workers=_analysis_max_workers(),
+    thread_name_prefix="analysis",
+)
 
 
 def _http_error(status: int, code: str, message: str) -> HTTPException:
     return HTTPException(status_code=status, detail={"code": code, "detail": message})
 
 
+def _cleanup_expired_chunk_sessions_locked(now: float | None = None) -> None:
+    cutoff = (now or time.time()) - _chunk_session_ttl_seconds()
+    expired = [
+        session_id
+        for session_id, session in _CHUNK_SESSIONS.items()
+        if not session.get("completing")
+        and session.get("updated_at", 0) < cutoff
+    ]
+    for session_id in expired:
+        _CHUNK_SESSIONS.pop(session_id, None)
+        shutil.rmtree(CHUNK_DIR / session_id, ignore_errors=True)
+
+
+def _validate_filename(filename: str | None) -> str:
+    name = Path(filename or "").name
+    if not name:
+        raise _http_error(422, "missing_filename", "Upload file name is missing")
+    suffix = Path(name).suffix.lower()
+    if suffix not in SUPPORTED_SUFFIXES:
+        raise _http_error(422, "unsupported_type", f"Unsupported document type: {name}")
+    return name
+
+
+def _document_entry(filename: str, size: int) -> dict[str, Any]:
+    suffix = Path(filename).suffix.lower()
+    return {
+        "document_id": "doc_" + uuid.uuid4().hex[:10],
+        "filename": filename,
+        "content_type": CONTENT_TYPES[suffix],
+        "size_bytes": size,
+        "status": "accepted",
+    }
+
+
 def _save_upload(files: list[UploadFile], upload_id: str) -> list[dict[str, Any]]:
     dest = UPLOAD_DIR / upload_id
     dest.mkdir(parents=True, exist_ok=True)
+    max_bytes = _max_file_bytes()
     documents: list[dict[str, Any]] = []
-    for upload in files:
-        filename = Path(upload.filename or "").name
-        suffix = Path(filename).suffix.lower()
-        if suffix not in SUPPORTED_SUFFIXES:
-            raise _http_error(
-                422, "unsupported_type", f"Unsupported document type: {filename}"
-            )
-        path = dest / filename
-        size = 0
-        with path.open("wb") as out:
-            while chunk := upload.file.read(1024 * 1024):
-                size += len(chunk)
-                if size > MAX_FILE_BYTES:
-                    raise _http_error(413, "file_too_large", f"File too large: {filename}")
-                out.write(chunk)
-        documents.append(
-            {
-                "document_id": "doc_" + uuid.uuid4().hex[:10],
-                "filename": filename,
-                "content_type": CONTENT_TYPES[suffix],
-                "size_bytes": size,
-                "status": "accepted",
-            }
-        )
+    try:
+        for upload in files:
+            filename = _validate_filename(upload.filename)
+            path = dest / filename
+            size = 0
+            with path.open("wb") as out:
+                while chunk := upload.file.read(1024 * 1024):
+                    size += len(chunk)
+                    if size > max_bytes:
+                        raise _http_error(
+                            413,
+                            "file_too_large",
+                            f"File too large: {filename}",
+                        )
+                    out.write(chunk)
+            documents.append(_document_entry(filename, size))
+    except Exception:
+        shutil.rmtree(dest, ignore_errors=True)
+        raise
     return documents
 
 
@@ -97,6 +201,17 @@ def _find_entry(*, profile_id: str | None, upload_id: str | None) -> dict[str, A
             raise _http_error(404, "not_found", "upload_id not found")
         return entry
     raise _http_error(422, "missing_id", "Provide either profile_id or upload_id")
+
+
+def _chunk_count(total_bytes: int, chunk_size: int) -> int:
+    return (total_bytes + chunk_size - 1) // chunk_size
+
+
+def _expected_chunk_size(meta: dict[str, Any], chunk_index: int) -> int:
+    total = meta["total_bytes"]
+    if chunk_index < meta["chunk_count"] - 1:
+        return meta["chunk_size"]
+    return total - (meta["chunk_count"] - 1) * meta["chunk_size"]
 
 
 @app.get("/health")
@@ -173,9 +288,7 @@ def _parse_documents_safely(
 @app.post("/api/upload")
 def upload(files: list[UploadFile] = File(...)) -> JSONResponse:
     if not files or len(files) > MAX_FILES:
-        raise _http_error(
-            413, "too_many_files", f"Upload at most {MAX_FILES} documents"
-        )
+        raise _http_error(413, "too_many_files", f"Upload at most {MAX_FILES} documents")
     upload_id = "upl_" + uuid.uuid4().hex[:12]
     documents = _save_upload(files, upload_id)
     dest = UPLOAD_DIR / upload_id
@@ -183,73 +296,445 @@ def upload(files: list[UploadFile] = File(...)) -> JSONResponse:
         "documents": documents,
         "paths": [str(p) for p in sorted(dest.iterdir())],
     }
+    return JSONResponse(status_code=201, content={"upload_id": upload_id, "documents": documents})
+
+
+@app.post("/api/upload/init")
+def upload_init(body: dict[str, Any]) -> JSONResponse:
+    files = body.get("files")
+    if not isinstance(files, list) or not (1 <= len(files) <= MAX_FILES):
+        raise _http_error(413, "too_many_files", f"Upload between 1 and {MAX_FILES} documents")
+    max_bytes = _max_file_bytes()
+    session_files: list[dict[str, Any]] = []
+    filenames: set[str] = set()
+    for item in files:
+        if not isinstance(item, dict):
+            raise _http_error(422, "bad_file", "Each file entry must be an object")
+        filename = _validate_filename(str(item.get("filename", "")))
+        if filename in filenames:
+            raise _http_error(
+                422,
+                "duplicate_filename",
+                f"File names must be unique within one upload session: {filename}",
+            )
+        filenames.add(filename)
+        total_bytes = item.get("total_bytes")
+        if not isinstance(total_bytes, int) or total_bytes <= 0:
+            raise _http_error(422, "bad_size", f"Invalid total_bytes for {filename}")
+        if total_bytes > max_bytes:
+            raise _http_error(413, "file_too_large", f"File too large: {filename}")
+        session_files.append(
+            {
+                "filename": filename,
+                "total_bytes": total_bytes,
+                "chunk_size": CHUNK_SIZE,
+                "chunk_count": _chunk_count(total_bytes, CHUNK_SIZE),
+                "received": set(),
+            }
+        )
+    session_id = "chk_" + uuid.uuid4().hex[:12]
+    now = time.time()
+    with _CHUNK_LOCK:
+        _cleanup_expired_chunk_sessions_locked(now)
+        if len(_CHUNK_SESSIONS) >= _max_chunk_sessions():
+            raise _http_error(
+                429,
+                "too_many_upload_sessions",
+                "Too many active upload sessions. Retry after an older session expires.",
+            )
+        (CHUNK_DIR / session_id).mkdir(parents=True, exist_ok=True)
+        _CHUNK_SESSIONS[session_id] = {
+            "chunk_size": CHUNK_SIZE,
+            "files": session_files,
+            "created_at": now,
+            "updated_at": now,
+            "completing": False,
+        }
     return JSONResponse(
         status_code=201,
-        content={"upload_id": upload_id, "documents": documents},
+        content={
+            "session_id": session_id,
+            "chunk_size": CHUNK_SIZE,
+            "files": [
+                {
+                    "file_index": index,
+                    "filename": meta["filename"],
+                    "total_bytes": meta["total_bytes"],
+                    "chunk_count": meta["chunk_count"],
+                }
+                for index, meta in enumerate(session_files)
+            ],
+        },
     )
 
 
-@app.post("/api/analyze")
-def analyze(body: dict[str, Any]) -> dict[str, Any]:
-    upload_id = body.get("upload_id")
-    entry = _find_entry(profile_id=None, upload_id=upload_id)
-    if "profile" in entry:
-        profile = entry["profile"]
-        return {
-            "profile_id": entry["profile_id"],
-            "status": entry.get("status", "completed"),
-            "schema_version": profile["schema_version"],
-            "candidate": profile["candidate"],
-            "warnings": entry.get("warnings", []),
-        }
+@app.put("/api/upload/session/{session_id}/files/{file_index}/chunks/{chunk_index}")
+async def upload_chunk(
+    session_id: str,
+    file_index: int,
+    chunk_index: int,
+    request: Request,
+) -> JSONResponse:
+    with _CHUNK_LOCK:
+        _cleanup_expired_chunk_sessions_locked()
+        session = _CHUNK_SESSIONS.get(session_id)
+        if session is None:
+            raise _http_error(
+                404,
+                "session_not_found",
+                "Upload session not found, expired, or already completed",
+            )
+        if session.get("completing"):
+            raise _http_error(
+                409,
+                "session_completing",
+                "Upload session is already being finalized",
+            )
+        files = session["files"]
+        if not (0 <= file_index < len(files)):
+            raise _http_error(422, "bad_file_index", "file_index out of range")
+        meta = files[file_index]
+        if not (0 <= chunk_index < meta["chunk_count"]):
+            raise _http_error(422, "bad_chunk_index", "chunk_index out of range")
+    expected = _expected_chunk_size(meta, chunk_index)
+    content_length = request.headers.get("content-length")
+    if content_length is not None:
+        try:
+            declared_size = int(content_length)
+        except ValueError as exc:
+            raise _http_error(
+                400,
+                "invalid_content_length",
+                "Content-Length must be a non-negative integer",
+            ) from exc
+        if declared_size < 0:
+            raise _http_error(
+                400,
+                "invalid_content_length",
+                "Content-Length must be a non-negative integer",
+            )
+        if declared_size > expected:
+            raise _http_error(
+                413,
+                "chunk_too_large",
+                f"Chunk {chunk_index} for {meta['filename']} exceeds {expected} bytes",
+            )
+        if declared_size != expected:
+            raise _http_error(
+                422,
+                "bad_chunk_size",
+                f"Chunk {chunk_index} for {meta['filename']} expected {expected} bytes, got {declared_size}",
+            )
 
-    documents, warnings = _parse_documents_safely(entry["paths"])
-    if not documents:
-        detail = (
-            "No uploaded document contained extractable text. Install OCR "
-            "dependencies or upload a text-based PDF/DOCX and retry."
+    data = bytearray()
+    async for block in request.stream():
+        if len(data) + len(block) > expected:
+            raise _http_error(
+                413,
+                "chunk_too_large",
+                f"Chunk {chunk_index} for {meta['filename']} exceeds {expected} bytes",
+            )
+        data.extend(block)
+    if len(data) != expected:
+        raise _http_error(
+            422,
+            "bad_chunk_size",
+            f"Chunk {chunk_index} for {meta['filename']} expected {expected} bytes, got {len(data)}",
         )
-        raise _http_error(422, "no_readable_documents", detail)
+    part = CHUNK_DIR / session_id / f"{file_index:02d}_{chunk_index:05d}.part"
+    part.write_bytes(bytes(data))
+    with _CHUNK_LOCK:
+        session = _CHUNK_SESSIONS.get(session_id)
+        if session is None or session.get("completing"):
+            part.unlink(missing_ok=True)
+            raise _http_error(
+                409,
+                "session_completing",
+                "Upload session expired or is already being finalized",
+            )
+        meta = session["files"][file_index]
+        meta["received"].add(chunk_index)
+        session["updated_at"] = time.time()
+    return JSONResponse(
+        status_code=200,
+        content={
+            "session_id": session_id,
+            "file_index": file_index,
+            "chunk_index": chunk_index,
+            "bytes": len(data),
+            "received": len(meta["received"]),
+            "chunk_count": meta["chunk_count"],
+        },
+    )
 
+
+@app.post("/api/upload/session/{session_id}/complete")
+def upload_complete(session_id: str) -> JSONResponse:
+    with _CHUNK_LOCK:
+        _cleanup_expired_chunk_sessions_locked()
+        session = _CHUNK_SESSIONS.get(session_id)
+        if session is None:
+            raise _http_error(
+                404,
+                "session_not_found",
+                "Upload session not found, expired, or already completed",
+            )
+        if session.get("completing"):
+            raise _http_error(
+                409,
+                "session_completing",
+                "Upload session is already being finalized",
+            )
+        session["completing"] = True
+        session["updated_at"] = time.time()
+        session_files = session["files"]
+
+    session_dir = CHUNK_DIR / session_id
+    upload_id = "upl_" + uuid.uuid4().hex[:12]
+    staging_dir = UPLOAD_DIR / f".{upload_id}.staging"
+    dest = UPLOAD_DIR / upload_id
+    documents: list[dict[str, Any]] = []
+    max_bytes = _max_file_bytes()
     try:
-        profile, _skipped = extract_profile(documents)
+        for meta in session_files:
+            missing = [
+                index
+                for index in range(meta["chunk_count"])
+                if index not in meta["received"]
+            ]
+            if missing:
+                raise _http_error(
+                    409,
+                    "incomplete_upload",
+                    f"Missing chunks {missing} for {meta['filename']}",
+                )
+            if meta["total_bytes"] > max_bytes:
+                raise _http_error(
+                    413,
+                    "file_too_large",
+                    f"File too large: {meta['filename']}",
+                )
+
+        for file_index, meta in enumerate(session_files):
+            for chunk_index in range(meta["chunk_count"]):
+                part = session_dir / f"{file_index:02d}_{chunk_index:05d}.part"
+                if not part.is_file():
+                    raise _http_error(
+                        409,
+                        "corrupt_chunk",
+                        f"Chunk {chunk_index} for {meta['filename']} is missing",
+                    )
+                if part.stat().st_size != _expected_chunk_size(meta, chunk_index):
+                    raise _http_error(
+                        409,
+                        "corrupt_chunk",
+                        f"Chunk {chunk_index} for {meta['filename']} is corrupt",
+                    )
+
+        staging_dir.mkdir(parents=True, exist_ok=False)
+        for file_index, meta in enumerate(session_files):
+            path = staging_dir / meta["filename"]
+            size = 0
+            with path.open("wb") as out:
+                for chunk_index in range(meta["chunk_count"]):
+                    part = (
+                        session_dir
+                        / f"{file_index:02d}_{chunk_index:05d}.part"
+                    )
+                    data = part.read_bytes()
+                    out.write(data)
+                    size += len(data)
+            if size != meta["total_bytes"] or size > max_bytes:
+                raise _http_error(
+                    413,
+                    "file_too_large",
+                    f"File too large: {meta['filename']}",
+                )
+            documents.append(_document_entry(meta["filename"], size))
+
+        staging_dir.rename(dest)
+        with _UPLOAD_LOCK:
+            _UPLOADS[upload_id] = {
+                "documents": documents,
+                "paths": [str(path) for path in sorted(dest.iterdir())],
+            }
+        with _CHUNK_LOCK:
+            _CHUNK_SESSIONS.pop(session_id, None)
+        shutil.rmtree(session_dir, ignore_errors=True)
+    except HTTPException:
+        shutil.rmtree(staging_dir, ignore_errors=True)
+        with _CHUNK_LOCK:
+            current = _CHUNK_SESSIONS.get(session_id)
+            if current is not None:
+                current["completing"] = False
+                current["updated_at"] = time.time()
+        raise
     except Exception as exc:
+        shutil.rmtree(staging_dir, ignore_errors=True)
+        with _CHUNK_LOCK:
+            current = _CHUNK_SESSIONS.get(session_id)
+            if current is not None:
+                current["completing"] = False
+                current["updated_at"] = time.time()
+        raise _http_error(
+            500,
+            "upload_finalize_failed",
+            f"Could not finalize uploaded files ({type(exc).__name__})",
+        ) from exc
+    return JSONResponse(status_code=201, content={"upload_id": upload_id, "documents": documents})
+
+
+def _run_analysis(upload_id: str, entry: dict[str, Any]) -> None:
+    """Run parsing, extraction, and verification without blocking POST."""
+    warnings: list[AnalysisWarning] = []
+    profile_id = "prf_" + hashlib.sha256(upload_id.encode()).hexdigest()[:12]
+    try:
+        documents, warnings = _parse_documents_safely(entry["paths"])
+        if not documents:
+            raise _AnalysisFailure(
+                "no_readable_documents",
+                (
+                    "No uploaded document contained extractable text. Install "
+                    "OCR dependencies or upload a text-based PDF/DOCX and retry."
+                ),
+            )
+
+        try:
+            profile, _skipped = extract_profile(documents)
+        except Exception as exc:
+            raise _AnalysisFailure(
+                "extraction_failed",
+                (
+                    "Structured extraction failed "
+                    f"({type(exc).__name__}). Retry the analysis."
+                ),
+            ) from exc
+
+        try:
+            verified = verify_profile(profile, verify_web=True)
+            warnings.extend(collect_retryable_verification_warnings(verified))
+        except Exception as exc:
+            verified = mark_verification_incomplete(profile, error=exc)
+            warnings.append(
+                warning(
+                    "verification_incomplete",
+                    "verification",
+                    (
+                        "External verification stopped unexpectedly. The "
+                        "extracted profile was kept, and affected claims are "
+                        "marked to_verify. Retry the analysis when the services "
+                        "recover."
+                    ),
+                    retryable=True,
+                )
+            )
+
+        with _UPLOAD_LOCK:
+            entry["profile"] = verified
+            entry["profile_id"] = profile_id
+            entry["warnings"] = [item.as_dict() for item in warnings]
+            entry["status"] = (
+                "completed_with_warnings" if warnings else "completed"
+            )
+            entry.pop("error", None)
+    except _AnalysisFailure as exc:
+        with _UPLOAD_LOCK:
+            entry["status"] = "failed"
+            entry["error"] = {"code": exc.code, "detail": exc.detail}
+    except Exception as exc:
+        with _UPLOAD_LOCK:
+            entry["status"] = "failed"
+            entry["error"] = {
+                "code": "analysis_failed",
+                "detail": f"Analysis failed ({type(exc).__name__}). Retry the analysis.",
+            }
+
+
+@app.post("/api/analyze")
+def analyze(body: dict[str, Any]) -> JSONResponse:
+    upload_id = body.get("upload_id")
+    if not isinstance(upload_id, str) or not upload_id.strip():
+        raise _http_error(422, "missing_upload_id", "Provide upload_id")
+    entry = _find_entry(profile_id=None, upload_id=upload_id)
+    with _UPLOAD_LOCK:
+        if entry.get("profile") is not None:
+            profile = entry["profile"]
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "upload_id": upload_id,
+                    "profile_id": entry["profile_id"],
+                    "status": entry.get("status", "completed"),
+                    "schema_version": profile["schema_version"],
+                    "candidate": profile["candidate"],
+                    "warnings": entry.get("warnings", []),
+                },
+            )
+        if entry.get("status") == "processing":
+            return JSONResponse(
+                status_code=202,
+                content={"upload_id": upload_id, "status": "processing"},
+            )
+        entry.pop("error", None)
+        entry["status"] = "processing"
+        entry["warnings"] = []
+    try:
+        _ANALYSIS_POOL.submit(_run_analysis, upload_id, entry)
+    except Exception as exc:
+        with _UPLOAD_LOCK:
+            entry["status"] = "failed"
+            entry["error"] = {
+                "code": "analysis_queue_failed",
+                "detail": f"Could not queue analysis ({type(exc).__name__})",
+            }
         raise _http_error(
             503,
-            "extraction_failed",
-            f"Structured extraction failed ({type(exc).__name__}). Retry the analysis.",
+            "analysis_queue_failed",
+            "Could not queue analysis. Retry shortly.",
         ) from exc
+    return JSONResponse(status_code=202, content={"upload_id": upload_id, "status": "processing"})
 
-    try:
-        verified = verify_profile(profile, verify_web=True)
-        warnings.extend(collect_retryable_verification_warnings(verified))
-    except Exception as exc:
-        verified = mark_verification_incomplete(profile, error=exc)
-        warnings.append(
-            warning(
-                "verification_incomplete",
-                "verification",
-                (
-                    "External verification stopped unexpectedly. The extracted "
-                    "profile was kept, and affected claims are marked to_verify. "
-                    "Retry the analysis when the services recover."
-                ),
-                retryable=True,
-            )
+
+@app.get("/api/analyze/{upload_id}")
+def analyze_status(upload_id: str) -> JSONResponse:
+    entry = _find_entry(profile_id=None, upload_id=upload_id)
+    with _UPLOAD_LOCK:
+        status = entry.get("status", "pending")
+        warnings = entry.get("warnings", [])
+        error = entry.get("error")
+        profile = entry.get("profile")
+        profile_id = entry.get("profile_id")
+    if profile is not None:
+        return JSONResponse(
+            status_code=200,
+            content={
+                "upload_id": upload_id,
+                "status": status,
+                "profile_id": profile_id,
+                "schema_version": profile["schema_version"],
+                "candidate": profile["candidate"],
+                "warnings": warnings,
+            },
         )
-
-    profile_id = "prf_" + hashlib.sha256(upload_id.encode()).hexdigest()[:12]
-    entry["profile"] = verified
-    entry["profile_id"] = profile_id
-    entry["warnings"] = [item.as_dict() for item in warnings]
-    entry["status"] = "completed_with_warnings" if warnings else "completed"
-    return {
-        "profile_id": profile_id,
-        "status": entry["status"],
-        "schema_version": verified["schema_version"],
-        "candidate": verified["candidate"],
-        "warnings": entry["warnings"],
-    }
+    if status == "failed":
+        return JSONResponse(
+            status_code=200,
+            content={
+                "upload_id": upload_id,
+                "status": "failed",
+                "warnings": warnings,
+                "error": error or {
+                    "code": "analysis_failed",
+                    "detail": "Analysis failed",
+                },
+            },
+        )
+    if status == "processing":
+        return JSONResponse(status_code=202, content={"upload_id": upload_id, "status": "processing", "warnings": []})
+    return JSONResponse(
+        status_code=200,
+        content={"upload_id": upload_id, "status": "pending", "warnings": []},
+    )
 
 
 @app.get("/api/profile")
@@ -259,7 +744,26 @@ def profile(
 ) -> dict[str, Any]:
     entry = _find_entry(profile_id=profile_id, upload_id=upload_id)
     if "profile" not in entry:
-        raise _http_error(404, "not_analyzed", "Profile has not been generated. Call /api/analyze first.")
+        status = entry.get("status")
+        if status == "processing":
+            raise _http_error(
+                409,
+                "still_processing",
+                "Analysis is still running. Poll /api/analyze/{upload_id}.",
+            )
+        if status == "failed":
+            error = entry.get("error")
+            detail = (
+                error.get("detail")
+                if isinstance(error, dict)
+                else "Analysis failed"
+            )
+            raise _http_error(500, "analysis_failed", detail)
+        raise _http_error(
+            404,
+            "not_analyzed",
+            "Profile has not been generated. Call /api/analyze first.",
+        )
     stored = entry["profile"]
     return {
         "schema_version": stored["schema_version"],
