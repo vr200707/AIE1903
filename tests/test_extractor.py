@@ -170,9 +170,29 @@ class ExtractorSplitTests(unittest.TestCase):
         with mock.patch.object(
             extractor, "_chat", side_effect=[batch_one, batch_two]
         ) as chat:
-            records = extractor._expand_publications("cv text", titles, papers_per_chunk=2)
+            records = extractor._expand_publications(
+                "cv text", titles, papers_per_chunk=2, max_retries=0
+            )
         self.assertEqual(chat.call_count, 2)
         self.assertEqual([r["title"] for r in records], ["Paper A", "Paper B", "Paper C"])
+
+    def test_expand_publications_splits_failed_batch(self):
+        titles = [
+            {"title": "Paper A", "year": 2024},
+            {"title": "Paper B", "year": 2023},
+        ]
+        left = json.dumps({"publications": [_publication("Paper A", 2024)]})
+        right = json.dumps({"publications": [_publication("Paper B", 2023)]})
+        with mock.patch.object(
+            extractor,
+            "_chat",
+            side_effect=["not json", left, right],
+        ) as chat:
+            records = extractor._expand_publications(
+                "cv text", titles, papers_per_chunk=2, max_retries=0
+            )
+        self.assertEqual(chat.call_count, 3)
+        self.assertEqual([r["title"] for r in records], ["Paper A", "Paper B"])
 
     def test_cache_key_varies_by_chunk_size(self):
         doc = _doc("cv.pdf", "Hello CV")

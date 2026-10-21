@@ -1,4 +1,4 @@
-// 与沈一 docs/schema.json 对齐的 TypeScript 类型（schema_version 1.0.0）
+// 与 contracts/schema.json 对齐的 TypeScript 类型（schema_version 1.0.0）
 
 export type EvidenceStatus =
   | "confirmed"

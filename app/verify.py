@@ -23,7 +23,9 @@ from __future__ import annotations
 
 import copy
 import difflib
+import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
@@ -42,6 +44,16 @@ MATCH_THRESHOLD = 0.6
 CONFIRM_THRESHOLD = 0.8
 YEAR_TOLERANCE = 1
 HTTP_TIMEOUT = 30.0
+DEFAULT_VERIFY_MAX_WORKERS = 8
+
+
+def _verify_max_workers() -> int:
+    raw = os.getenv("VERIFY_MAX_WORKERS", str(DEFAULT_VERIFY_MAX_WORKERS))
+    try:
+        value = int(raw)
+    except ValueError:
+        return DEFAULT_VERIFY_MAX_WORKERS
+    return max(1, value)
 
 
 @dataclass
@@ -303,10 +315,18 @@ def verify_publications(
     *,
     query_date: str | None = None,
 ) -> list[dict[str, Any]]:
-    return [
-        verify_publication(publication, query_date=query_date)
-        for publication in publications
-    ]
+    if not publications:
+        return []
+    workers = min(_verify_max_workers(), len(publications))
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        return list(
+            executor.map(
+                lambda publication: verify_publication(
+                    publication, query_date=query_date
+                ),
+                publications,
+            )
+        )
 
 
 def _web_evidence(
@@ -444,10 +464,20 @@ def _verify_web_claims(
     query_date: str,
     search: Any,
 ) -> dict[str, Any]:
-    for claim_text, kind, index in _web_claims_from_profile(candidate):
-        evidence = verify_text_claim(
-            claim_text, query_date=query_date, search=search
+    claims = _web_claims_from_profile(candidate)
+    if not claims:
+        return candidate
+    workers = min(_verify_max_workers(), len(claims))
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        evidence_items = list(
+            executor.map(
+                lambda claim: verify_text_claim(
+                    claim[0], query_date=query_date, search=search
+                ),
+                claims,
+            )
         )
+    for (_, kind, index), evidence in zip(claims, evidence_items):
         _append_web_evidence(candidate, kind, index, evidence)
     return candidate
 

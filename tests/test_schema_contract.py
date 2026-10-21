@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 
-SCHEMA_PATH = Path(__file__).parents[1] / "docs" / "schema.json"
+SCHEMA_PATH = Path(__file__).parents[1] / "contracts" / "schema.json"
 
 
 class SchemaContractTests(unittest.TestCase):

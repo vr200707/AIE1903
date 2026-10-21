@@ -1,7 +1,7 @@
 # 后端 API 契约（Backend API Contract）
 
 本文档定义候选人简历分析系统的后端接口。所有结构化数据均遵循
-[`schema.json`](./schema.json) 的数据契约，未在 schema 中声明的字段一律不接受。
+[`schema.json`](../contracts/schema.json) 的数据契约，未在 schema 中声明的字段一律不接受。
 
 ## 概述（Overview）
 
@@ -446,11 +446,11 @@ curl "http://localhost:8000/api/profile?profile_id=prf_01J0ZYXWVU"
 | `422` | `missing_profile_id` / `missing_question` | 缺少 `profile_id` 或 `question` |
 | `500` | `qa_failed` | 模型调用失败或返回无法解析的内容 |
 
-实测样例见 `outputs/sample_qa_cv01.json`（4 个问题，覆盖事实直答、需要汇总的提问、
+实测样例见 `examples/qa/sample_qa_cv01.json`（4 个问题，覆盖事实直答、需要汇总的提问、
 档案中不存在的信息、英文提问）。
 
 ## 与 schema.json 的关系（Relation to schema.json）
 
 `candidate` 对象的完整字段、枚举与必填规则见
-[`schema.json`](./schema.json)。前端与后端联调时，以 `schema.json` 为准；
+[`schema.json`](../contracts/schema.json)。前端与后端联调时，以 `schema.json` 为准；
 任何一方的字段变更须走 PR，由本契约负责人审核。

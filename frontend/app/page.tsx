@@ -92,6 +92,7 @@ function Header() {
 export default function Home() {
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterState>({ tags: [], search: "" });
   const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(null);
@@ -117,9 +118,11 @@ export default function Home() {
 
   const handleFiles = async (files: File[]) => {
     setLoading(true);
+    setLoadingMessage("Uploading and parsing documents...");
     setError(null);
     try {
       const { upload_id } = await uploadFiles(files);
+      setLoadingMessage("Extracting profile and verifying public sources...");
       const { profile_id, candidate } = await analyze(upload_id);
       setProfileId(profile_id);
       setCandidate(candidate);
@@ -127,6 +130,7 @@ export default function Home() {
       setError(e instanceof Error ? e.message : "Analysis failed. Please try again.");
     } finally {
       setLoading(false);
+      setLoadingMessage(null);
     }
   };
 
@@ -191,22 +195,26 @@ export default function Home() {
             </p>
 
             <div className="mt-12 flex flex-wrap items-center gap-5">
-              <label className="animate-float cursor-pointer rounded-full bg-white px-9 py-3.5 text-sm font-medium text-black shadow-lg shadow-black/40 transition hover:bg-white/85">
-                Choose files
+              <label className="animate-float relative cursor-pointer rounded-full bg-white px-9 py-3.5 text-sm font-medium text-black shadow-lg shadow-black/40 transition hover:bg-white/85">
+                {loading ? "Analyzing..." : "Choose files"}
                 <input
+                  aria-label={loading ? "Analyzing files" : "Choose files"}
                   type="file"
                   multiple
+                  disabled={loading}
                   accept=".pdf,.docx"
-                  className="hidden"
+                  className="absolute inset-0 cursor-pointer opacity-0"
                   onChange={(ev) => {
                     const files = Array.from(ev.target.files ?? []);
-                    if (files.length > 0) handleFiles(files);
+                    ev.target.value = "";
+                    if (files.length > 0) void handleFiles(files);
                   }}
                 />
               </label>
               <button
                 onClick={() => setCandidate(mockProfile.candidate)}
-                className="animate-float rounded-full border border-white/20 px-9 py-3.5 text-sm text-white/70 transition hover:bg-white/10"
+                disabled={loading}
+                className="animate-float rounded-full border border-white/20 px-9 py-3.5 text-sm text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                 style={{ animationDelay: "0.3s" }}
               >
                 Load example data
@@ -218,8 +226,14 @@ export default function Home() {
               01 Upload&ensp;·&ensp;02 Analyze&ensp;·&ensp;03 Profile
             </p>
 
-            {loading && (
-              <p className="mt-6 text-sm text-white/50">Analyzing, please wait...</p>
+            {loading && loadingMessage && (
+              <div
+                role="status"
+                className="mt-6 inline-flex items-center gap-3 rounded-xl border border-teal-300/20 bg-teal-300/10 px-4 py-3 text-sm text-teal-50"
+              >
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-teal-100/30 border-t-teal-100" />
+                {loadingMessage}
+              </div>
             )}
             {error && <p className="mt-6 text-sm text-rose-400">{error}</p>}
           </div>

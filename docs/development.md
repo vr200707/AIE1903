@@ -158,4 +158,4 @@ http://localhost:3000
 - 普通 PDF/DOCX 不需要 OCR。
 - 扫描件需要 Tesseract 和 Poppler；未安装时 OCR 测试会跳过。
 - 后端错误返回可能是嵌套 `detail` 对象，前端已兼容。
-- 联调通过前不要修改 `schema.json` 或 `api.md`。
+- 联调通过前不要修改 `contracts/schema.json` 或 `docs/api.md`。
