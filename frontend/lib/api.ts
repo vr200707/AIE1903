@@ -1,12 +1,17 @@
 import type {
   CandidateProfile,
   UploadResponse,
+  ChunkInitResponse,
   AnalyzeResponse,
   QAResponse,
 } from "./types";
 
 // 统一走同源相对路径 /api/*，由 Next.js rewrites 代理到后端（见 next.config.ts），避免 CORS
 const API_BASE = "";
+
+// Next.js 代理对请求体有 10MB 缓冲上限；单文件 / 总大小超过该阈值就改走分片上传。
+const CHUNK_THRESHOLD = 8 * 1024 * 1024; // 8MB，留出 multipart 开销余量
+const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB/片，与后端保持一致
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
@@ -31,14 +36,50 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-// 1. 上传文档（multipart/form-data）
+// 1. 上传文档：小文件一次 multipart 提交；大文件分片多次请求，避免代理层 500。
 export async function uploadFiles(files: File[]): Promise<UploadResponse> {
+  const total = files.reduce((sum, file) => sum + file.size, 0);
+  if (total > CHUNK_THRESHOLD) {
+    return uploadFilesChunked(files);
+  }
   const form = new FormData();
   files.forEach((f) => form.append("files", f));
   return request<UploadResponse>(`${API_BASE}/api/upload`, {
     method: "POST",
     body: form,
   });
+}
+
+async function uploadFilesChunked(files: File[]): Promise<UploadResponse> {
+  const init = await request<ChunkInitResponse>(`${API_BASE}/api/upload/init`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      files: files.map((f) => ({ filename: f.name, total_bytes: f.size })),
+    }),
+  });
+
+  for (let fileIndex = 0; fileIndex < files.length; fileIndex += 1) {
+    const file = files[fileIndex];
+    const chunkCount = Math.ceil(file.size / CHUNK_SIZE);
+    for (let chunkIndex = 0; chunkIndex < chunkCount; chunkIndex += 1) {
+      const start = chunkIndex * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      await request<{ received: boolean }>(
+        `${API_BASE}/api/upload/session/${init.session_id}/files/${fileIndex}/chunks/${chunkIndex}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/octet-stream" },
+          body: file.slice(start, end),
+        },
+      );
+    }
+  }
+
+  return request<UploadResponse>(
+    `${API_BASE}/api/upload/session/${init.session_id}/complete`,
+    { method: "POST" },
+  );
 }
 
 // 2. 触发抽取与分析
@@ -48,6 +89,11 @@ export async function analyze(uploadId: string): Promise<AnalyzeResponse> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ upload_id: uploadId }),
   });
+}
+
+// 2b. 轮询异步分析进度（分析可能耗时超过代理超时，因此拆成异步任务）
+export async function getAnalyzeStatus(uploadId: string): Promise<AnalyzeResponse> {
+  return request<AnalyzeResponse>(`${API_BASE}/api/analyze/${uploadId}`);
 }
 
 // 3. 获取结构化档案（profile_id 或 upload_id 必须且只能传一个）

@@ -1,4 +1,5 @@
 import shutil
+import time
 import unittest
 from unittest import mock
 
@@ -15,7 +16,18 @@ class ApiTests(unittest.TestCase):
 
     def tearDown(self):
         api._UPLOADS.clear()
+        api._CHUNK_SESSIONS.clear()
         shutil.rmtree(api.UPLOAD_DIR, ignore_errors=True)
+
+    def _wait_analysis(self, upload_id: str, timeout: float = 5.0):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            response = self.client.get(f"/api/analyze/{upload_id}")
+            body = response.json()
+            if body.get("status") in ("completed", "partial"):
+                return response
+            time.sleep(0.05)
+        raise AssertionError("analysis did not finish in time")
 
     def test_health(self):
         response = self.client.get("/health")
@@ -35,7 +47,10 @@ class ApiTests(unittest.TestCase):
         with mock.patch.object(api, "parse_document", return_value=object()), mock.patch.object(
             api, "extract_profile", return_value=(profile, [])
         ), mock.patch.object(api, "verify_profile", return_value=profile):
-            analyzed = self.client.post("/api/analyze", json={"upload_id": upload_id})
+            started = self.client.post("/api/analyze", json={"upload_id": upload_id})
+            self.assertEqual(started.status_code, 202)
+            self.assertEqual(started.json()["status"], "processing")
+            analyzed = self._wait_analysis(upload_id)
 
         self.assertEqual(analyzed.status_code, 200)
         body = analyzed.json()

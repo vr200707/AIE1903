@@ -198,6 +198,7 @@ def verify_publication(
     publication: dict[str, Any],
     *,
     query_date: str | None = None,
+    warnings: list[str] | None = None,
 ) -> dict[str, Any]:
     """核验一条论文声明，返回追加了核验证据的副本（不修改入参）。"""
     query_date = query_date or _today()
@@ -208,6 +209,10 @@ def verify_publication(
         return verified
 
     candidates, errors = _search_candidates(title)
+
+    if errors and warnings is not None:
+        for error in errors:
+            warnings.append(f"Publication verification source unavailable for \"{title}\": {error}")
 
     if errors and not candidates:
         verified["evidence"].append(
@@ -302,9 +307,10 @@ def verify_publications(
     publications: list[dict[str, Any]],
     *,
     query_date: str | None = None,
+    warnings: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     return [
-        verify_publication(publication, query_date=query_date)
+        verify_publication(publication, query_date=query_date, warnings=warnings)
         for publication in publications
     ]
 
@@ -331,6 +337,7 @@ def verify_text_claim(
     query_date: str | None = None,
     search: Any = None,
     max_results: int = 5,
+    warnings: list[str] | None = None,
 ) -> dict[str, Any]:
     """对一条非论文声明做通用网页搜索核验，返回一条 evidence。
 
@@ -344,6 +351,8 @@ def verify_text_claim(
     try:
         results = search(claim_text, max_results=max_results)
     except Exception as exc:  # 网络 / 服务异常不判为造假。
+        if warnings is not None:
+            warnings.append(f"Web search unavailable for \"{claim_text}\" ({type(exc).__name__})")
         return _web_evidence(
             f"Web search is temporarily unavailable ({type(exc).__name__}). The claim is marked as to_verify.",
             "to_verify",
@@ -443,10 +452,11 @@ def _verify_web_claims(
     *,
     query_date: str,
     search: Any,
+    warnings: list[str] | None = None,
 ) -> dict[str, Any]:
     for claim_text, kind, index in _web_claims_from_profile(candidate):
         evidence = verify_text_claim(
-            claim_text, query_date=query_date, search=search
+            claim_text, query_date=query_date, search=search, warnings=warnings
         )
         _append_web_evidence(candidate, kind, index, evidence)
     return candidate
@@ -458,6 +468,7 @@ def verify_profile(
     query_date: str | None = None,
     verify_web: bool = False,
     search: Any = None,
+    warnings: list[str] | None = None,
 ) -> dict[str, Any]:
     """对完整档案执行公开来源核验，返回追加核验证据后的档案（浅拷贝）。
 
@@ -469,11 +480,16 @@ def verify_profile(
     candidate = copy.deepcopy(profile["candidate"])
     publications_impact = candidate["publications_impact"]
     publications_impact["publications"] = verify_publications(
-        publications_impact.get("publications", []), query_date=query_date
+        publications_impact.get("publications", []),
+        query_date=query_date,
+        warnings=warnings,
     )
     if verify_web:
         candidate = _verify_web_claims(
-            candidate, query_date=query_date or _today(), search=search
+            candidate,
+            query_date=query_date or _today(),
+            search=search,
+            warnings=warnings,
         )
     verified["candidate"] = candidate
     return verified

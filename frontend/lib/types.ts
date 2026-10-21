@@ -196,11 +196,33 @@ export interface UploadResponse {
   documents: UploadedDocument[];
 }
 
+export interface ChunkInitFile {
+  file_index: number;
+  filename: string;
+  total_bytes: number;
+  chunk_count: number;
+}
+
+export interface ChunkInitResponse {
+  session_id: string;
+  chunk_size: number;
+  files: ChunkInitFile[];
+}
+
+export type AnalyzeStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "partial"
+  | "failed";
+
 export interface AnalyzeResponse {
-  profile_id: string;
-  status: string;
-  schema_version: string;
-  candidate: Candidate;
+  upload_id?: string;
+  profile_id?: string;
+  status: AnalyzeStatus;
+  schema_version?: string;
+  candidate?: Candidate;
+  warnings?: string[];
 }
 
 export interface QAResponse {

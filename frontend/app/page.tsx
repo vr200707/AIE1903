@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { mockProfile } from "@/lib/mock";
-import { uploadFiles, analyze, askQuestion } from "@/lib/api";
+import { uploadFiles, analyze, getAnalyzeStatus, askQuestion } from "@/lib/api";
 import { Section } from "@/components/Section";
 import { EvidenceList } from "@/components/EvidenceList";
 import { EvidenceBadge } from "@/components/EvidenceBadge";
@@ -103,6 +103,7 @@ export default function Home() {
   const [qaResult, setQaResult] = useState<QAResponse | null>(null);
   const [qaError, setQaError] = useState<string | null>(null);
   const [qaLoading, setQaLoading] = useState(false);
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   const getStatus = (e: Evidence): EvidenceStatus =>
     corrections.get(e) ?? e.evidence_status;
@@ -118,16 +119,40 @@ export default function Home() {
   const handleFiles = async (files: File[]) => {
     setLoading(true);
     setError(null);
+    setWarnings([]);
     try {
       const { upload_id } = await uploadFiles(files);
-      const { profile_id, candidate } = await analyze(upload_id);
-      setProfileId(profile_id);
-      setCandidate(candidate);
+      const first = await analyze(upload_id);
+      if (first.status === "completed" || first.status === "partial") {
+        setProfileId(first.profile_id ?? null);
+        setCandidate(first.candidate ?? null);
+        setWarnings(first.warnings ?? []);
+      } else {
+        await pollAnalyze(upload_id);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Analysis failed. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const pollAnalyze = async (uploadId: string) => {
+    // 分析在后台运行；每 1.5s 轮询一次，最长约 10 分钟。
+    for (let attempt = 0; attempt < 400; attempt += 1) {
+      const res = await getAnalyzeStatus(uploadId);
+      if (res.status === "completed" || res.status === "partial") {
+        setProfileId(res.profile_id ?? null);
+        setCandidate(res.candidate ?? null);
+        setWarnings(res.warnings ?? []);
+        return;
+      }
+      if (res.status === "failed") {
+        throw new Error("Analysis failed on the server. Please try again.");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+    throw new Error("Analysis timed out. Please try again.");
   };
 
   const handleAsk = async () => {
@@ -287,6 +312,17 @@ export default function Home() {
       <Header />
 
       <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
+        {warnings.length > 0 && (
+          <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-200">
+            <p className="font-medium">部分信息未能完成外部核验（文件上传本身已成功）</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              {warnings.map((warning, index) => (
+                <li key={index}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="animate-fade-in-up">
           <TagFilter tags={tags} filter={filter} onChange={setFilter} />
         </div>
