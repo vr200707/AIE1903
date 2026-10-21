@@ -3,8 +3,10 @@
 .env.*
 !.env.example
 venv/
+.venv/
 __pycache__/
 *.pyc
+*.py[cod]
 node_modules/
 dist/
 .next/
@@ -13,3 +15,18 @@ coverage/
 .npm-cache/
 .appdata/
 .cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.DS_Store
+Thumbs.db
+
+# Private candidate materials
+data/private/
+data/samples/*
+!data/samples/.gitkeep
+!data/samples/README.md
+
+# Local agent/tooling configuration
+frontend/AGENTS.md
+frontend/CLAUDE.md

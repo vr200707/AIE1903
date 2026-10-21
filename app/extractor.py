@@ -32,12 +32,13 @@ from app.parser import ParsedDocument
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SCHEMA_PATH = PROJECT_ROOT / "docs" / "schema.json"
+SCHEMA_PATH = PROJECT_ROOT / "contracts" / "schema.json"
 CACHE_DIR = PROJECT_ROOT / ".cache" / "extraction"
 QUERY_DATE = "2026-09-29"  # 样本集标明的查询日期
 
 EXTRACTION_STRATEGY = "split-v1"
 PUBLICATIONS_PER_CHUNK = 12
+DEFAULT_MAX_OUTPUT_TOKENS = 8192
 
 
 def _load_dotenv() -> None:
@@ -56,6 +57,24 @@ def _model_name() -> str:
 def _base_url() -> str:
     _load_dotenv()
     return os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+
+
+def _max_output_tokens() -> int:
+    _load_dotenv()
+    raw = os.getenv(
+        "DEEPSEEK_MAX_OUTPUT_TOKENS", str(DEFAULT_MAX_OUTPUT_TOKENS)
+    )
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValueError(
+            "DEEPSEEK_MAX_OUTPUT_TOKENS must be a positive integer"
+        ) from exc
+    if value <= 0:
+        raise ValueError(
+            "DEEPSEEK_MAX_OUTPUT_TOKENS must be a positive integer"
+        )
+    return value
 
 
 def _max_context_chars() -> int:
@@ -185,6 +204,7 @@ evidence([evidence])
 4. evidence 里 source 用文件名、page 用该论文所在页码（找不到就 null）、evidence 逐字引用原文。
 5. 只输出一个 JSON 对象，不要 markdown 代码围栏，不要任何解释文字。
 6. 标题与 evidence 原文保留原样，其余字段值使用英文。
+7. evidence.evidence 只保留能证明论文身份的最短原文，最多 300 个字符。
 """
 
 
@@ -300,6 +320,7 @@ def _chat(messages: list[dict[str, str]]) -> str:
         model=_model_name(),
         messages=messages,
         temperature=0,
+        max_tokens=_max_output_tokens(),
         response_format={"type": "json_object"},
     )
     return response.choices[0].message.content or "{}"
@@ -376,15 +397,14 @@ def _enumerate_titles(rendered: str) -> list[dict[str, Any]]:
     return titles
 
 
-def _expand_publications(
+def _expand_publication_batch(
     rendered: str,
-    titles: list[dict[str, Any]],
-    papers_per_chunk: int,
+    batch: list[dict[str, Any]],
+    *,
+    max_retries: int,
 ) -> list[dict[str, Any]]:
-    """按标题分批补全完整 publication record，并合并返回。"""
-    records: list[dict[str, Any]] = []
-    for start in range(0, len(titles), papers_per_chunk):
-        batch = titles[start : start + papers_per_chunk]
+    last_error = ""
+    for _ in range(max_retries + 1):
         user_content = (
             rendered
             + "\n\n需要抽取的论文标题列表：\n"
@@ -396,10 +416,42 @@ def _expand_publications(
                 {"role": "user", "content": user_content},
             ]
         )
-        data = _parse_json(raw, "publication expansion")
+        try:
+            data = _parse_json(raw, "publication expansion")
+        except ValueError as exc:
+            last_error = str(exc)
+            continue
         publications = data.get("publications") if isinstance(data, dict) else None
         if isinstance(publications, list):
-            records.extend(item for item in publications if isinstance(item, dict))
+            return [item for item in publications if isinstance(item, dict)]
+        last_error = "Publication expansion did not return a publications list"
+
+    if len(batch) > 1:
+        midpoint = len(batch) // 2
+        return _expand_publication_batch(
+            rendered, batch[:midpoint], max_retries=max_retries
+        ) + _expand_publication_batch(
+            rendered, batch[midpoint:], max_retries=max_retries
+        )
+    raise ValueError(f"Publication expansion failed after retries: {last_error}")
+
+
+def _expand_publications(
+    rendered: str,
+    titles: list[dict[str, Any]],
+    papers_per_chunk: int,
+    *,
+    max_retries: int,
+) -> list[dict[str, Any]]:
+    """按标题分批补全完整 publication record，并合并返回。"""
+    records: list[dict[str, Any]] = []
+    for start in range(0, len(titles), papers_per_chunk):
+        batch = titles[start : start + papers_per_chunk]
+        records.extend(
+            _expand_publication_batch(
+                rendered, batch, max_retries=max_retries
+            )
+        )
     return records
 
 
@@ -452,7 +504,12 @@ def extract_profile(
     candidate = _extract_meta(rendered, max_retries)
 
     titles = _enumerate_titles(rendered) if "publication" in rendered.lower() else []
-    publications = _expand_publications(rendered, titles, papers_per_chunk)
+    publications = _expand_publications(
+        rendered,
+        titles,
+        papers_per_chunk,
+        max_retries=max_retries,
+    )
     candidate["publications_impact"]["publications"] = _dedup_publications(publications)
 
     profile = {"schema_version": "1.0.0", "candidate": candidate}

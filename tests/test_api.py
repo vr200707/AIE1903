@@ -1,5 +1,6 @@
-import shutil
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from fastapi.testclient import TestClient
@@ -11,11 +12,14 @@ class ApiTests(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(api.app)
         api._UPLOADS.clear()
-        shutil.rmtree(api.UPLOAD_DIR, ignore_errors=True)
+        self.original_upload_dir = api.UPLOAD_DIR
+        self.temp_dir = tempfile.TemporaryDirectory()
+        api.UPLOAD_DIR = Path(self.temp_dir.name) / "uploads"
 
     def tearDown(self):
         api._UPLOADS.clear()
-        shutil.rmtree(api.UPLOAD_DIR, ignore_errors=True)
+        api.UPLOAD_DIR = self.original_upload_dir
+        self.temp_dir.cleanup()
 
     def test_health(self):
         response = self.client.get("/health")

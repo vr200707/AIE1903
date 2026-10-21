@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/vr200707/AIE1903/docs/schema.json",
+  "$id": "https://github.com/vr200707/AIE1903/contracts/schema.json",
   "title": "Candidate Resume Analysis Profile",
   "description": "用于候选人简历抽取、外部核验与综合评价的数据契约。未知信息使用 null 或空数组，不得推测补全。",
   "type": "object",
