@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useState, type ReactNode } from "react";
 
 // 模块装饰图：AI 生成的暗色线稿，融进玻璃卡片右上角
 export function sectionArt(prompt: string): string {
@@ -15,6 +17,7 @@ export function Section({
   hidden,
   delay = 0,
   art,
+  collapsible = true,
   className = "",
   children,
 }: {
@@ -22,10 +25,14 @@ export function Section({
   hidden?: boolean;
   delay?: number;
   art?: string;
+  collapsible?: boolean;
   className?: string;
   children: ReactNode;
 }) {
+  const [open, setOpen] = useState(true);
+
   if (hidden) return null;
+
   return (
     <section
       className={`glass rounded-2xl transition-colors duration-300 hover:bg-white/[0.09] ${className}`}
@@ -44,12 +51,47 @@ export function Section({
           }}
         />
       )}
-      <div className="animate-pop relative p-7" style={{ animationDelay: `${delay}s` }}>
-        <h2 className="mb-6 flex items-center gap-3 pr-24 text-xl font-medium tracking-tight text-white">
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => collapsible && setOpen((v) => !v)}
+          aria-expanded={!collapsible ? true : open}
+          aria-controls={`section-${title.replace(/\W+/g, "-").toLowerCase()}`}
+          className={`flex w-full items-center gap-3 px-7 pt-6 pr-28 text-left ${
+            open ? "pb-0" : "pb-6"
+          }`}
+        >
           <span className="h-6 w-1 shrink-0 rounded-full bg-accent" />
-          {title}
-        </h2>
-        {children}
+          <h2 className="flex-1 text-xl font-medium tracking-tight text-white">
+            {title}
+          </h2>
+          {collapsible && (
+            <span
+              className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-white/60 transition-transform duration-300 ${
+                open ? "rotate-0" : "-rotate-90"
+              }`}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <path
+                  d="M2.5 4.5L7 9l4.5-4.5"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+          )}
+        </button>
+        {open && (
+          <div
+            id={`section-${title.replace(/\W+/g, "-").toLowerCase()}`}
+            className="animate-pop p-7 pt-6"
+            style={{ animationDelay: `${delay}s` }}
+          >
+            {children}
+          </div>
+        )}
       </div>
     </section>
   );

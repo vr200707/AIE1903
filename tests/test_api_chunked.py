@@ -55,6 +55,10 @@ def _profile() -> dict:
     }
 
 
+def _assessment():
+    return {"overall": 7.5, "modules": {}}
+
+
 class TemporaryUploadDirsMixin:
     def setUp(self):
         self.client = TestClient(api.app)
@@ -311,11 +315,13 @@ class AsyncAnalyzeTests(TemporaryUploadDirsMixin, unittest.TestCase):
         ), mock.patch.object(
             api,
             "verify_profile",
-            side_effect=lambda profile, verify_web: profile,
+            side_effect=lambda profile, verify_web, on_progress=None: profile,
         ), mock.patch.object(
             api,
             "collect_retryable_verification_warnings",
             return_value=[warning_item],
+        ), mock.patch.object(
+            api, "score_candidate", return_value=_assessment()
         ):
             try:
                 started = self.client.post(

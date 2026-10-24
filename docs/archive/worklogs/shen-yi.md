@@ -1,6 +1,94 @@
-# AIE1903 工作日志（沈一 · 后端 & AI 核心）
+# AIE1903 工作日志（沈一 Shen Yi · 后端 & AI 核心）
 
 > 记录方式：按日期追加续写，最新在上；每次只新增日期条目，不改写历史条目。
+
+## 2026-10-24
+
+### 已完成（续 · 评分 / 可信度分离）
+
+- 按用户反馈把「评分」与「可信度」彻底拆开：
+  - 评分：新增 `app/scorer.py`，调用 DeepSeek（复用 `DEEPSEEK_API_KEY` /
+    `DEEPSEEK_MODEL` / `DEEPSEEK_BASE_URL`）按经历与成果质量打 0–10 分，prompt
+    明确不因证据待核实压分；按「模型 + 内容」哈希缓存到 `.cache/scoring/`；失败
+    返回 `None` 不阻断分析，只记 `scoring_unavailable` warning（前端显示「—」）。
+  - 分析流水线在 verify 后新增 scoring 阶段，`GET /api/analyze/{upload_id}`
+    终态返回 `assessment`；新增 `POST /api/score`（candidate → assessment，失败
+    502）供 mock / 已存档简历即时评分；`docs/api.md` 补 2c 章节。
+  - 可信度：保留原规则算法（来源类型权重 × 证据状态系数），修改证据标签实时
+    重算，与 DeepSeek 评分互不影响。
+- 前端：`scoring.ts` 拆为 `computeCredibility()`（规则）与 `computeAssessment()`
+  （合并 DS + 规则）；`ScoreRing` 支持评分（暖色）/ 可信度（青蓝）双环，无评分
+  显示「—」；总览顶部双环、星球下双徽章、详情抽屉双环 +「评分点评（DS）/
+  可信度（规则）」两组点评；`/api/score` 缺失评分时自动补拉并回写档案 v2
+  （localStorage key `aie1903.cv.archives.v2`）。
+- 验证：浏览器实测 demo Jane Doe 评分 8.0 / 可信度 7.4；把 institutional page
+  由 Conflict 改为 Confirmed 后，基本信息可信度 2.0→7.0、总可信度 7.4→8.2，
+  DeepSeek 评分保持 8.0 不变。后端 102 项测试全绿；前端 `tsc` / `build` 通过。
+- 测试修复（与功能同步）：`tests/test_api_chunked.py` 的 verify_profile mock 签名
+  补 `on_progress`；`tests/test_schema_validation.py` 加
+  `from __future__ import annotations` 兼容 Python 3.9；分析流程单测 mock
+  `score_candidate`，不再真实调用 DeepSeek。
+- 工作日志更名：`docs/archive/worklogs/shen-yifei.md` → `shen-yi.md`
+  （原文件名为队友建空占位文件时的错误命名，内容实为沈一；commit `199b7fc`）。
+
+### 已完成
+
+- Project 2 计划：依据 `Project2_Student_Guide(1).pptx` 生成
+  [docs/planning/project2-work-plan.md](docs/planning/project2-work-plan.md) —— 目标清单
+  （R1 候选人生成问题 → R2 委员会审核与发布 → R3 候选人提交视频 → R4 视频转写 →
+  R5 证据关联 AI 分析）、每个目标对应的知识点与技能映射、三人分工与阶段计划。
+- 评分体系（[frontend/lib/scoring.ts](frontend/lib/scoring.ts)）：总分 0–10 由两部分合成
+  —— 证据分 evidenceScore（权重 0.7，纯规则、零 API：每条证据按来源类型质量加权 ×
+  证据状态系数，模块内平均后映射 0–10，人工修改证据状态立即重算）+ 质量分
+  qualityScore（权重 0.3，对获奖 / 资助 / 教育任职 / 论文经历的评估；当前用确定性规则
+  给出保守估计，预留接口后续替换为 DeepSeek 等 LLM 评估）。
+- 评分总览弹窗（[PlanetOverview.tsx](frontend/components/PlanetOverview.tsx) +
+  [ScoreRing.tsx](frontend/components/ScoreRing.tsx)）：
+  - 居中紧凑卡片，图层在简历页之上、未关闭时四周仍可见背景；顶部约 1/6 高度放
+    姓名 / 大头照 / 总分，ScoreRing 圆环按「得分 / 10」比例顺时针填充（accent 色）。
+  - 六大模块各对应一颗真实行星贴图（`frontend/public/planets/`，地球 = 基本信息，
+    其余随机匹配），用径向 CSS mask 羽化边缘、不抠图；按用户要求去掉白色发光连线。
+  - 点击行星在右侧弹出深色不透明抽屉（不再透出背景），显示该模块全部细节；
+    星球下方保留一句优劣点评与该模块打分。
+  - 打开时锁定 body scroll，避免滚轮透传到背景简历页；关闭后恢复。
+  - 弹窗内复用 `Starfield` 新增的 `contained` 模式，保留流星星空背景。
+- 主页新增动态星空按钮「评分总览」（星点闪烁 + 流星扫过动效），按钮内直接显示
+  总分徽章 `X.X / 10`；关闭弹窗后可随时再打开，评分随人工标签修正实时变化。
+- 分析进度与反馈（解决「解析卡在第 9 关无进度」）：
+  - 后端 `/api/analyze` 状态机新增 `progress`（queued / parsing / extracting /
+    verifying_publications / completed，含 done/total），`verify_publications`
+    支持 `on_progress` 回调逐篇上报核验进度。
+  - 前端 `AnalyzingStage` 加黄色（accent）强调色进度条，动态效果：条内随机白色
+    星点流动 + 高光扫过；后端进度与前端平滑进度合并显示。
+- OpenAlex 限流韧性（后端 `app/verify.py` / `app/api.py`）：
+  - `MAILTO` 改为读 `OPENALEX_MAILTO` 环境变量（已填真实邮箱进入 polite pool，
+    配额更高），留空则退回公共池。
+  - 429 触发 60 秒断路器：本轮余下 OpenAlex 查询跳过并记 warning，不再把整篇
+    核验一次性标成 `to_verify`；5xx / 传输错误按 Retry-After 优先、指数退避
+    （2s–8s）最多重试 3 次。
+  - `VERIFY_MAX_WORKERS` 默认从 8 降到 2（`.env` 实际值 2），避免瞬时打爆限流。
+- CV 档案库（Archive）：
+  - [frontend/lib/archive.ts](frontend/lib/archive.ts)：localStorage 持久化档案
+    （profileId、姓名、机构、快照、存档时间）；`ArchiveProvider` 跨页共享。
+  - 侧栏新增「档案库 Archive」：每次分析完成（或 Load example data）自动存档；
+    条目做成星空质感文件夹卡片（`ArchiveFolder`），文件夹中央显示姓名 + 总分；
+    点击跳回主页并回载该简历，且可再打开评分总览。
+- 体验细节：各分析模块加可折叠按钮，避免长页；`Starfield` 支持容器内铺满
+  （`contained` 模式），供弹窗与按钮复用流星背景。
+- 视觉资产：`outputs/score-overview-mockup/`（评分总览效果图与可折叠板块截图）、
+  `frontend/public/planets/`（真实行星贴图）、`scripts/make_planet_sprites.py`
+  （行星贴图预处理脚本）。
+- 验证：前端 `npx tsc --noEmit` 通过；前端首页与 `/methodology` HTTP 200；
+  后端 `/health` HTTP 200。
+
+### 待办
+
+- qualityScore 目前是确定性规则估计，接入 DeepSeek 评估（或更对口的免费 / 廉价
+  API）后替换该部分，并保留纯规则 fallback。
+- 档案库目前存 localStorage（仅本机浏览器）；后续如需跨设备 / 多用户，改由后端
+  持久化（P2 的档案 / 问题集 / 视频存储本来也要落地，可一并规划）。
+- 本次前端 + 后端改动在 `feature/frontend-deep-space-ui` 分支，需验证完整
+  「上传 → 分析 → 总览 → 档案库」链路后合并 `main`（`main` 受保护，走 PR）。
 
 ## 2026-10-21
 

@@ -465,6 +465,54 @@ curl -X POST http://localhost:8000/api/upload \
 `failed` 使用 `200` 表示作业状态查询成功，避免轮询客户端把作业失败误当作查询接口
 故障。再次调用 `POST /api/analyze` 可以重试失败的 `upload_id`。
 
+分析终态响应（`completed` / `completed_with_warnings`）额外携带
+`assessment` 字段——DeepSeek 评分结果，结构见下方「评分」一节；
+评分失败时为 `null` 并追加 `scoring_unavailable` warning。
+
+### 2c. 档案评分 — `POST /api/score`
+
+对给定档案调用 DeepSeek 打分（评分与可信度解耦）：
+
+- `评分`：DeepSeek 对经历与成果质量打 0–10 分（综合分 + 六大模块，各带一句中文
+  优劣点评）；缺失字段按中性处理，不因证据未核验而压低。
+- `可信度`：由前端规则算法（来源类型权重 × 证据状态系数）单独计算，本接口不涉及。
+
+请求体：
+
+```json
+{
+  "candidate": {
+    "basic_info": {},
+    "education_employment": {},
+    "awards_funding": {},
+    "publications_impact": {},
+    "academic_service": {},
+    "overall_evaluation": {}
+  }
+}
+```
+
+响应 `200 OK`：
+
+```json
+{
+  "assessment": {
+    "overall": 7.8,
+    "modules": {
+      "basic_info": { "score": 7.5, "pros": "……", "cons": "……" },
+      "education_employment": { "score": 7.2, "pros": "……", "cons": "……" },
+      "awards_funding": { "score": 8.5, "pros": "……", "cons": "……" },
+      "publications_impact": { "score": 7.0, "pros": "……", "cons": "……" },
+      "academic_service": { "score": 6.5, "pros": "……", "cons": "……" },
+      "overall_evaluation": { "score": 7.6, "pros": "……", "cons": "……" }
+    }
+  }
+}
+```
+
+评分失败（LLM 服务不可用等）返回 `502`；结果按「模型 + 档案内容」哈希缓存，
+重复请求不会重复计费。
+
 ### 3. 获取结构化档案 — `GET /api/profile`
 
 返回缓存的结构化档案。

@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>候选人画像总览 · Candidate Overview（效果图 v2）</title>
+<style>
+  :root {
+    --bg: #05060e;
+    --fg: #e6e8ef;
+    --muted: #9aa3bd;
+    --accent: #f5a524;
+    --accent-soft: #ffb454;
+    --cool: #4fd1c5;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI",
+      "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    overflow: hidden;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #stars { position: fixed; inset: 0; z-index: 0; }
+
+  .nebula {
+    position: fixed; border-radius: 50%; filter: blur(80px);
+    pointer-events: none; z-index: 0;
+  }
+  .nebula-1 { width: 520px; height: 520px; left: -120px; top: -140px;
+    background: radial-gradient(circle, rgba(79,209,197,0.16), transparent 65%); }
+  .nebula-2 { width: 680px; height: 680px; right: -180px; top: 6%;
+    background: radial-gradient(circle, rgba(245,165,36,0.13), transparent 65%); }
+  .nebula-3 { width: 640px; height: 640px; left: 32%; bottom: -260px;
+    background: radial-gradient(circle, rgba(139,124,246,0.15), transparent 65%); }
+
+  /* ---- 星座连线层 ---- */
+  #constellation { position: fixed; inset: 0; z-index: 1; width: 100%; height: 100%; }
+
+  /* ---- 主容器 ---- */
+  .stage { position: relative; z-index: 3; width: 100%; height: 100vh; }
+
+  /* ---- 顶部约 1/6：标题 + 评分 ---- */
+  .topbar {
+    height: 52px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 36px;
+  }
+  .topbar-title { display: flex; align-items: baseline; gap: 12px; }
+  .topbar-title .cn {
+    font-family: "Iowan Old Style", "Songti SC", serif;
+    font-size: 20px; font-weight: 600; letter-spacing: 0.01em;
+  }
+  .topbar-title .en { color: var(--muted); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
+  .close {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.05); color: var(--fg); font-size: 14px;
+    display: grid; place-items: center; cursor: pointer;
+  }
+
+  .scorebar {
+    height: 112px;
+    display: flex; align-items: center; justify-content: center; gap: 26px;
+    padding: 0 36px;
+  }
+  .id {
+    display: flex; align-items: center; gap: 13px;
+    min-width: 0;
+  }
+  .avatar {
+    width: 58px; height: 58px; border-radius: 50%;
+    background:
+      radial-gradient(circle at 32% 28%, rgba(255,255,255,0.28), transparent 42%),
+      linear-gradient(145deg, #ffb454 0%, #f5a524 46%, #b97216 100%);
+    display: grid; place-items: center;
+    color: #fff; font-size: 25px; font-weight: 600;
+    font-family: "Iowan Old Style", "Songti SC", serif;
+    border: 1px solid rgba(255,255,255,0.24);
+    box-shadow: 0 0 20px rgba(245,165,36,0.3);
+  }
+  .id-meta { line-height: 1.35; }
+  .id-name { font-size: 16px; font-weight: 600; }
+  .id-inst { color: var(--muted); font-size: 12px; }
+
+  .vdiv { width: 1px; height: 42px; background: rgba(255,255,255,0.12); }
+
+  .ring-box { position: relative; width: 108px; height: 108px; }
+  .ring-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1px; line-height: 1;
+  }
+  .score-num { font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .score-max { color: var(--muted); font-size: 12px; margin-top: 1px; }
+  .score-label { color: var(--muted); font-size: 10px; letter-spacing: 0.14em; margin-top: 4px; }
+
+  .score-side { color: var(--muted); font-size: 12px; line-height: 1.6; max-width: 240px; }
+  .score-side b { color: var(--fg); font-weight: 600; }
+
+  /* ---- 星球散落层 ---- */
+  .planet-group { position: absolute; width: 0; height: 0; cursor: pointer; }
+  .planet-group:hover .planet-img { transform: translate(-50%, -50%) scale(1.05); }
+  .planet-img {
+    position: absolute; left: 0; top: 0;
+    transform: translate(-50%, -50%);
+    transition: transform 0.25s ease;
+  }
+  .p-caption {
+    position: absolute; left: 0;
+    transform: translateX(-50%);
+    width: 224px; text-align: center;
+  }
+  .p-title { font-size: 15px; font-weight: 600; line-height: 1.25; }
+  .p-title .en { display: block; color: var(--muted); font-size: 10.5px; font-weight: 500;
+    letter-spacing: 0.08em; margin-top: 2px; text-transform: uppercase; }
+  .p-note { color: var(--muted); font-size: 12px; line-height: 1.45; margin-top: 5px; }
+  .p-score {
+    display: inline-flex; align-items: center; gap: 5px;
+    margin-top: 6px; padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.13);
+    font-variant-numeric: tabular-nums;
+  }
+  .p-score b { font-size: 13px; font-weight: 700; color: var(--accent-soft); }
+  .p-score span { font-size: 10px; color: var(--muted); letter-spacing: 0.06em; }
+
+  .hint {
+    position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+    color: rgba(255,255,255,0.42); font-size: 11.5px; letter-spacing: 0.05em;
+  }
+  .hint b { color: var(--accent-soft); font-weight: 600; }
+</style>
+</head>
+<body>
+  <canvas id="stars"></canvas>
+  <div class="nebula nebula-1"></div>
+  <div class="nebula nebula-2"></div>
+  <div class="nebula nebula-3"></div>
+
+  <svg id="constellation" viewBox="0 0 1600 1000" preserveAspectRatio="none">
+    <defs>
+      <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+        <feGaussianBlur stdDeviation="5" result="b"/>
+        <feMerge>
+          <feMergeNode in="b"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    <g filter="url(#soft)" opacity="0.62" fill="none" stroke="rgba(218, 228, 255, 0.38)" stroke-width="1.1">
+      <line x1="250" y1="320" x2="700" y2="300"/>
+      <line x1="700" y1="300" x2="1285" y2="390"/>
+      <line x1="1285" y1="390" x2="1320" y2="880"/>
+      <line x1="1320" y1="880" x2="1020" y2="720"/>
+      <line x1="1020" y1="720" x2="430" y2="760"/>
+      <line x1="430" y1="760" x2="250" y2="320"/>
+      <line x1="700" y1="300" x2="1020" y2="720"/>
+      <line x1="250" y1="320" x2="430" y2="760"/>
+    </g>
+    <g fill="rgba(255,255,255,0.7)">
+      <circle cx="250" cy="320" r="2.4"/>
+      <circle cx="430" cy="760" r="2.4"/>
+      <circle cx="700" cy="300" r="2.4"/>
+      <circle cx="1020" cy="720" r="2.4"/>
+      <circle cx="1285" cy="390" r="2.4"/>
+      <circle cx="1320" cy="880" r="2.4"/>
+    </g>
+  </svg>
+
+  <div class="stage">
+    <div class="topbar">
+      <div class="topbar-title">
+        <span class="cn">候选人画像总览</span>
+        <span class="en">Candidate Overview</span>
+      </div>
+      <div class="close" aria-label="关闭">✕</div>
+    </div>
+
+    <div class="scorebar">
+      <div class="id">
+        <div class="avatar">陈</div>
+        <div class="id-meta">
+          <div class="id-name">陈明远</div>
+          <div class="id-inst">西湖大学 · Westlake University</div>
+        </div>
+      </div>
+      <div class="vdiv"></div>
+      <div class="ring-box">
+        <svg width="108" height="108" viewBox="0 0 108 108">
+          <defs>
+            <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#4fd1c5"/>
+              <stop offset="58%" stop-color="#f5a524"/>
+              <stop offset="100%" stop-color="#ff7a5c"/>
+            </linearGradient>
+          </defs>
+          <circle cx="54" cy="54" r="45" fill="none" stroke="rgba(255,255,255,0.09)" stroke-width="7"/>
+          <circle cx="54" cy="54" r="45" fill="none" stroke="url(#ringGrad)" stroke-width="7" stroke-linecap="round"
+            stroke-dasharray="282.74" stroke-dashoffset="48.06" transform="rotate(-90 54 54)"/>
+        </svg>
+        <div class="ring-center">
+          <div class="score-num">8.3</div>
+          <div class="score-max">/ 10</div>
+          <div class="score-label">综合评分</div>
+        </div>
+      </div>
+      <div class="score-side">
+        <b>Overall Score</b><br/>由来源可靠性 + 获奖经历质量综合得出
+      </div>
+    </div>
+
+    <!-- 1 基本信息 -->
+    <div class="planet-group" style="left:250px; top:320px;">
+      <img class="planet-img" src="assets/earth.png" alt="" style="width:132px; filter: drop-shadow(0 0 26px rgba(90,169,255,0.55));" />
+      <div class="p-caption" style="top:74px;">
+        <div class="p-title">基本信息<span class="en">Basic Info</span></div>
+        <div class="p-note">信息完整清晰 · 缺标准头像照</div>
+        <div class="p-score"><b>9.0</b><span>评分</span></div>
+      </div>
+    </div>
+
+    <!-- 2 教育与任职 -->
+    <div class="planet-group" style="left:430px; top:760px;">
+      <img class="planet-img" src="assets/mars.png" alt="" style="width:112px; filter: drop-shadow(0 0 24px rgba(245,120,60,0.5));" />
+      <div class="p-caption" style="top:66px;">
+        <div class="p-title">教育与任职<span class="en">Education &amp; Employment</span></div>
+        <div class="p-note">履历链完整 · 早期任职证据偏少</div>
+        <div class="p-score"><b>8.6</b><span>评分</span></div>
+      </div>
+    </div>
+
+    <!-- 3 奖项与资助 -->
+    <div class="planet-group" style="left:700px; top:300px;">
+      <img class="planet-img" src="assets/jupiter.png" alt="" style="width:156px; filter: drop-shadow(0 0 30px rgba(220,180,140,0.55));" />
+      <div class="p-caption" style="top:88px;">
+        <div class="p-title">奖项与资助<span class="en">Awards &amp; Funding</span></div>
+        <div class="p-note">奖项级别高 · 部分年份待核</div>
+        <div class="p-score"><b>8.2</b><span>评分</span></div>
+      </div>
+    </div>
+
+    <!-- 4 论文与影响力 -->
+    <div class="planet-group" style="left:1020px; top:720px;">
+      <img class="planet-img" src="assets/saturn.png" alt="" style="width:210px; filter: drop-shadow(0 0 26px rgba(230,200,140,0.5));" />
+      <div class="p-caption" style="top:72px;">
+        <div class="p-title">论文与影响力<span class="en">Publications &amp; Impact</span></div>
+        <div class="p-note">引用数据充分 · 自述指标略高</div>
+        <div class="p-score"><b>7.8</b><span>评分</span></div>
+      </div>
+    </div>
+
+    <!-- 5 学术服务 -->
+    <div class="planet-group" style="left:1285px; top:390px;">
+      <img class="planet-img" src="assets/venus.png" alt="" style="width:108px; filter: drop-shadow(0 0 24px rgba(255,220,170,0.5));" />
+      <div class="p-caption" style="top:64px;">
+        <div class="p-title">学术服务<span class="en">Academic Service</span></div>
+        <div class="p-note">有实质贡献 · 公开记录较少</div>
+        <div class="p-score"><b>7.0</b><span>评分</span></div>
+      </div>
+    </div>
+
+    <!-- 6 综合评价 -->
+    <div class="planet-group" style="left:1320px; top:880px;">
+      <img class="planet-img" src="assets/neptune.png" alt="" style="width:120px; filter: drop-shadow(0 0 26px rgba(90,140,255,0.55));" />
+      <div class="p-caption" style="top:70px;">
+        <div class="p-title">综合评价<span class="en">Overall Evaluation</span></div>
+        <div class="p-note">总体可信 · 个别来源需人工确认</div>
+        <div class="p-score"><b>8.4</b><span>评分</span></div>
+      </div>
+    </div>
+
+    <div class="hint">点击任意 <b>星球</b> 查看该板块全部细节 · Click a <b>planet</b> to open full details</div>
+  </div>
+
+  <script>
+    (function () {
+      var canvas = document.getElementById("stars");
+      var ctx = canvas.getContext("2d");
+      var w = window.innerWidth, h = window.innerHeight;
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = w * dpr; canvas.height = h * dpr;
+      canvas.style.width = w + "px"; canvas.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      for (var i = 0; i < 420; i++) {
+        var x = Math.random() * w;
+        var y = Math.random() * h;
+        var r = 0.35 + Math.random() * 1.65;
+        var warm = Math.random() < 0.16;
+        var rgb = warm ? "255, 214, 170" : "206, 226, 255";
+        var a = 0.16 + Math.random() * 0.72;
+        ctx.beginPath();
+        ctx.fillStyle = "rgba(" + rgb + "," + a.toFixed(3) + ")";
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+        if (r > 1.35) {
+          var g = ctx.createRadialGradient(x, y, 0, x, y, r * 5);
+          g.addColorStop(0, "rgba(" + rgb + "," + (a * 0.45).toFixed(3) + ")");
+          g.addColorStop(1, "rgba(" + rgb + ",0)");
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(x, y, r * 5, 0, Math.PI * 2); ctx.fill();
+        }
+        if (Math.random() < 0.02) {
+          var len = r * 7;
+          ctx.strokeStyle = "rgba(" + rgb + "," + (a * 0.7).toFixed(3) + ")";
+          ctx.lineWidth = 0.7;
+          ctx.beginPath();
+          ctx.moveTo(x - len, y); ctx.lineTo(x + len, y);
+          ctx.moveTo(x, y - len); ctx.lineTo(x, y + len);
+          ctx.stroke();
+        }
+      }
+
+      function meteor(x, y, vx, vy, len) {
+        var nx = x - vx * len, ny = y - vy * len;
+        var g = ctx.createLinearGradient(nx, ny, x, y);
+        g.addColorStop(0, "rgba(255,255,255,0)");
+        g.addColorStop(1, "rgba(255,228,190,0.85)");
+        ctx.strokeStyle = g;
+        ctx.lineWidth = 1.6;
+        ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(nx, ny); ctx.lineTo(x, y); ctx.stroke();
+        var hg = ctx.createRadialGradient(x, y, 0, x, y, 8);
+        hg.addColorStop(0, "rgba(255,240,214,0.9)");
+        hg.addColorStop(1, "rgba(255,240,214,0)");
+        ctx.fillStyle = hg;
+        ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fill();
+      }
+      meteor(w * 0.16, h * 0.30, 9, 5.2, 170);
+      meteor(w * 0.84, h * 0.18, -8, 4.6, 150);
+    })();
+  </script>
+</body>
+</html>

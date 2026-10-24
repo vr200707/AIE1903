@@ -1,17 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { mockProfile } from "@/lib/mock";
-import { uploadFiles, analyze, getAnalyzeStatus, askQuestion } from "@/lib/api";
+import {
+  uploadFiles,
+  analyze,
+  getAnalyzeStatus,
+  fetchScore,
+  askQuestion,
+} from "@/lib/api";
 import { Section, sectionArt } from "@/components/Section";
 import Starfield from "@/components/Starfield";
 import AnalyzingStage from "@/components/AnalyzingStage";
 import CountUp from "@/components/CountUp";
+import { PlanetOverview } from "@/components/PlanetOverview";
 import { useIdentity } from "@/components/IdentityProvider";
 import { EvidenceList } from "@/components/EvidenceList";
 import { EvidenceBadge } from "@/components/EvidenceBadge";
 import { EvidenceModal } from "@/components/EvidenceModal";
 import { TagFilter, type FilterState } from "@/components/TagFilter";
+import { useArchive } from "@/components/ArchiveProvider";
+import { getArchive } from "@/lib/archive";
+import { computeAssessment } from "@/lib/scoring";
 import {
   authorRoleLabel,
   venueTypeLabel,
@@ -24,6 +34,8 @@ import type {
   EvidenceStatus,
   Candidate,
   AnalysisWarning,
+  AnalysisProgress,
+  LlmAssessment,
   QAResponse,
 } from "@/lib/types";
 
@@ -108,11 +120,63 @@ function BackButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+const OVERVIEW_STARS = [
+  { left: "11%", top: "26%", size: 2, delay: "0s", dur: "2.4s" },
+  { left: "27%", top: "64%", size: 3, delay: "0.7s", dur: "3.1s" },
+  { left: "46%", top: "20%", size: 2, delay: "1.3s", dur: "2.7s" },
+  { left: "63%", top: "70%", size: 2, delay: "0.4s", dur: "3.4s" },
+  { left: "80%", top: "32%", size: 3, delay: "1.9s", dur: "2.2s" },
+  { left: "91%", top: "58%", size: 1.5, delay: "1.0s", dur: "2.9s" },
+];
+
+function OverviewButton({
+  onClick,
+  score,
+}: {
+  onClick: () => void;
+  score: number | null;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="starfield-btn group relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-accent/35 px-4 py-2 text-sm text-accent-soft"
+    >
+      {OVERVIEW_STARS.map((s, i) => (
+        <span
+          key={i}
+          aria-hidden="true"
+          className="sf-star pointer-events-none absolute rounded-full bg-white"
+          style={{
+            left: s.left,
+            top: s.top,
+            width: s.size,
+            height: s.size,
+            animationDelay: s.delay,
+            animationDuration: s.dur,
+          }}
+        />
+      ))}
+      <span
+        aria-hidden="true"
+        className="sf-shoot pointer-events-none absolute inset-y-0 left-0 w-14 bg-gradient-to-r from-transparent via-white/50 to-transparent"
+      />
+      <span className="relative z-10" aria-hidden="true">✦</span>
+      <span className="relative z-10">评分总览</span>
+      <span className="relative z-10 inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold tabular-nums text-accent-soft">
+        {score != null ? score.toFixed(1) : "—"}
+        <span className="text-[10px] font-normal text-accent-soft/70">/10</span>
+      </span>
+    </button>
+  );
+}
+
 export default function Home() {
   const { setIdentity } = useIdentity();
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+  const [analysisProgress, setAnalysisProgress] =
+    useState<AnalysisProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [analysisWarnings, setAnalysisWarnings] = useState<AnalysisWarning[]>([]);
   const [filter, setFilter] = useState<FilterState>({ tags: [], search: "" });
@@ -125,9 +189,31 @@ export default function Home() {
   const [qaResult, setQaResult] = useState<QAResponse | null>(null);
   const [qaError, setQaError] = useState<string | null>(null);
   const [qaLoading, setQaLoading] = useState(false);
+  const [overviewOpen, setOverviewOpen] = useState(false);
+  const [llmAssessment, setLlmAssessment] = useState<LlmAssessment | null>(null);
+  const [scoreLoading, setScoreLoading] = useState(false);
+  const { saveArchive, pendingId, clearPending } = useArchive();
 
   const getStatus = (e: Evidence): EvidenceStatus =>
     corrections.get(e) ?? e.evidence_status;
+
+  // 对 mock / 已存档档案即时获取 DeepSeek 评分（后端分析已完成但评分
+  // 失败时也可用它重试）。
+  const refreshLlmScore = useCallback(
+    async (id: string, target: Candidate) => {
+      setScoreLoading(true);
+      try {
+        const res = await fetchScore(target);
+        setLlmAssessment(res);
+        saveArchive(id, target, res);
+      } catch {
+        // 评分失败不影响主流程：界面显示「—」并保留可信度。
+      } finally {
+        setScoreLoading(false);
+      }
+    },
+    [saveArchive],
+  );
 
   // 侧栏底部身份位跟随候选人
   useEffect(() => {
@@ -152,6 +238,7 @@ export default function Home() {
   const handleFiles = async (files: File[]) => {
     setLoading(true);
     setLoadingMessage("Uploading and parsing documents...");
+    setAnalysisProgress(null);
     setError(null);
     setAnalysisWarnings([]);
     try {
@@ -164,7 +251,19 @@ export default function Home() {
       ) {
         setProfileId(first.profile_id ?? null);
         setCandidate(first.candidate ?? null);
+        setLlmAssessment(first.assessment ?? null);
+        if (first.profile_id && first.candidate) {
+          saveArchive(
+            first.profile_id,
+            first.candidate,
+            first.assessment ?? null,
+          );
+          if (!first.assessment) {
+            void refreshLlmScore(first.profile_id, first.candidate);
+          }
+        }
         setAnalysisWarnings(first.warnings ?? []);
+        setOverviewOpen(true);
       } else {
         await pollAnalyze(upload_id);
       }
@@ -180,13 +279,23 @@ export default function Home() {
     // 分析在后台运行；每 1.5s 轮询一次，最长约 10 分钟。
     for (let attempt = 0; attempt < 400; attempt += 1) {
       const res = await getAnalyzeStatus(uploadId);
+      if (res.progress) setAnalysisProgress(res.progress);
       if (
         res.status === "completed" ||
         res.status === "completed_with_warnings"
       ) {
+        setAnalysisProgress(null);
         setProfileId(res.profile_id ?? null);
         setCandidate(res.candidate ?? null);
+        setLlmAssessment(res.assessment ?? null);
+        if (res.profile_id && res.candidate) {
+          saveArchive(res.profile_id, res.candidate, res.assessment ?? null);
+          if (!res.assessment) {
+            void refreshLlmScore(res.profile_id, res.candidate);
+          }
+        }
         setAnalysisWarnings(res.warnings ?? []);
+        setOverviewOpen(true);
         return;
       }
       if (res.status === "failed") {
@@ -223,9 +332,40 @@ export default function Home() {
     setQaResult(null);
     setQaError(null);
     setQuestion("");
+    setLlmAssessment(null);
+    setOverviewOpen(false);
   };
 
+  // 从侧栏档案库点击文件夹后，加载对应的已存档简历。
+  useEffect(() => {
+    if (!pendingId) return;
+    const entry = getArchive(pendingId);
+    if (entry) {
+      resetToHome();
+      setCandidate(entry.candidate);
+      setProfileId(entry.profileId);
+      setLlmAssessment(entry.llm ?? null);
+      if (!entry.llm) {
+        void refreshLlmScore(entry.profileId, entry.candidate);
+      }
+    }
+    clearPending();
+  }, [pendingId, clearPending, refreshLlmScore]);
+
   const c = candidate;
+
+  // 评分随 candidate 与人工修正（corrections）实时重算
+  const assessment = useMemo(
+    () =>
+      c
+        ? computeAssessment(
+            c,
+            (e) => corrections.get(e) ?? e.evidence_status,
+            llmAssessment,
+          )
+        : null,
+    [c, corrections, llmAssessment],
+  );
 
   // 每个模块的装饰图提示词（暗色线稿，融入星空玻璃）
   const ART = {
@@ -268,7 +408,7 @@ export default function Home() {
               </h2>
               <p className="mt-3 text-sm text-white/45">{loadingMessage}</p>
             </div>
-            <AnalyzingStage phase={loadingMessage} />
+            <AnalyzingStage phase={loadingMessage} progress={analysisProgress} />
           </main>
         ) : (
         <main className="relative flex flex-1 items-center justify-center px-6 py-16">
@@ -326,6 +466,10 @@ export default function Home() {
                 onClick={() => {
                   setAnalysisWarnings([]);
                   setCandidate(mockProfile.candidate);
+                  setLlmAssessment(null);
+                  saveArchive("demo", mockProfile.candidate, null);
+                  void refreshLlmScore("demo", mockProfile.candidate);
+                  setOverviewOpen(true);
                 }}
                 disabled={loading}
                 className="animate-sweep relative overflow-hidden rounded-full border border-white/20 px-9 py-3.5 text-sm text-white/70 transition hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
@@ -437,8 +581,15 @@ export default function Home() {
     <div className="relative min-h-screen text-white/90">
       <Starfield />
       <main className="mx-auto max-w-6xl space-y-5 px-8 py-10">
-        <div className="animate-pop" style={{ animationDelay: "0.05s" }}>
+        <div
+          className="animate-pop flex items-center justify-between gap-4"
+          style={{ animationDelay: "0.05s" }}
+        >
           <BackButton onClick={resetToHome} />
+          <OverviewButton
+            onClick={() => setOverviewOpen(true)}
+            score={assessment?.overall ?? null}
+          />
         </div>
         {analysisWarnings.length > 0 && (
           <div
@@ -799,6 +950,17 @@ export default function Home() {
           </Section>
         )}
       </main>
+
+      {overviewOpen && c && assessment && (
+        <PlanetOverview
+          candidate={c}
+          assessment={assessment}
+          onClose={() => setOverviewOpen(false)}
+          onEvidenceClick={setSelectedEvidence}
+          getStatus={getStatus}
+          scoreLoading={scoreLoading}
+        />
+      )}
 
       <EvidenceModal
         evidence={selectedEvidence}

@@ -55,12 +55,17 @@ function makeStar(w: number, h: number, cfg: (typeof LAYERS)[number], near: bool
 /**
  * 深邃宇宙星河背景：三层视差星场 + 闪烁 + 流星 + 鼠标视差。
  * 纯 canvas 手写，无第三方依赖。
+ *
+ * `contained` 为 true 时，星场会铺满其父容器（父容器需为 relative），
+ * 适合用作弹窗/卡片内部的背景；默认铺满整个视口。
  */
-export default function Starfield() {
+export default function Starfield({ contained = false }: { contained?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    const root = rootRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -82,8 +87,13 @@ export default function Starfield() {
 
     const resize = () => {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
-      w = window.innerWidth;
-      h = window.innerHeight;
+      if (contained && root) {
+        w = root.clientWidth || window.innerWidth;
+        h = root.clientHeight || window.innerHeight;
+      } else {
+        w = window.innerWidth;
+        h = window.innerHeight;
+      }
       canvas.width = Math.floor(w * dpr);
       canvas.height = Math.floor(h * dpr);
       canvas.style.width = `${w}px`;
@@ -98,8 +108,16 @@ export default function Starfield() {
     };
 
     const onPointer = (e: PointerEvent) => {
-      tx = (e.clientX / window.innerWidth - 0.5) * 2;
-      ty = (e.clientY / window.innerHeight - 0.5) * 2;
+      if (contained && root) {
+        const rect = root.getBoundingClientRect();
+        const px = rect.width > 0 ? (e.clientX - rect.left) / rect.width : 0;
+        const py = rect.height > 0 ? (e.clientY - rect.top) / rect.height : 0;
+        tx = (px - 0.5) * 2;
+        ty = (py - 0.5) * 2;
+      } else {
+        tx = (e.clientX / window.innerWidth - 0.5) * 2;
+        ty = (e.clientY / window.innerHeight - 0.5) * 2;
+      }
     };
 
     const spawnMeteor = () => {
@@ -220,17 +238,31 @@ export default function Starfield() {
     resize();
     window.addEventListener("resize", resize);
     window.addEventListener("pointermove", onPointer);
+    let observer: ResizeObserver | null = null;
+    if (contained && root) {
+      observer = new ResizeObserver(resize);
+      observer.observe(root);
+    }
     raf = requestAnimationFrame(draw);
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointermove", onPointer);
+      observer?.disconnect();
     };
-  }, []);
+  }, [contained]);
 
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden="true">
+    <div
+      ref={rootRef}
+      className={
+        contained
+          ? "pointer-events-none absolute inset-0 overflow-hidden"
+          : "pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+      }
+      aria-hidden="true"
+    >
       {/* 深空底色：深蓝紫，比首页更暗更“深邃” */}
       <div
         className="absolute inset-0"
