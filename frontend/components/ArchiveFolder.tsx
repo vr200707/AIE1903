@@ -56,9 +56,11 @@ export function ArchiveFolder({
           </span>
           <span className="inline-flex items-baseline gap-1 text-accent-soft">
             <b className="text-lg font-semibold leading-none tabular-nums">
-              {entry.score.toFixed(1)}
+              {(entry.score ?? entry.credibility).toFixed(1)}
             </b>
-            <span className="text-[10px] font-normal text-accent-soft/70">/10</span>
+            <span className="text-[10px] font-normal text-accent-soft/70">
+              /10 · {entry.score != null ? "评分" : "可信度"}
+            </span>
           </span>
         </span>
       </span>

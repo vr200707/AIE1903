@@ -4,6 +4,33 @@
 
 ## 2026-10-24
 
+### 已完成（续 · 评分 / 可信度分离）
+
+- 按用户反馈把「评分」与「可信度」彻底拆开：
+  - 评分：新增 `app/scorer.py`，调用 DeepSeek（复用 `DEEPSEEK_API_KEY` /
+    `DEEPSEEK_MODEL` / `DEEPSEEK_BASE_URL`）按经历与成果质量打 0–10 分，prompt
+    明确不因证据待核实压分；按「模型 + 内容」哈希缓存到 `.cache/scoring/`；失败
+    返回 `None` 不阻断分析，只记 `scoring_unavailable` warning（前端显示「—」）。
+  - 分析流水线在 verify 后新增 scoring 阶段，`GET /api/analyze/{upload_id}`
+    终态返回 `assessment`；新增 `POST /api/score`（candidate → assessment，失败
+    502）供 mock / 已存档简历即时评分；`docs/api.md` 补 2c 章节。
+  - 可信度：保留原规则算法（来源类型权重 × 证据状态系数），修改证据标签实时
+    重算，与 DeepSeek 评分互不影响。
+- 前端：`scoring.ts` 拆为 `computeCredibility()`（规则）与 `computeAssessment()`
+  （合并 DS + 规则）；`ScoreRing` 支持评分（暖色）/ 可信度（青蓝）双环，无评分
+  显示「—」；总览顶部双环、星球下双徽章、详情抽屉双环 +「评分点评（DS）/
+  可信度（规则）」两组点评；`/api/score` 缺失评分时自动补拉并回写档案 v2
+  （localStorage key `aie1903.cv.archives.v2`）。
+- 验证：浏览器实测 demo Jane Doe 评分 8.0 / 可信度 7.4；把 institutional page
+  由 Conflict 改为 Confirmed 后，基本信息可信度 2.0→7.0、总可信度 7.4→8.2，
+  DeepSeek 评分保持 8.0 不变。后端 102 项测试全绿；前端 `tsc` / `build` 通过。
+- 测试修复（与功能同步）：`tests/test_api_chunked.py` 的 verify_profile mock 签名
+  补 `on_progress`；`tests/test_schema_validation.py` 加
+  `from __future__ import annotations` 兼容 Python 3.9；分析流程单测 mock
+  `score_candidate`，不再真实调用 DeepSeek。
+- 工作日志更名：`docs/archive/worklogs/shen-yifei.md` → `shen-yi.md`
+  （原文件名为队友建空占位文件时的错误命名，内容实为沈一；commit `199b7fc`）。
+
 ### 已完成
 
 - Project 2 计划：依据 `Project2_Student_Guide(1).pptx` 生成

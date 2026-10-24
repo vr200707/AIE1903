@@ -8,6 +8,7 @@
 - `POST /api/analyze`  异步触发 解析 -> 抽取 -> 核验，立即返回 202；
 - `GET  /api/analyze/{upload_id}`  轮询分析进度与结果（含 warnings）；
 - `GET  /api/profile`  按 `profile_id` 或 `upload_id` 返回档案本体；
+- `POST /api/score`    对给定档案调用 DeepSeek 打分（评分与可信度解耦）；
 - `POST /api/qa`       基于档案回答自然语言问题（加分项）；
 - `GET  /health`       健康检查（联调用）。
 
@@ -43,6 +44,7 @@ from app.resilience import (
     collect_retryable_verification_warnings,
     warning,
 )
+from app.scorer import score_candidate
 from app.verify import mark_verification_incomplete, verify_profile
 
 
@@ -644,6 +646,25 @@ def _run_analysis(upload_id: str, entry: dict[str, Any]) -> None:
                 )
             )
 
+        _set_progress("scoring", 0, 1)
+        candidate = verified.get("candidate", {})
+        assessment = (
+            score_candidate(candidate) if isinstance(candidate, dict) else None
+        )
+        if assessment is None:
+            warnings.append(
+                warning(
+                    "scoring_unavailable",
+                    "scoring",
+                    (
+                        "DeepSeek scoring failed; the score overview will show "
+                        "rule-based credibility only. Retry the analysis when "
+                        "the LLM service recovers."
+                    ),
+                    retryable=True,
+                )
+            )
+
         with _UPLOAD_LOCK:
             entry["progress"] = {
                 "stage": "completed",
@@ -652,6 +673,7 @@ def _run_analysis(upload_id: str, entry: dict[str, Any]) -> None:
             }
             entry["profile"] = verified
             entry["profile_id"] = profile_id
+            entry["assessment"] = assessment
             entry["warnings"] = [item.as_dict() for item in warnings]
             entry["status"] = (
                 "completed_with_warnings" if warnings else "completed"
@@ -726,6 +748,7 @@ def analyze_status(upload_id: str) -> JSONResponse:
         profile = entry.get("profile")
         profile_id = entry.get("profile_id")
         progress = entry.get("progress")
+        assessment = entry.get("assessment")
     if profile is not None:
         return JSONResponse(
             status_code=200,
@@ -735,6 +758,7 @@ def analyze_status(upload_id: str) -> JSONResponse:
                 "profile_id": profile_id,
                 "schema_version": profile["schema_version"],
                 "candidate": profile["candidate"],
+                "assessment": assessment,
                 "warnings": warnings,
             },
         )
@@ -765,6 +789,22 @@ def analyze_status(upload_id: str) -> JSONResponse:
         status_code=200,
         content={"upload_id": upload_id, "status": "pending", "warnings": []},
     )
+
+
+@app.post("/api/score")
+def score(body: dict[str, Any]) -> JSONResponse:
+    """对给定档案调用 DeepSeek 打分；供前端对 mock / 已存档档案即时获取评分。"""
+    candidate = body.get("candidate")
+    if not isinstance(candidate, dict) or not candidate:
+        raise _http_error(422, "missing_candidate", "Provide candidate object")
+    assessment = score_candidate(candidate)
+    if assessment is None:
+        raise _http_error(
+            502,
+            "scoring_unavailable",
+            "DeepSeek scoring failed. Retry shortly.",
+        )
+    return JSONResponse(status_code=200, content={"assessment": assessment})
 
 
 @app.get("/api/profile")

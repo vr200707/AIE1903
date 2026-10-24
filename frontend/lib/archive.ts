@@ -1,8 +1,8 @@
 // CV 档案库：把每次分析完成的候选人画像存档到 localStorage，
 // 供左侧栏的档案库文件夹展示与一键重新打开。
 
-import { computeAssessment } from "./scoring";
-import type { Candidate } from "./types";
+import { computeCredibility } from "./scoring";
+import type { Candidate, LlmAssessment } from "./types";
 
 export interface ArchiveEntry {
   id: string;
@@ -10,12 +10,17 @@ export interface ArchiveEntry {
   name: string;
   institution: string;
   position: string;
-  score: number;
+  /** DeepSeek 评分；未评分时为 null，界面回退显示可信度。 */
+  score: number | null;
+  /** 规则可信度（0–10）。 */
+  credibility: number;
+  llm?: LlmAssessment | null;
   candidate: Candidate;
   createdAt: number;
 }
 
-const STORAGE_KEY = "aie1903.cv.archives.v1";
+// v2：评分（DeepSeek）与可信度（规则）分离；旧版合成总分不再兼容。
+const STORAGE_KEY = "aie1903.cv.archives.v2";
 
 function readAll(): ArchiveEntry[] {
   if (typeof window === "undefined") return [];
@@ -46,12 +51,13 @@ export function getArchive(id: string): ArchiveEntry | null {
   return readAll().find((e) => e.id === id) ?? null;
 }
 
-/** 依据候选人画像计算基础总分（不包含人工标签修正）并组装档案条目。 */
+/** 依据候选人画像计算可信度并组装档案条目（评分来自 DeepSeek）。 */
 export function buildArchive(
   profileId: string,
   candidate: Candidate,
+  llm?: LlmAssessment | null,
 ): ArchiveEntry {
-  const assessment = computeAssessment(candidate, (e) => e.evidence_status);
+  const cred = computeCredibility(candidate, (e) => e.evidence_status);
   const bi = candidate.basic_info;
   return {
     id: profileId,
@@ -59,7 +65,9 @@ export function buildArchive(
     name: bi.name?.trim() || "Unnamed candidate",
     institution: bi.institution ?? "",
     position: bi.position ?? "",
-    score: assessment.overall,
+    score: typeof llm?.overall === "number" ? llm.overall : null,
+    credibility: cred.overall,
+    llm: llm ?? null,
     candidate,
     createdAt: Date.now(),
   };

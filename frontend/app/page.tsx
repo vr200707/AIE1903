@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { mockProfile } from "@/lib/mock";
-import { uploadFiles, analyze, getAnalyzeStatus, askQuestion } from "@/lib/api";
+import {
+  uploadFiles,
+  analyze,
+  getAnalyzeStatus,
+  fetchScore,
+  askQuestion,
+} from "@/lib/api";
 import { Section, sectionArt } from "@/components/Section";
 import Starfield from "@/components/Starfield";
 import AnalyzingStage from "@/components/AnalyzingStage";
@@ -29,6 +35,7 @@ import type {
   Candidate,
   AnalysisWarning,
   AnalysisProgress,
+  LlmAssessment,
   QAResponse,
 } from "@/lib/types";
 
@@ -122,7 +129,13 @@ const OVERVIEW_STARS = [
   { left: "91%", top: "58%", size: 1.5, delay: "1.0s", dur: "2.9s" },
 ];
 
-function OverviewButton({ onClick, score }: { onClick: () => void; score: number }) {
+function OverviewButton({
+  onClick,
+  score,
+}: {
+  onClick: () => void;
+  score: number | null;
+}) {
   return (
     <button
       onClick={onClick}
@@ -150,7 +163,7 @@ function OverviewButton({ onClick, score }: { onClick: () => void; score: number
       <span className="relative z-10" aria-hidden="true">✦</span>
       <span className="relative z-10">评分总览</span>
       <span className="relative z-10 inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold tabular-nums text-accent-soft">
-        {score.toFixed(1)}
+        {score != null ? score.toFixed(1) : "—"}
         <span className="text-[10px] font-normal text-accent-soft/70">/10</span>
       </span>
     </button>
@@ -177,10 +190,30 @@ export default function Home() {
   const [qaError, setQaError] = useState<string | null>(null);
   const [qaLoading, setQaLoading] = useState(false);
   const [overviewOpen, setOverviewOpen] = useState(false);
+  const [llmAssessment, setLlmAssessment] = useState<LlmAssessment | null>(null);
+  const [scoreLoading, setScoreLoading] = useState(false);
   const { saveArchive, pendingId, clearPending } = useArchive();
 
   const getStatus = (e: Evidence): EvidenceStatus =>
     corrections.get(e) ?? e.evidence_status;
+
+  // 对 mock / 已存档档案即时获取 DeepSeek 评分（后端分析已完成但评分
+  // 失败时也可用它重试）。
+  const refreshLlmScore = useCallback(
+    async (id: string, target: Candidate) => {
+      setScoreLoading(true);
+      try {
+        const res = await fetchScore(target);
+        setLlmAssessment(res);
+        saveArchive(id, target, res);
+      } catch {
+        // 评分失败不影响主流程：界面显示「—」并保留可信度。
+      } finally {
+        setScoreLoading(false);
+      }
+    },
+    [saveArchive],
+  );
 
   // 侧栏底部身份位跟随候选人
   useEffect(() => {
@@ -218,8 +251,16 @@ export default function Home() {
       ) {
         setProfileId(first.profile_id ?? null);
         setCandidate(first.candidate ?? null);
+        setLlmAssessment(first.assessment ?? null);
         if (first.profile_id && first.candidate) {
-          saveArchive(first.profile_id, first.candidate);
+          saveArchive(
+            first.profile_id,
+            first.candidate,
+            first.assessment ?? null,
+          );
+          if (!first.assessment) {
+            void refreshLlmScore(first.profile_id, first.candidate);
+          }
         }
         setAnalysisWarnings(first.warnings ?? []);
         setOverviewOpen(true);
@@ -246,8 +287,12 @@ export default function Home() {
         setAnalysisProgress(null);
         setProfileId(res.profile_id ?? null);
         setCandidate(res.candidate ?? null);
+        setLlmAssessment(res.assessment ?? null);
         if (res.profile_id && res.candidate) {
-          saveArchive(res.profile_id, res.candidate);
+          saveArchive(res.profile_id, res.candidate, res.assessment ?? null);
+          if (!res.assessment) {
+            void refreshLlmScore(res.profile_id, res.candidate);
+          }
         }
         setAnalysisWarnings(res.warnings ?? []);
         setOverviewOpen(true);
@@ -287,6 +332,7 @@ export default function Home() {
     setQaResult(null);
     setQaError(null);
     setQuestion("");
+    setLlmAssessment(null);
     setOverviewOpen(false);
   };
 
@@ -298,9 +344,13 @@ export default function Home() {
       resetToHome();
       setCandidate(entry.candidate);
       setProfileId(entry.profileId);
+      setLlmAssessment(entry.llm ?? null);
+      if (!entry.llm) {
+        void refreshLlmScore(entry.profileId, entry.candidate);
+      }
     }
     clearPending();
-  }, [pendingId, clearPending]);
+  }, [pendingId, clearPending, refreshLlmScore]);
 
   const c = candidate;
 
@@ -308,9 +358,13 @@ export default function Home() {
   const assessment = useMemo(
     () =>
       c
-        ? computeAssessment(c, (e) => corrections.get(e) ?? e.evidence_status)
+        ? computeAssessment(
+            c,
+            (e) => corrections.get(e) ?? e.evidence_status,
+            llmAssessment,
+          )
         : null,
-    [c, corrections],
+    [c, corrections, llmAssessment],
   );
 
   // 每个模块的装饰图提示词（暗色线稿，融入星空玻璃）
@@ -412,7 +466,9 @@ export default function Home() {
                 onClick={() => {
                   setAnalysisWarnings([]);
                   setCandidate(mockProfile.candidate);
-                  saveArchive("demo", mockProfile.candidate);
+                  setLlmAssessment(null);
+                  saveArchive("demo", mockProfile.candidate, null);
+                  void refreshLlmScore("demo", mockProfile.candidate);
                   setOverviewOpen(true);
                 }}
                 disabled={loading}
@@ -532,7 +588,7 @@ export default function Home() {
           <BackButton onClick={resetToHome} />
           <OverviewButton
             onClick={() => setOverviewOpen(true)}
-            score={assessment?.overall ?? 0}
+            score={assessment?.overall ?? null}
           />
         </div>
         {analysisWarnings.length > 0 && (
@@ -902,6 +958,7 @@ export default function Home() {
           onClose={() => setOverviewOpen(false)}
           onEvidenceClick={setSelectedEvidence}
           getStatus={getStatus}
+          scoreLoading={scoreLoading}
         />
       )}
 

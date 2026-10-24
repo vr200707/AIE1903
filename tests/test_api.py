@@ -77,6 +77,10 @@ def _full_profile():
     }
 
 
+def _assessment():
+    return {"overall": 7.5, "modules": {}}
+
+
 class ApiTests(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(api.app)
@@ -149,7 +153,9 @@ class ApiTests(unittest.TestCase):
         profile = {"schema_version": "1.0.0", "candidate": {"basic_info": {}}}
         with mock.patch.object(api, "parse_document", return_value=_parsed()), mock.patch.object(
             api, "extract_profile", return_value=(profile, [])
-        ), mock.patch.object(api, "verify_profile", return_value=profile):
+        ), mock.patch.object(
+            api, "verify_profile", return_value=profile
+        ), mock.patch.object(api, "score_candidate", return_value=_assessment()):
             started = self.client.post("/api/analyze", json={"upload_id": upload_id})
             self.assertEqual(started.status_code, 202)
             self.assertEqual(started.json()["status"], "processing")
@@ -180,7 +186,11 @@ class ApiTests(unittest.TestCase):
         ), mock.patch.object(
             api, "extract_profile", return_value=(_full_profile(), [])
         ), mock.patch.object(
-            api, "verify_profile", side_effect=lambda profile, verify_web: profile
+            api,
+            "verify_profile",
+            side_effect=lambda profile, verify_web, on_progress=None: profile,
+        ), mock.patch.object(
+            api, "score_candidate", return_value=_assessment()
         ):
             started = self.client.post(
                 "/api/analyze", json={"upload_id": "upl_partial"}
@@ -205,6 +215,8 @@ class ApiTests(unittest.TestCase):
             api, "extract_profile", return_value=(_full_profile(), [])
         ), mock.patch.object(
             api, "verify_profile", side_effect=RuntimeError("network")
+        ), mock.patch.object(
+            api, "score_candidate", return_value=_assessment()
         ):
             started = self.client.post(
                 "/api/analyze", json={"upload_id": "upl_verify_fail"}
@@ -244,6 +256,8 @@ class ApiTests(unittest.TestCase):
             api, "extract_profile", return_value=(profile, [])
         ), mock.patch.object(
             api, "verify_profile", return_value=profile
+        ), mock.patch.object(
+            api, "score_candidate", return_value=_assessment()
         ):
             started = self.client.post(
                 "/api/analyze", json={"upload_id": "upl_partial_verify"}
@@ -303,7 +317,9 @@ class ApiTests(unittest.TestCase):
             api, "parse_document", return_value=_parsed()
         ), mock.patch.object(
             api, "extract_profile", return_value=(profile, [])
-        ), mock.patch.object(api, "verify_profile", return_value=profile):
+        ), mock.patch.object(
+            api, "verify_profile", return_value=profile
+        ), mock.patch.object(api, "score_candidate", return_value=_assessment()):
             retried = self.client.post(
                 "/api/analyze", json={"upload_id": upload_id}
             )

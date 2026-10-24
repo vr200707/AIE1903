@@ -1,13 +1,19 @@
-// 候选人画像评分逻辑。
+// 候选人画像「评分」与「可信度」两套指标，完全解耦：
 //
-// 评分由两部分合成（默认 0.7 / 0.3）：
-//   1. 证据分 evidenceScore —— 纯规则、零 API、实时计算：
-//      每条证据按「来源类型质量」加权，再乘「证据状态系数」，取模块内平均后映射到 0–10。
-//      人工修改证据状态（corrections）会立即改变该分数。
-//   2. 质量分 qualityScore —— 对获奖/资助/教育/任职/论文等经历的评估：
-//      当前用确定性规则给出保守估计，后续可替换为 DeepSeek 等 LLM 的评估结果。
+//   1. 评分 score —— 由 DeepSeek 对「经历与成果质量」打分（0–10），
+//      见后端 app/scorer.py 与 POST /api/score。缺失字段按中性处理，
+//      不会因为证据未公开核验而被压低。
+//   2. 可信度 credibility —— 纯规则、零 API、实时计算：
+//      每条证据按「来源类型质量」加权，再乘「证据状态系数」，取模块内
+//      平均后映射到 0–10。人工修改证据状态（corrections）会立即改变它。
 
-import type { Candidate, Evidence, EvidenceStatus, SourceType } from "./types";
+import type {
+  Candidate,
+  Evidence,
+  EvidenceStatus,
+  LlmAssessment,
+  SourceType,
+} from "./types";
 
 export type ModuleKey =
   | "basic_info"
@@ -86,7 +92,7 @@ const STATUS_COEF: Record<EvidenceStatus, number> = {
   conflict: 0,
 };
 
-// 模块在综合分中的权重（可调整）。
+// 模块在综合可信度中的权重（可调整）。
 const MODULE_WEIGHTS: Record<ModuleKey, number> = {
   basic_info: 1,
   education_employment: 1,
@@ -96,18 +102,9 @@ const MODULE_WEIGHTS: Record<ModuleKey, number> = {
   overall_evaluation: 1,
 };
 
-const EVIDENCE_WEIGHT = 0.7;
-const QUALITY_WEIGHT = 0.3;
-
-export interface ModuleAssessment {
+export interface ModuleCredibility {
   key: ModuleKey;
-  title: string;
-  titleEn: string;
-  planet: PlanetId;
-  glow: string;
-  score: number;
-  evidenceScore: number;
-  qualityScore: number;
+  credibility: number;
   pros: string;
   cons: string;
   evidenceCount: number;
@@ -117,8 +114,39 @@ export interface ModuleAssessment {
   conflictCount: number;
 }
 
-export interface Assessment {
+export interface ModuleAssessment {
+  key: ModuleKey;
+  title: string;
+  titleEn: string;
+  planet: PlanetId;
+  glow: string;
+  /** DeepSeek 评分；后端评分不可用时为 null。 */
+  score: number | null;
+  /** 规则可信度（0–10），随证据标签修改实时变化。 */
+  credibility: number;
+  /** 评分的一句话优劣点评（DeepSeek 输出；无评分时回退为可信度点评）。 */
+  pros: string;
+  cons: string;
+  /** 可信度的一句话优劣点评（规则生成）。 */
+  credPros: string;
+  credCons: string;
+  evidenceCount: number;
+  confirmedCount: number;
+  toVerifyCount: number;
+  notFoundCount: number;
+  conflictCount: number;
+}
+
+export interface CredibilityAssessment {
   overall: number;
+  modules: ModuleCredibility[];
+}
+
+export interface Assessment {
+  /** DeepSeek 综合评分（0–10）；不可用时为 null。 */
+  overall: number | null;
+  /** 规则综合可信度（0–10）。 */
+  credibility: number;
   modules: ModuleAssessment[];
 }
 
@@ -175,7 +203,10 @@ export function getModuleEvidence(
   return collectModuleEvidence(candidate)[key];
 }
 
-function evidenceScore(evidences: Evidence[], getStatus: GetStatus): number {
+function moduleCredibility(
+  evidences: Evidence[],
+  getStatus: GetStatus,
+): number {
   if (evidences.length === 0) return 0;
   const sum = evidences.reduce((acc, e) => {
     return acc + sourceQuality(e.source_type) * statusCoef(getStatus(e));
@@ -183,94 +214,18 @@ function evidenceScore(evidences: Evidence[], getStatus: GetStatus): number {
   return clamp10((sum / evidences.length) * 10);
 }
 
-// 规则化的经历质量分（0–10），作为无 LLM 时的兜底。
-function qualityScore(c: Candidate, key: ModuleKey): number {
-  switch (key) {
-    case "basic_info": {
-      const b = c.basic_info;
-      return clamp10(
-        3 +
-          (b.name ? 1 : 0) +
-          (b.institution ? 1 : 0) +
-          (b.position ? 1 : 0) +
-          (b.highest_degree ? 0.8 : 0) +
-          Math.min(1.2, b.research_interests.length * 0.3) +
-          Math.min(1, b.skills.length * 0.25),
-      );
-    }
-    case "education_employment": {
-      const e = c.education_employment;
-      const hasAdvisor = e.education.some((x) => x.advisor);
-      const hasOutcome =
-        e.education.some((x) => x.outcomes.length > 0) ||
-        e.employment.some((x) => x.outcomes.length > 0);
-      return clamp10(
-        2 +
-          Math.min(2.4, e.education.length * 1.2) +
-          Math.min(2.4, e.employment.length * 1.2) +
-          (hasAdvisor ? 0.8 : 0) +
-          (hasOutcome ? 0.8 : 0),
-      );
-    }
-    case "awards_funding": {
-      const a = c.awards_funding;
-      const seniorRole = a.funding.some((x) => x.role === "PI" || x.role === "Co-PI");
-      return clamp10(
-        2 +
-          Math.min(3, a.awards.length * 1.5) +
-          Math.min(3, a.funding.length * 1.5) +
-          (seniorRole ? 1 : 0),
-      );
-    }
-    case "publications_impact": {
-      const p = c.publications_impact;
-      const citations = p.total_citations ?? 0;
-      const hasRanking = p.publications.some((x) => x.ranking);
-      const leadRole = p.publications.some(
-        (x) =>
-          x.author_role === "first_author" ||
-          x.author_role === "co_first_author" ||
-          x.author_role === "corresponding_author" ||
-          x.author_role === "single_author",
-      );
-      return clamp10(
-        2 +
-          Math.min(3, p.publications.length * 0.7) +
-          Math.min(2.5, citations / 400) +
-          (hasRanking ? 0.8 : 0) +
-          (leadRole ? 0.7 : 0),
-      );
-    }
-    case "academic_service": {
-      const s = c.academic_service;
-      const hasEditor = s.services.some((x) => x.service_type === "editor");
-      const hasReviewer = s.services.some((x) => x.service_type === "reviewer");
-      return clamp10(
-        2 +
-          Math.min(3.5, s.services.length * 1.1) +
-          (hasEditor ? 1.2 : 0) +
-          (hasReviewer ? 0.6 : 0),
-      );
-    }
-    case "overall_evaluation": {
-      const o = c.overall_evaluation;
-      return clamp10(
-        3 +
-          Math.min(2, o.strengths.length * 0.5) -
-          Math.min(2, o.risks.length * 0.5) +
-          Math.min(1.5, o.dimensions.length * 0.35),
-      );
-    }
-  }
-}
-
-function summarize(
-  key: ModuleKey,
+function summarizeCredibility(
   evidences: Evidence[],
   getStatus: GetStatus,
+  score: number,
 ): Pick<
-  ModuleAssessment,
-  "pros" | "cons" | "confirmedCount" | "toVerifyCount" | "notFoundCount" | "conflictCount"
+  ModuleCredibility,
+  | "pros"
+  | "cons"
+  | "confirmedCount"
+  | "toVerifyCount"
+  | "notFoundCount"
+  | "conflictCount"
 > {
   const counts = {
     confirmedCount: 0,
@@ -286,10 +241,7 @@ function summarize(
     else if (s === "conflict") counts.conflictCount += 1;
   }
 
-  const score = evidenceScore(evidences, getStatus);
   let pros: string;
-  let cons: string;
-
   if (score >= 7 && counts.confirmedCount >= 3) {
     pros = "来源权威，证据链完整";
   } else if (counts.confirmedCount >= 1) {
@@ -300,6 +252,7 @@ function summarize(
     pros = "暂无外部证据";
   }
 
+  let cons: string;
   if (counts.conflictCount > 0) {
     cons = `${counts.conflictCount} 条证据存在冲突`;
   } else if (counts.notFoundCount > 0) {
@@ -315,30 +268,20 @@ function summarize(
   return { pros, cons, ...counts };
 }
 
-export function computeAssessment(
+/** 规则可信度：来源类型权重 × 证据状态系数，模块平均后映射到 0–10。 */
+export function computeCredibility(
   candidate: Candidate,
   getStatus: GetStatus,
-): Assessment {
+): CredibilityAssessment {
   const byModule = collectModuleEvidence(candidate);
 
   const modules = (Object.keys(MODULE_META) as ModuleKey[]).map((key) => {
-    const meta = MODULE_META[key];
     const evidences = byModule[key];
-    const evScore = evidenceScore(evidences, getStatus);
-    const qScore = qualityScore(candidate, key);
-    const score = round1(
-      clamp10(EVIDENCE_WEIGHT * evScore + QUALITY_WEIGHT * qScore),
-    );
-    const summary = summarize(key, evidences, getStatus);
+    const credibility = round1(moduleCredibility(evidences, getStatus));
+    const summary = summarizeCredibility(evidences, getStatus, credibility);
     return {
       key,
-      title: meta.title,
-      titleEn: meta.titleEn,
-      planet: meta.planet,
-      glow: meta.glow,
-      score,
-      evidenceScore: round1(evScore),
-      qualityScore: round1(qScore),
+      credibility,
       evidenceCount: evidences.length,
       ...summary,
     };
@@ -349,10 +292,48 @@ export function computeAssessment(
     0,
   );
   const weighted = modules.reduce(
-    (acc, m) => acc + m.score * MODULE_WEIGHTS[m.key],
+    (acc, m) => acc + m.credibility * MODULE_WEIGHTS[m.key],
     0,
   );
-  const overall = round1(weighted / totalWeight);
 
-  return { overall, modules };
+  return { overall: round1(weighted / totalWeight), modules };
+}
+
+/** 合并「DeepSeek 评分」与「规则可信度」为总览界面所需的 Assessment。 */
+export function computeAssessment(
+  candidate: Candidate,
+  getStatus: GetStatus,
+  llm: LlmAssessment | null | undefined,
+): Assessment {
+  const cred = computeCredibility(candidate, getStatus);
+
+  const modules = (Object.keys(MODULE_META) as ModuleKey[]).map((key) => {
+    const meta = MODULE_META[key];
+    const c = cred.modules.find((x) => x.key === key)!;
+    const llmModule = llm?.modules?.[key];
+    const hasLlm = typeof llmModule?.score === "number";
+    return {
+      key,
+      title: meta.title,
+      titleEn: meta.titleEn,
+      planet: meta.planet,
+      glow: meta.glow,
+      score: hasLlm ? round1(llmModule.score) : null,
+      credibility: c.credibility,
+      pros: hasLlm && llmModule.pros ? llmModule.pros : c.pros,
+      cons: hasLlm && llmModule.cons ? llmModule.cons : c.cons,
+      credPros: c.pros,
+      credCons: c.cons,
+      evidenceCount: c.evidenceCount,
+      confirmedCount: c.confirmedCount,
+      toVerifyCount: c.toVerifyCount,
+      notFoundCount: c.notFoundCount,
+      conflictCount: c.conflictCount,
+    };
+  });
+
+  const overall =
+    typeof llm?.overall === "number" ? round1(llm.overall) : null;
+
+  return { overall, credibility: cred.overall, modules };
 }

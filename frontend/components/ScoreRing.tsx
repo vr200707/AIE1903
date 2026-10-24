@@ -3,24 +3,44 @@
 import { useId } from "react";
 
 // 评分环：彩色部分从 12 点方向顺时针填充，比例为 score / 10。
+// variant="score" 为暖色渐变（评分），variant="credibility" 为青蓝渐变（可信度）。
 export function ScoreRing({
   score,
   size = 108,
   stroke = 8,
   label = "综合评分",
   showMax = true,
+  variant = "score",
 }: {
-  score: number;
+  score: number | null;
   size?: number;
   stroke?: number;
   label?: string;
   showMax?: boolean;
+  variant?: "score" | "credibility";
 }) {
   const gradId = useId();
   const radius = (size - stroke) / 2 - 2;
   const circumference = 2 * Math.PI * radius;
-  const pct = Math.min(1, Math.max(0, score / 10));
+  const pct =
+    typeof score === "number" ? Math.min(1, Math.max(0, score / 10)) : 0;
   const offset = circumference * (1 - pct);
+  const stops =
+    variant === "credibility"
+      ? (
+          <>
+            <stop offset="0%" stopColor="#38bdf8" />
+            <stop offset="55%" stopColor="#7c8cff" />
+            <stop offset="100%" stopColor="#a78bfa" />
+          </>
+        )
+      : (
+          <>
+            <stop offset="0%" stopColor="#4fd1c5" />
+            <stop offset="58%" stopColor="#f5a524" />
+            <stop offset="100%" stopColor="#ff7a5c" />
+          </>
+        );
 
   return (
     <div
@@ -32,9 +52,7 @@ export function ScoreRing({
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <defs>
           <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#4fd1c5" />
-            <stop offset="58%" stopColor="#f5a524" />
-            <stop offset="100%" stopColor="#ff7a5c" />
+            {stops}
           </linearGradient>
         </defs>
         <circle
@@ -64,7 +82,7 @@ export function ScoreRing({
           className="font-semibold tabular-nums text-white"
           style={{ fontSize: Math.round(size * 0.3) }}
         >
-          {score.toFixed(1)}
+          {typeof score === "number" ? score.toFixed(1) : "—"}
         </span>
         {showMax && (
           <span className="text-white/45" style={{ fontSize: Math.max(10, size * 0.11) }}>

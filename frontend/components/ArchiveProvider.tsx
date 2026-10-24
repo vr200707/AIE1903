@@ -17,11 +17,15 @@ import {
   upsertArchive,
   type ArchiveEntry,
 } from "@/lib/archive";
-import type { Candidate } from "@/lib/types";
+import type { Candidate, LlmAssessment } from "@/lib/types";
 
 type ArchiveContextValue = {
   archives: ArchiveEntry[];
-  saveArchive: (profileId: string, candidate: Candidate) => void;
+  saveArchive: (
+    profileId: string,
+    candidate: Candidate,
+    llm?: LlmAssessment | null,
+  ) => void;
   openArchive: (id: string) => void;
   removeArchive: (id: string) => void;
   pendingId: string | null;
@@ -48,8 +52,12 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const saveArchive = useCallback(
-    (profileId: string, candidate: Candidate) => {
-      setArchives(upsertArchive(buildArchive(profileId, candidate)));
+    (
+      profileId: string,
+      candidate: Candidate,
+      llm?: LlmAssessment | null,
+    ) => {
+      setArchives(upsertArchive(buildArchive(profileId, candidate, llm)));
     },
     [],
   );

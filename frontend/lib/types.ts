@@ -228,9 +228,23 @@ export interface AnalyzeResponse {
   status: AnalyzeStatus;
   schema_version?: string;
   candidate?: Candidate;
+  assessment?: LlmAssessment | null;
   warnings?: AnalysisWarning[];
   error?: AnalysisError;
   progress?: AnalysisProgress;
+}
+
+/** 单个模块的 DeepSeek 评分与一句点评。 */
+export interface ModuleLlmScore {
+  score: number;
+  pros: string;
+  cons: string;
+}
+
+/** DeepSeek 评分结果：综合分 + 六大模块评分（评分与可信度解耦）。 */
+export interface LlmAssessment {
+  overall: number;
+  modules: Partial<Record<string, ModuleLlmScore>>;
 }
 
 export interface AnalysisWarning {

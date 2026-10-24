@@ -1,8 +1,10 @@
 import type {
   CandidateProfile,
+  Candidate,
   UploadResponse,
   ChunkInitResponse,
   AnalyzeResponse,
+  LlmAssessment,
   QAResponse,
 } from "./types";
 
@@ -97,6 +99,18 @@ export async function analyze(uploadId: string): Promise<AnalyzeResponse> {
 // 2b. 轮询异步分析进度（分析可能耗时超过代理超时，因此拆成异步任务）
 export async function getAnalyzeStatus(uploadId: string): Promise<AnalyzeResponse> {
   return request<AnalyzeResponse>(`${API_BASE}/api/analyze/${uploadId}`);
+}
+
+// 2c. 对给定档案（mock / 已存档）即时获取 DeepSeek 评分。
+export async function fetchScore(candidate: Candidate): Promise<LlmAssessment | null> {
+  const res = await fetch(`${API_BASE}/api/score`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ candidate }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data?.assessment ?? null;
 }
 
 // 3. 获取结构化档案（profile_id 或 upload_id 必须且只能传一个）

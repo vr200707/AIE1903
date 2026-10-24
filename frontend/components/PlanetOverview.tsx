@@ -211,12 +211,14 @@ export function PlanetOverview({
   onClose,
   onEvidenceClick,
   getStatus,
+  scoreLoading = false,
 }: {
   candidate: Candidate;
   assessment: Assessment;
   onClose: () => void;
   onEvidenceClick: (e: Evidence) => void;
   getStatus: GetStatus;
+  scoreLoading?: boolean;
 }) {
   const [selected, setSelected] = useState<ModuleKey | null>(null);
 
@@ -277,9 +279,24 @@ export function PlanetOverview({
             </span>
           </div>
           <div className="h-10 w-px bg-white/[0.12]" />
-          <ScoreRing score={assessment.overall} size={108} label="综合评分" />
+          <div className="flex items-center gap-4">
+            <ScoreRing score={assessment.overall} size={94} label="评分" variant="score" />
+            {scoreLoading && assessment.overall == null && (
+              <span className="animate-pulse text-[11px] text-accent-soft">
+                AI 评分中…
+              </span>
+            )}
+          </div>
+          <div className="h-10 w-px bg-white/[0.12]" />
+          <ScoreRing
+            score={assessment.credibility}
+            size={94}
+            label="可信度"
+            variant="credibility"
+          />
           <p className="max-w-[240px] text-xs leading-relaxed text-white/45">
-            综合评分由「来源可靠性」与「获奖及经历质量」合成；修改证据标签后实时更新。
+            评分由 DeepSeek 按经历与成果质量打分；可信度按来源可靠性与证据状态
+            规则计算，修改证据标签后实时更新。
           </p>
         </div>
 
@@ -338,9 +355,17 @@ export function PlanetOverview({
                   <div className="mt-1 text-xs leading-relaxed text-white/50">
                     {m.pros} · {m.cons}
                   </div>
-                  <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-white/[0.12] bg-white/[0.06] px-2.5 py-0.5 text-xs tabular-nums">
-                    <b className="text-accent-soft">{m.score.toFixed(1)}</b>
-                    <span className="text-white/40">评分</span>
+                  <div className="mt-1.5 flex items-center justify-center gap-1.5">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-white/[0.12] bg-white/[0.06] px-2.5 py-0.5 text-xs tabular-nums">
+                      <b className="text-accent-soft">
+                        {m.score != null ? m.score.toFixed(1) : "—"}
+                      </b>
+                      <span className="text-white/40">评分</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-sky-300/[0.18] bg-sky-400/[0.08] px-2.5 py-0.5 text-xs tabular-nums">
+                      <b className="text-sky-300">{m.credibility.toFixed(1)}</b>
+                      <span className="text-white/40">可信度</span>
+                    </span>
                   </div>
                 </div>
               </button>
@@ -376,10 +401,28 @@ export function PlanetOverview({
                   </span>
                 </h2>
                 <p className="mt-1 text-xs text-white/50">
-                  优点 {selectedModule.pros} · 缺点 {selectedModule.cons}
+                  评分点评：{selectedModule.pros} · {selectedModule.cons}
+                </p>
+                <p className="mt-1 text-xs text-sky-300/80">
+                  可信度：{selectedModule.credPros} · {selectedModule.credCons}
                 </p>
               </div>
-              <ScoreRing score={selectedModule.score} size={76} stroke={6} label="评分" />
+              <div className="flex shrink-0 gap-2">
+                <ScoreRing
+                  score={selectedModule.score}
+                  size={70}
+                  stroke={6}
+                  label="评分"
+                  variant="score"
+                />
+                <ScoreRing
+                  score={selectedModule.credibility}
+                  size={70}
+                  stroke={6}
+                  label="可信度"
+                  variant="credibility"
+                />
+              </div>
             </div>
 
             <div className="mt-4">
