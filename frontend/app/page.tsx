@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import { mockProfile } from "@/lib/mock";
 import { uploadFiles, analyze, askQuestion } from "@/lib/api";
-import { Section } from "@/components/Section";
+import { Section, sectionArt } from "@/components/Section";
+import Starfield from "@/components/Starfield";
+import AnalyzingStage from "@/components/AnalyzingStage";
+import CountUp from "@/components/CountUp";
+import { useIdentity } from "@/components/IdentityProvider";
 import { EvidenceList } from "@/components/EvidenceList";
 import { EvidenceBadge } from "@/components/EvidenceBadge";
 import { EvidenceModal } from "@/components/EvidenceModal";
@@ -60,36 +63,52 @@ function TagRow({ label, items }: { label: string; items: string[] }) {
   );
 }
 
-function Header() {
+// 文字行列表：替代小药丸，一排排列出
+function BulletList({
+  label,
+  items,
+  tone = "accent",
+}: {
+  label: string;
+  items: string[];
+  tone?: "accent" | "warn";
+}) {
+  if (items.length === 0) return null;
+  const dot = tone === "warn" ? "bg-amber-400/70" : "bg-accent/70";
   return (
-    <header className="sticky top-0 z-10 border-b border-white/10 bg-[#06060f]/70 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <h1 className="flex items-center gap-2.5 text-lg font-semibold text-white">
-          <span className="animate-float grid h-8 w-8 place-items-center rounded-full bg-yellow-300 text-lg shadow-lg shadow-yellow-400/40">
-            ⚡
-          </span>
-          Candidate Profile Analysis
-          <span className="rounded-full bg-teal-400/20 px-2.5 py-0.5 text-xs font-semibold text-teal-300">
-            v2.0
-          </span>
-        </h1>
-        <nav className="flex gap-4 text-sm">
-          <Link href="/" className="font-medium text-white/90">
-            Profile
-          </Link>
-          <Link
-            href="/methodology"
-            className="text-white/50 transition-colors hover:text-white/90"
+    <div className="mt-5">
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-white/35">
+        {label}
+      </p>
+      <ul className="mt-2.5 space-y-0">
+        {items.map((x, i) => (
+          <li
+            key={i}
+            className="flex items-baseline gap-3 border-t border-white/[0.07] py-2.5 text-base leading-relaxed text-white/80 first:border-t-0 first:pt-0"
           >
-            Methodology
-          </Link>
-        </nav>
-      </div>
-    </header>
+            <span className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+            <span>{x}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="group inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-4 py-2 text-sm text-white/65 backdrop-blur-xl transition hover:border-accent/30 hover:text-white"
+    >
+      <span className="transition-transform group-hover:-translate-x-0.5">←</span>
+      Back to home
+    </button>
   );
 }
 
 export default function Home() {
+  const { setIdentity } = useIdentity();
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
@@ -107,6 +126,18 @@ export default function Home() {
 
   const getStatus = (e: Evidence): EvidenceStatus =>
     corrections.get(e) ?? e.evidence_status;
+
+  // 侧栏底部身份位跟随候选人
+  useEffect(() => {
+    setIdentity(
+      candidate
+        ? {
+            name: candidate.basic_info.name ?? "Unnamed candidate",
+            detail: candidate.basic_info.institution ?? "",
+          }
+        : null,
+    );
+  }, [candidate, setIdentity]);
 
   const correctEvidence = (target: Evidence, status: EvidenceStatus) => {
     setCorrections((prev) => {
@@ -161,47 +192,92 @@ export default function Home() {
 
   const c = candidate;
 
+  // 每个模块的装饰图提示词（暗色线稿，融入星空玻璃）
+  const ART = {
+    basic: sectionArt(
+      "minimal luminous line-art portrait silhouette of an academic in profile, blueprint contour style, deep navy blue background, thin cyan and amber glowing outlines, no text, elegant, high contrast",
+    ),
+    edu: sectionArt(
+      "minimal luminous line-art of a graduation cap floating above an open book and a winding timeline path, blueprint contour style, deep navy blue background, thin cyan and amber glowing outlines, no text, elegant",
+    ),
+    awards: sectionArt(
+      "minimal luminous line-art of a trophy beside a rising bar chart with an arrow, blueprint contour style, deep navy blue background, thin cyan and amber glowing outlines, no text, elegant",
+    ),
+    pubs: sectionArt(
+      "minimal luminous line-art of a stack of academic papers with a citation network graph of connected nodes above it, blueprint contour style, deep navy blue background, thin cyan and amber glowing outlines, no text, elegant",
+    ),
+    service: sectionArt(
+      "minimal luminous line-art of a conference review panel table with name badges and a row of chairs, blueprint contour style, deep navy blue background, thin cyan and amber glowing outlines, no text, elegant",
+    ),
+    eval: sectionArt(
+      "minimal luminous line-art of a radar gauge with concentric rings, polygon web and a needle, blueprint contour style, deep navy blue background, thin cyan and amber glowing outlines, no text, elegant",
+    ),
+  };
+
   if (!c) {
     return (
-      <div className="relative flex min-h-screen flex-col overflow-hidden bg-black text-white">
-        {/* 黑白教师照片背景 */}
-        <img
-          src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=black%20and%20white%20photo%20of%20a%20university%20professor%20teaching%20in%20a%20lecture%20hall%2C%20dramatic%20lighting%2C%20monochrome&image_size=landscape_16_9"
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover opacity-50"
-        />
-        {/* 暗色遮罩：左侧渐暗，保证文字可读 */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/20" />
+      <div className="relative flex min-h-screen flex-col overflow-hidden text-white">
+        <Starfield />
 
-        <Header />
-
-        <main className="relative flex flex-1 flex-col justify-center px-8 py-12 sm:px-12 lg:px-20">
-          <div className="animate-fade-in-up max-w-3xl text-left">
-            {/* 小标：宽字距 */}
-            <p className="text-xs font-medium uppercase tracking-[0.45em] text-white/50">
-              AIE1903 · AI-assisted faculty hiring workflow
+        {loading ? (
+          <main className="relative flex flex-1 flex-col justify-center px-6 py-14">
+            <div
+              className="animate-reveal mx-auto mb-9 max-w-3xl text-center"
+              style={{ animationDelay: "0.08s" }}
+            >
+              <p className="text-xs font-medium uppercase tracking-[0.45em] text-accent/70">
+                Analyzing
+              </p>
+              <h2 className="mt-5 font-display text-4xl italic leading-tight sm:text-5xl">
+                Building the profile
+              </h2>
+              <p className="mt-3 text-sm text-white/45">{loadingMessage}</p>
+            </div>
+            <AnalyzingStage phase={loadingMessage} />
+          </main>
+        ) : (
+        <main className="relative flex flex-1 items-center justify-center px-6 py-16">
+          <div className="w-full max-w-3xl text-center">
+            {/* 小标：宽字距 + 星芒 */}
+            <p
+              className="animate-reveal flex items-center justify-center gap-3 text-xs font-medium uppercase tracking-[0.45em] text-white/45"
+              style={{ animationDelay: "0.1s" }}
+            >
+              <span className="animate-sparkle inline-block text-accent">✦</span>
+              AIE1903 · AI-assisted faculty hiring
+              <span className="animate-sparkle inline-block text-accent" style={{ animationDelay: "1.2s" }}>
+                ✦
+              </span>
             </p>
 
-            {/* 超大标题 */}
-            <h2 className="mt-8 text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl lg:text-8xl">
-              Candidate Profile Analysis
+            {/* 主标题：衬线斜体 */}
+            <h2
+              className="animate-reveal mt-9 font-display text-5xl leading-[1.06] tracking-tight sm:text-6xl lg:text-[5.2rem]"
+              style={{ animationDelay: "0.24s" }}
+            >
+              Every claim,
               <br />
-              <span className="text-teal-400">Upload</span>
-              and review
+              <span className="italic text-accent">traced to its evidence.</span>
             </h2>
 
-            <p className="mt-8 max-w-xl text-base text-white/50 sm:text-lg">
-              Upload CV, cover letter, research statement, and teaching statement to generate a structured, evidence-grounded candidate profile.
+            <p
+              className="animate-reveal mx-auto mt-8 max-w-xl text-base leading-relaxed text-white/45"
+              style={{ animationDelay: "0.4s" }}
+            >
+              Upload a CV, cover letter, research statement and teaching statement.
+              Get a structured candidate profile where every field links back to its source.
             </p>
 
-            <div className="mt-12 flex flex-wrap items-center gap-5">
-              <label className="animate-float relative cursor-pointer rounded-full bg-white px-9 py-3.5 text-sm font-medium text-black shadow-lg shadow-black/40 transition hover:bg-white/85">
-                {loading ? "Analyzing..." : "Choose files"}
+            <div
+              className="animate-reveal mt-11 flex flex-wrap items-center justify-center gap-4"
+              style={{ animationDelay: "0.56s" }}
+            >
+              <label className="animate-halo group relative cursor-pointer overflow-hidden rounded-full bg-white px-9 py-3.5 text-sm font-medium text-black transition hover:bg-white/90">
+                <span className="relative z-10">Choose files</span>
                 <input
-                  aria-label={loading ? "Analyzing files" : "Choose files"}
+                  aria-label="Choose files"
                   type="file"
                   multiple
-                  disabled={loading}
                   accept=".pdf,.docx"
                   className="absolute inset-0 cursor-pointer opacity-0"
                   onChange={(ev) => {
@@ -213,31 +289,26 @@ export default function Home() {
               </label>
               <button
                 onClick={() => setCandidate(mockProfile.candidate)}
-                disabled={loading}
-                className="animate-float rounded-full border border-white/20 px-9 py-3.5 text-sm text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ animationDelay: "0.3s" }}
+                className="animate-sweep relative overflow-hidden rounded-full border border-white/20 px-9 py-3.5 text-sm text-white/70 transition hover:border-white/40 hover:text-white"
               >
-                Load example data
+                <span className="relative z-10">Load example data</span>
               </button>
             </div>
 
             {/* 数字步骤：宽字距 */}
-            <p className="mt-16 text-xs uppercase tracking-[0.5em] text-white/30">
-              01 Upload&ensp;·&ensp;02 Analyze&ensp;·&ensp;03 Profile
+            <p
+              className="animate-reveal mt-16 text-xs uppercase tracking-[0.5em] text-white/30"
+              style={{ animationDelay: "0.72s" }}
+            >
+              01 Upload&ensp;·&ensp;02 Analyze&ensp;·&ensp;03 Review
             </p>
 
-            {loading && loadingMessage && (
-              <div
-                role="status"
-                className="mt-6 inline-flex items-center gap-3 rounded-xl border border-teal-300/20 bg-teal-300/10 px-4 py-3 text-sm text-teal-50"
-              >
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-teal-100/30 border-t-teal-100" />
-                {loadingMessage}
-              </div>
+            {error && (
+              <p className="animate-reveal mt-6 text-sm text-rose-400">{error}</p>
             )}
-            {error && <p className="mt-6 text-sm text-rose-400">{error}</p>}
           </div>
         </main>
+        )}
       </div>
     );
   }
@@ -307,29 +378,56 @@ export default function Home() {
     terms.length === 0 ||
     kw.some((k) => terms.some((t) => k.toLowerCase().includes(t)));
 
-  return (
-    <div className="min-h-screen text-white/90">
-      <Header />
+  const evidenceCount =
+    c.basic_info.evidence.length +
+    c.education_employment.education.reduce((s, e) => s + e.evidence.length, 0) +
+    c.education_employment.employment.reduce((s, e) => s + e.evidence.length, 0) +
+    c.awards_funding.awards.reduce((s, a) => s + a.evidence.length, 0) +
+    c.awards_funding.funding.reduce((s, f) => s + f.evidence.length, 0) +
+    c.publications_impact.publications.reduce((s, p) => s + p.evidence.length, 0) +
+    c.academic_service.services.reduce((s, sv) => s + sv.evidence.length, 0);
 
-      <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
-        <div className="animate-fade-in-up flex items-center justify-between">
-          <button
-            onClick={resetToHome}
-            className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-4 py-2 text-sm text-white/70 backdrop-blur transition hover:bg-white/10 hover:text-white"
-          >
-            <span className="transition-transform group-hover:-translate-x-0.5">←</span>
-            Back to home
-          </button>
+  const kpis = [
+    { label: "Publications", value: c.publications_impact.publications.length },
+    { label: "Total citations", value: c.publications_impact.total_citations ?? 0 },
+    { label: "Evidence items", value: evidenceCount },
+    { label: "Evaluation dimensions", value: c.overall_evaluation.dimensions.length },
+  ];
+
+  return (
+    <div className="relative min-h-screen text-white/90">
+      <Starfield />
+      <main className="mx-auto max-w-6xl space-y-5 px-8 py-10">
+        <div className="animate-pop" style={{ animationDelay: "0.05s" }}>
+          <BackButton onClick={resetToHome} />
         </div>
-        <div className="animate-fade-in-up" style={{ animationDelay: "0.05s" }}>
+        <div className="animate-pop" style={{ animationDelay: "0.05s" }}>
           <TagFilter tags={tags} filter={filter} onChange={setFilter} />
         </div>
 
-        <div className="space-y-6">
+        {/* KPI 概览条 */}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {kpis.map((k) => (
+            <div
+              key={k.label}
+              className="glass rounded-2xl transition-colors duration-300 hover:bg-white/[0.09]"
+            >
+              <div className="animate-pop px-5 py-4">
+                <p className="text-3xl font-semibold tracking-tight text-white">
+                  <CountUp value={k.value} />
+                </p>
+                <p className="mt-1 text-sm text-white/45">{k.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Bento 网格 */}
+        <div className="grid items-start gap-4 lg:grid-cols-12">
         {/* 1. 基本信息 */}
-        <Section title="Basic Information" hidden={!matches(basicKw)} delay={0.1}>
+        <Section title="Basic Information" art={ART.basic} hidden={!matches(basicKw)} delay={0.1} className="lg:col-span-5">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h3 className="text-xl font-bold">{n(c.basic_info.name)}</h3>
+            <h3 className="text-2xl font-semibold tracking-tight">{n(c.basic_info.name)}</h3>
             <span className="text-white/50">{n(c.basic_info.position)}</span>
           </div>
           <p className="mt-1 text-sm text-white/50">
@@ -339,16 +437,16 @@ export default function Home() {
 
           <TagRow label="Research interests" items={c.basic_info.research_interests} />
           <TagRow label="Skills" items={c.basic_info.skills} />
-          <TagRow label="Strengths" items={c.basic_info.strengths} />
+          <BulletList label="Strengths" items={c.basic_info.strengths} />
 
           {c.basic_info.to_verify.length > 0 && (
             <div className="mt-4">
               <p className="text-xs font-medium text-white/40">Items to verify</p>
-              <ul className="mt-2 space-y-2">
+              <ul className="mt-2 space-y-4">
                 {c.basic_info.to_verify.map((v, i) => (
                   <li
                     key={i}
-                    className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm"
+                    className="border-t border-white/[0.09] pt-4 first:border-t-0 first:pt-0"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium text-white/85">{v.claim}</span>
@@ -379,14 +477,14 @@ export default function Home() {
         </Section>
 
         {/* 2. 教育与工作 */}
-        <Section title="Education & Work" hidden={!matches(eduKw)} delay={0.15}>
+        <Section title="Education & Work" art={ART.edu} hidden={!matches(eduKw)} delay={0.15} className="lg:col-span-7">
           <h4 className="text-sm font-semibold text-white/70">Education</h4>
           {c.education_employment.education.length === 0 ? (
             <p className="mt-2 text-sm text-white/40">None</p>
           ) : (
-            <div className="mt-2 space-y-3">
+            <div className="mt-2">
               {c.education_employment.education.map((ed, i) => (
-                <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div key={i} className="mt-4 border-t border-white/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     <span className="font-semibold">{n(ed.degree)}</span>
                     <span className="text-white/70">{n(ed.field)}</span>
@@ -417,9 +515,9 @@ export default function Home() {
           {c.education_employment.employment.length === 0 ? (
             <p className="mt-2 text-sm text-white/40">None</p>
           ) : (
-            <div className="mt-2 space-y-3">
+            <div className="mt-2">
               {c.education_employment.employment.map((em, i) => (
-                <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div key={i} className="mt-4 border-t border-white/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     <span className="font-semibold">{n(em.position)}</span>
                     <span className="text-white/70">{n(em.institution)}</span>
@@ -450,14 +548,14 @@ export default function Home() {
         </Section>
 
         {/* 3. 奖项与经费 */}
-        <Section title="Awards & Funding" hidden={!matches(awardsKw)} delay={0.2}>
+        <Section title="Awards & Funding" art={ART.awards} hidden={!matches(awardsKw)} delay={0.2} className="lg:col-span-5">
           <h4 className="text-sm font-semibold text-white/70">Awards</h4>
           {c.awards_funding.awards.length === 0 ? (
             <p className="mt-2 text-sm text-white/40">None</p>
           ) : (
-            <div className="mt-2 space-y-3">
+            <div className="mt-2">
               {c.awards_funding.awards.map((a, i) => (
-                <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div key={i} className="mt-4 border-t border-white/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">{a.name}</span>
                     {a.year != null && (
@@ -477,9 +575,9 @@ export default function Home() {
           {c.awards_funding.funding.length === 0 ? (
             <p className="mt-2 text-sm text-white/40">None</p>
           ) : (
-            <div className="mt-2 space-y-3">
+            <div className="mt-2">
               {c.awards_funding.funding.map((f, i) => (
-                <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div key={i} className="mt-4 border-t border-white/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">{f.project_name}</span>
                     <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/70">
@@ -502,7 +600,7 @@ export default function Home() {
         </Section>
 
         {/* 4. 论文与影响 */}
-        <Section title="Publications & Impact" hidden={!matches(pubKw)} delay={0.25}>
+        <Section title="Publications & Impact" art={ART.pubs} hidden={!matches(pubKw)} delay={0.25} className="lg:col-span-7">
           <p className="text-sm text-white/70">
             Total citations: {c.publications_impact.total_citations ?? "—"}
             {c.publications_impact.citation_query_date
@@ -513,9 +611,9 @@ export default function Home() {
           {c.publications_impact.publications.length === 0 ? (
             <p className="mt-2 text-sm text-white/40">None</p>
           ) : (
-            <div className="mt-3 space-y-3">
+            <div className="mt-3">
               {c.publications_impact.publications.map((p, i) => (
-                <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div key={i} className="mt-4 border-t border-white/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                   <p className="font-semibold">{p.title}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-white/50">
                     {p.year != null && <span>{p.year}</span>}
@@ -552,13 +650,13 @@ export default function Home() {
         </Section>
 
         {/* 5. 学术服务 */}
-        <Section title="Academic Service" hidden={!matches(svcKw)} delay={0.3}>
+        <Section title="Academic Service" art={ART.service} hidden={!matches(svcKw)} delay={0.3} className="lg:col-span-5">
           {c.academic_service.services.length === 0 ? (
             <p className="text-sm text-white/40">None</p>
           ) : (
-            <div className="space-y-3">
+            <div>
               {c.academic_service.services.map((s, i) => (
-                <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div key={i} className="mt-4 border-t border-white/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">{s.organization_or_venue}</span>
                     <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/70">
@@ -582,17 +680,17 @@ export default function Home() {
         </Section>
 
         {/* 6. 综合评价 */}
-        <Section title="Overall Evaluation" hidden={!matches(evalKw)} delay={0.35}>
+        <Section title="Overall Evaluation" art={ART.eval} hidden={!matches(evalKw)} delay={0.35} className="lg:col-span-7">
           <p className="text-sm text-white/70">{n(c.overall_evaluation.summary)}</p>
-          <TagRow label="Strengths" items={c.overall_evaluation.strengths} />
-          <TagRow label="Risks" items={c.overall_evaluation.risks} />
+          <BulletList label="Strengths" items={c.overall_evaluation.strengths} />
+          <BulletList label="Risks" items={c.overall_evaluation.risks} tone="warn" />
 
           {c.overall_evaluation.dimensions.length > 0 && (
             <div className="mt-4">
               <p className="text-xs font-medium text-white/40">Dimension evaluations</p>
-              <div className="mt-2 space-y-3">
+              <div className="mt-2">
                 {c.overall_evaluation.dimensions.map((d, i) => (
-                  <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <div key={i} className="mt-4 border-t border-white/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                     <p className="font-semibold">{d.dimension}</p>
                     <p className="mt-1 text-sm text-white/70">{d.assessment}</p>
                     <EvidenceList items={d.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
@@ -606,7 +704,7 @@ export default function Home() {
 
         {/* 7. 基于证据的问答（加分项，需真实后端） */}
         {profileId && (
-          <Section title="Evidence-based Q&A" delay={0.4}>
+          <Section title="Evidence-based Q&A" delay={0.4} className="lg:col-span-12">
             <div className="flex gap-2">
               <input
                 value={question}
@@ -623,7 +721,7 @@ export default function Home() {
               </button>
             </div>
             {qaResult && (
-              <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="mt-3 border-l-2 border-accent/40 pl-4 text-base leading-relaxed text-white/80">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">Answer</span>
                   <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/70">

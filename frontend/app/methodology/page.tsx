@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Section } from "@/components/Section";
 import { evidenceStatusLabel } from "@/lib/labels";
 import type { EvidenceStatus } from "@/lib/types";
@@ -20,29 +19,7 @@ const statusOrder: EvidenceStatus[] = [
 export default function MethodologyPage() {
   return (
     <div className="min-h-screen text-white/90">
-      <header className="sticky top-0 z-10 border-b border-white/10 bg-[#06060f]/70 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <h1 className="flex items-center gap-2.5 text-lg font-semibold text-white">
-            <span className="animate-float grid h-8 w-8 place-items-center rounded-full bg-yellow-300 text-lg shadow-lg shadow-yellow-400/40">
-              ⚡
-            </span>
-            Candidate Profile Analysis
-          </h1>
-          <nav className="flex gap-4 text-sm">
-            <Link
-              href="/"
-              className="text-white/50 transition-colors hover:text-white/90"
-            >
-              Profile
-            </Link>
-            <Link href="/methodology" className="font-medium text-white/90">
-              Methodology
-            </Link>
-          </nav>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
+      <main className="mx-auto max-w-4xl space-y-5 px-8 py-10">
         {/* 1. 证据字段定义 */}
         <Section title="Evidence Field Definitions">
           <p className="text-sm text-white/70">
