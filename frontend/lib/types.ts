@@ -216,6 +216,12 @@ export type AnalyzeStatus =
   | "completed_with_warnings"
   | "failed";
 
+export interface AnalysisProgress {
+  stage: string;
+  done: number;
+  total: number;
+}
+
 export interface AnalyzeResponse {
   upload_id?: string;
   profile_id?: string;
@@ -224,6 +230,7 @@ export interface AnalyzeResponse {
   candidate?: Candidate;
   warnings?: AnalysisWarning[];
   error?: AnalysisError;
+  progress?: AnalysisProgress;
 }
 
 export interface AnalysisWarning {

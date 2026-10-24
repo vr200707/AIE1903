@@ -248,6 +248,163 @@ body {
   animation: drift-in 1.2s ease-out both;
 }
 
+/* ---------- 分析进度条 ---------- */
+
+/* 黄色渐变填充：随真实进度平滑伸长 */
+.progress-fill {
+  background: linear-gradient(
+    90deg,
+    var(--accent-deep) 0%,
+    var(--accent) 55%,
+    var(--accent-soft) 100%
+  );
+  box-shadow:
+    0 0 16px -2px rgba(245, 165, 36, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 黄条内随机白点：三层不同密度/大小，错位滚动形成流动感 */
+.progress-dots {
+  background-image:
+    radial-gradient(
+      circle at 17px 5px,
+      rgba(255, 255, 255, 0.95) 0 1.7px,
+      transparent 2.3px
+    ),
+    radial-gradient(
+      circle at 7px 4px,
+      rgba(255, 255, 255, 0.62) 0 1.2px,
+      transparent 1.8px
+    ),
+    radial-gradient(
+      circle at 14px 3px,
+      rgba(255, 255, 255, 0.38) 0 0.9px,
+      transparent 1.5px
+    );
+  background-size: 48px 12px, 30px 9px, 24px 7px;
+  background-repeat: repeat;
+  animation: progress-dots-flow 2.8s linear infinite;
+  mix-blend-mode: screen;
+}
+
+@keyframes progress-dots-flow {
+  from {
+    background-position: 0 0, 0 0, 0 0;
+  }
+  to {
+    background-position: 240px 0, 240px 0, 240px 0;
+  }
+}
+
+/* 黄条高光扫过 */
+.progress-shine {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.38),
+    transparent
+  );
+  animation: progress-shine 1.8s ease-in-out infinite;
+}
+
+@keyframes progress-shine {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(240%); }
+}
+
+/* ---------- 动态星空按钮 ---------- */
+
+.starfield-btn {
+  background:
+    radial-gradient(120% 150% at 50% 0%, #141e45 0%, #0a1030 48%, #05081a 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 10px 34px -14px rgba(245, 165, 36, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+}
+.starfield-btn:hover {
+  border-color: rgba(245, 165, 36, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 14px 44px -14px rgba(245, 165, 36, 0.65);
+}
+.starfield-btn:active {
+  transform: translateY(1px);
+}
+
+/* 按钮内的闪烁星点 */
+.sf-star {
+  animation-name: star-twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  box-shadow: 0 0 6px 1px rgba(255, 255, 255, 0.72);
+}
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.65); }
+  50% { opacity: 1; transform: scale(1.18); }
+}
+
+/* 按钮内划过的流星 */
+.sf-shoot {
+  transform: translateX(-170%) rotate(-18deg);
+  animation: star-shoot 2.8s ease-in-out infinite;
+}
+@keyframes star-shoot {
+  0% { transform: translateX(-170%) rotate(-18deg); opacity: 0; }
+  14% { opacity: 1; }
+  58% { transform: translateX(300%) rotate(-18deg); opacity: 0; }
+  100% { transform: translateX(300%) rotate(-18deg); opacity: 0; }
+}
+
+/* ---------- 档案库星空文件夹 ---------- */
+
+.archive-folder {
+  position: relative;
+  width: 100%;
+}
+.archive-folder .folder-tab {
+  position: absolute;
+  top: 0;
+  left: 12px;
+  z-index: 3;
+  width: 44px;
+  height: 10px;
+  border-radius: 3px 3px 0 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 0;
+  background: linear-gradient(180deg, rgba(86, 116, 225, 0.35), rgba(14, 21, 52, 0.92));
+}
+.archive-folder .folder-body {
+  display: block;
+  margin-top: 10px;
+  min-height: 64px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 10px 28px -16px rgba(0, 0, 0, 0.9);
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+}
+.archive-folder:hover .folder-body {
+  border-color: rgba(245, 165, 36, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 14px 38px -16px rgba(245, 165, 36, 0.35);
+  transform: translateY(-1px);
+}
+.archive-folder:active .folder-body {
+  transform: translateY(0);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

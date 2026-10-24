@@ -588,7 +588,13 @@ def _run_analysis(upload_id: str, entry: dict[str, Any]) -> None:
     """Run parsing, extraction, and verification without blocking POST."""
     warnings: list[AnalysisWarning] = []
     profile_id = "prf_" + hashlib.sha256(upload_id.encode()).hexdigest()[:12]
+
+    def _set_progress(stage: str, done: int, total: int) -> None:
+        with _UPLOAD_LOCK:
+            entry["progress"] = {"stage": stage, "done": done, "total": total}
+
     try:
+        _set_progress("parsing", 0, 0)
         documents, warnings = _parse_documents_safely(entry["paths"])
         if not documents:
             raise _AnalysisFailure(
@@ -599,6 +605,7 @@ def _run_analysis(upload_id: str, entry: dict[str, Any]) -> None:
                 ),
             )
 
+        _set_progress("extracting", 0, 0)
         try:
             profile, _skipped = extract_profile(documents)
         except Exception as exc:
@@ -610,8 +617,16 @@ def _run_analysis(upload_id: str, entry: dict[str, Any]) -> None:
                 ),
             ) from exc
 
+        publications = (
+            profile.get("candidate", {})
+            .get("publications_impact", {})
+            .get("publications", [])
+        )
+        _set_progress("verifying_publications", 0, len(publications))
         try:
-            verified = verify_profile(profile, verify_web=True)
+            verified = verify_profile(
+                profile, verify_web=True, on_progress=_set_progress
+            )
             warnings.extend(collect_retryable_verification_warnings(verified))
         except Exception as exc:
             verified = mark_verification_incomplete(profile, error=exc)
@@ -630,6 +645,11 @@ def _run_analysis(upload_id: str, entry: dict[str, Any]) -> None:
             )
 
         with _UPLOAD_LOCK:
+            entry["progress"] = {
+                "stage": "completed",
+                "done": len(publications),
+                "total": len(publications),
+            }
             entry["profile"] = verified
             entry["profile_id"] = profile_id
             entry["warnings"] = [item.as_dict() for item in warnings]
@@ -678,6 +698,7 @@ def analyze(body: dict[str, Any]) -> JSONResponse:
         entry.pop("error", None)
         entry["status"] = "processing"
         entry["warnings"] = []
+        entry["progress"] = {"stage": "queued", "done": 0, "total": 0}
     try:
         _ANALYSIS_POOL.submit(_run_analysis, upload_id, entry)
     except Exception as exc:
@@ -704,6 +725,7 @@ def analyze_status(upload_id: str) -> JSONResponse:
         error = entry.get("error")
         profile = entry.get("profile")
         profile_id = entry.get("profile_id")
+        progress = entry.get("progress")
     if profile is not None:
         return JSONResponse(
             status_code=200,
@@ -730,7 +752,15 @@ def analyze_status(upload_id: str) -> JSONResponse:
             },
         )
     if status == "processing":
-        return JSONResponse(status_code=202, content={"upload_id": upload_id, "status": "processing", "warnings": []})
+        return JSONResponse(
+            status_code=202,
+            content={
+                "upload_id": upload_id,
+                "status": "processing",
+                "warnings": [],
+                "progress": progress or {"stage": "queued", "done": 0, "total": 0},
+            },
+        )
     return JSONResponse(
         status_code=200,
         content={"upload_id": upload_id, "status": "pending", "warnings": []},

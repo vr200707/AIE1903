@@ -25,10 +25,12 @@ import copy
 import difflib
 import os
 import re
-from concurrent.futures import ThreadPoolExecutor
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Any
+from typing import Any, Callable
 
 import httpx
 
@@ -38,14 +40,38 @@ from app.search import search_web
 
 CROSSREF_WORKS = "https://api.crossref.org/works"
 OPENALEX_WORKS = "https://api.openalex.org/works"
-MAILTO = "aie1903@example.com"
-USER_AGENT = f"AIE1903-cv-verify/1.0 (mailto:{MAILTO})"
 
 MATCH_THRESHOLD = 0.6
 CONFIRM_THRESHOLD = 0.8
 YEAR_TOLERANCE = 1
 HTTP_TIMEOUT = 30.0
 DEFAULT_VERIFY_MAX_WORKERS = 8
+# 429 由断路器处理，不进入重试；5xx 才按退避重试。
+OPENALEX_RETRYABLE_STATUS = {500, 502, 503, 504}
+OPENALEX_MAX_RETRIES = 3
+# 429 后跳过 OpenAlex 的冷却时长（秒）：覆盖本轮余下核验，下一轮自动恢复。
+OPENALEX_CIRCUIT_COOLDOWN = 60.0
+
+_openalex_circuit_open_until = 0.0
+_openalex_circuit_lock = threading.Lock()
+
+
+class OpenAlexRateLimited(Exception):
+    """OpenAlex 返回 429，断路器已打开，本轮跳过后续 OpenAlex 查询。"""
+
+
+def _openalex_available() -> bool:
+    with _openalex_circuit_lock:
+        return time.monotonic() >= _openalex_circuit_open_until
+
+
+def _openalex_trip() -> None:
+    global _openalex_circuit_open_until
+    with _openalex_circuit_lock:
+        _openalex_circuit_open_until = max(
+            _openalex_circuit_open_until,
+            time.monotonic() + OPENALEX_CIRCUIT_COOLDOWN,
+        )
 
 
 def _verify_max_workers() -> int:
@@ -55,6 +81,30 @@ def _verify_max_workers() -> int:
     except ValueError:
         return DEFAULT_VERIFY_MAX_WORKERS
     return max(1, value)
+
+
+def _openalex_mailto() -> str:
+    """OpenAlex 礼貌池邮箱；填真实邮箱进入 polite pool，留空则公共池。"""
+    return os.getenv("OPENALEX_MAILTO", "").strip()
+
+
+def _openalex_user_agent() -> str:
+    mailto = _openalex_mailto()
+    return (
+        f"AIE1903-cv-verify/1.0 (mailto:{mailto})"
+        if mailto
+        else "AIE1903-cv-verify/1.0"
+    )
+
+
+def _openalex_backoff(attempt: int, retry_after: str | None) -> float:
+    """429/5xx 退避：优先 Retry-After，否则指数退避（2s 封顶 8s）。"""
+    if retry_after:
+        try:
+            return max(0.0, float(retry_after))
+        except ValueError:
+            pass
+    return min(2.0 ** attempt, 8.0)
 
 
 @dataclass
@@ -130,18 +180,52 @@ def _crossref_candidates(title: str) -> list[_Candidate]:
 
 
 def _openalex_candidates(title: str) -> list[_Candidate]:
-    response = httpx.get(
-        OPENALEX_WORKS,
-        params={
-            "search": title,
-            "per-page": 5,
-            "mailto": MAILTO,
-        },
-        headers={"User-Agent": USER_AGENT},
-        timeout=HTTP_TIMEOUT,
-    )
-    response.raise_for_status()
-    results = response.json().get("results", [])
+    if not _openalex_available():
+        raise OpenAlexRateLimited("OpenAlex skipped: rate-limit circuit open")
+
+    params: dict[str, Any] = {"search": title, "per-page": 5}
+    mailto = _openalex_mailto()
+    if mailto:
+        params["mailto"] = mailto
+    headers = {"User-Agent": _openalex_user_agent()}
+
+    last_exc: BaseException | None = None
+    for attempt in range(OPENALEX_MAX_RETRIES):
+        try:
+            response = httpx.get(
+                OPENALEX_WORKS,
+                params=params,
+                headers=headers,
+                timeout=HTTP_TIMEOUT,
+            )
+            if response.status_code == 429:
+                _openalex_trip()
+                raise OpenAlexRateLimited("OpenAlex rate limited (429)")
+            if response.status_code in OPENALEX_RETRYABLE_STATUS:
+                response.raise_for_status()
+            response.raise_for_status()
+        except OpenAlexRateLimited:
+            raise
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code not in OPENALEX_RETRYABLE_STATUS:
+                raise
+            last_exc = exc
+            time.sleep(
+                _openalex_backoff(attempt, exc.response.headers.get("Retry-After"))
+            )
+            continue
+        except httpx.TransportError as exc:
+            last_exc = exc
+            time.sleep(_openalex_backoff(attempt, None))
+            continue
+
+        results = response.json().get("results", [])
+        break
+    else:
+        if last_exc is not None:
+            raise last_exc
+        raise httpx.TransportError("OpenAlex retries exhausted")
+
     candidates: list[_Candidate] = []
     for item in results:
         item_title = item.get("title") or ""
@@ -179,6 +263,9 @@ def _search_candidates(title: str) -> tuple[list[_Candidate], list[str]]:
         try:
             candidates.extend(fetcher(title))
             health.record_dependency_success(name.lower())
+        except OpenAlexRateLimited as exc:
+            health.record_dependency_failure(name.lower(), exc)
+            errors.append(f"{name}: rate limited (skipped)")
         except Exception as exc:  # 网络 / 服务异常不判为造假。
             health.record_dependency_failure(name.lower(), exc)
             errors.append(f"{name}: {type(exc).__name__}")
@@ -351,19 +438,26 @@ def verify_publications(
     publications: list[dict[str, Any]],
     *,
     query_date: str | None = None,
+    on_progress: Callable[[str, int, int], None] | None = None,
 ) -> list[dict[str, Any]]:
     if not publications:
         return []
     workers = min(_verify_max_workers(), len(publications))
+    total = len(publications)
     with ThreadPoolExecutor(max_workers=workers) as executor:
-        return list(
-            executor.map(
-                lambda publication: verify_publication(
-                    publication, query_date=query_date
-                ),
-                publications,
-            )
-        )
+        futures = {
+            executor.submit(verify_publication, publication, query_date=query_date): index
+            for index, publication in enumerate(publications)
+        }
+        results: list[dict[str, Any]] = [{} for _ in range(total)]
+        done = 0
+        for future in as_completed(futures):
+            index = futures[future]
+            results[index] = future.result()
+            done += 1
+            if on_progress is not None:
+                on_progress("verifying_publications", done, total)
+        return results
 
 
 def _web_evidence(
@@ -506,20 +600,28 @@ def _verify_web_claims(
     *,
     query_date: str,
     search: Any,
+    on_progress: Callable[[str, int, int], None] | None = None,
 ) -> dict[str, Any]:
     claims = _web_claims_from_profile(candidate)
     if not claims:
         return candidate
     workers = min(_verify_max_workers(), len(claims))
+    total = len(claims)
     with ThreadPoolExecutor(max_workers=workers) as executor:
-        evidence_items = list(
-            executor.map(
-                lambda claim: verify_text_claim(
-                    claim[0], query_date=query_date, search=search
-                ),
-                claims,
-            )
-        )
+        futures = {
+            executor.submit(
+                verify_text_claim, claim[0], query_date=query_date, search=search
+            ): index
+            for index, claim in enumerate(claims)
+        }
+        evidence_items = [None] * total
+        done = 0
+        for future in as_completed(futures):
+            index = futures[future]
+            evidence_items[index] = future.result()
+            done += 1
+            if on_progress is not None:
+                on_progress("verifying_web_claims", done, total)
     for (_, kind, index), evidence in zip(claims, evidence_items):
         _append_web_evidence(candidate, kind, index, evidence)
     return candidate
@@ -531,6 +633,7 @@ def verify_profile(
     query_date: str | None = None,
     verify_web: bool = False,
     search: Any = None,
+    on_progress: Callable[[str, int, int], None] | None = None,
 ) -> dict[str, Any]:
     """对完整档案执行公开来源核验，返回追加核验证据后的档案（浅拷贝）。
 
@@ -544,12 +647,14 @@ def verify_profile(
     publications_impact["publications"] = verify_publications(
         publications_impact.get("publications", []),
         query_date=query_date,
+        on_progress=on_progress,
     )
     if verify_web:
         candidate = _verify_web_claims(
             candidate,
             query_date=query_date or _today(),
             search=search,
+            on_progress=on_progress,
         )
     verified["candidate"] = candidate
     return verified

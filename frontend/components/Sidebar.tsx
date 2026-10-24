@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useIdentity } from "./IdentityProvider";
+import { useArchive } from "./ArchiveProvider";
+import { ArchiveFolder } from "./ArchiveFolder";
 
 const NAV = [
   {
@@ -31,6 +33,7 @@ const NAV = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { identity } = useIdentity();
+  const { archives, openArchive } = useArchive();
   const initials = (identity?.name ?? "AIE")
     .split(/\s+/)
     .slice(0, 2)
@@ -78,8 +81,37 @@ export default function Sidebar() {
         })}
       </nav>
 
+      {/* 档案库：所有分析完成的 CV */}
+      <div className="mt-6 flex min-h-0 flex-1 flex-col">
+        <div className="mb-2 flex shrink-0 items-center justify-between px-2">
+          <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/35">
+            档案库 Archive
+          </span>
+          <span className="text-[11px] tabular-nums text-white/25">
+            {archives.length}
+          </span>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-0.5">
+          {archives.length === 0 ? (
+            <p className="px-2 py-6 text-center text-xs leading-relaxed text-white/30">
+              暂无档案
+              <br />
+              分析完成后自动存档
+            </p>
+          ) : (
+            archives.map((entry) => (
+              <ArchiveFolder
+                key={entry.id}
+                entry={entry}
+                onClick={() => openArchive(entry.id)}
+              />
+            ))
+          )}
+        </div>
+      </div>
+
       {/* 说明位 */}
-      <div className="mt-8 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3">
+      <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3">
         <p className="text-xs leading-relaxed text-white/40">
           Every field in this profile links back to a verifiable source.
         </p>
