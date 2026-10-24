@@ -1,0 +1,203 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
+/** 分析过程脚本：按节奏逐条吐出的 AI 思考流 */
+const SCRIPT: { label: string; detail: string }[] = [
+  { label: "Reading uploaded documents", detail: "CV · cover letter · research & teaching statement" },
+  { label: "Segmenting document structure", detail: "4 files, 27 pages detected" },
+  { label: "Extracting identity and affiliation", detail: "name · position · institution" },
+  { label: "Parsing education and employment history", detail: "6 timeline entries resolved" },
+  { label: "Collecting publications and venues", detail: "peer-review stage and indexing matched" },
+  { label: "Verifying claims against public sources", detail: "institutional page · publisher page" },
+  { label: "Cross-checking conflicts", detail: "graduation year flagged, needs human review" },
+  { label: "Scoring evaluation dimensions", detail: "research · teaching · fit · standing" },
+];
+
+const REVEAL_MS = 1500;
+
+/** 当前行打字机 */
+function useTypewriter(text: string, active: boolean) {
+  const [typed, setTyped] = useState("");
+  useEffect(() => {
+    if (!active) return;
+    let i = 0;
+    const id = window.setInterval(() => {
+      i += 1;
+      setTyped(text.slice(0, i));
+      if (i >= text.length) window.clearInterval(id);
+    }, 22);
+    return () => window.clearInterval(id);
+  }, [text, active]);
+  return active ? typed : text;
+}
+
+function ThinkingRow({
+  label,
+  detail,
+  active,
+  typing,
+}: {
+  label: string;
+  detail: string;
+  active: boolean;
+  typing: boolean;
+}) {
+  const text = useTypewriter(label, typing);
+  return (
+    <li className="animate-line-in flex items-start gap-3 py-2.5">
+      <span
+        className={
+          active
+            ? "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent shadow-[0_0_10px_2px_rgba(245,165,36,0.55)]"
+            : "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-white/25"
+        }
+      />
+      <div className="min-w-0">
+        <p className="text-sm text-white/85">
+          {text}
+          {typing && (
+            <span className="animate-caret ml-0.5 inline-block h-3.5 w-[2px] translate-y-0.5 bg-accent" />
+          )}
+        </p>
+        <p className="text-xs text-white/35">{detail}</p>
+      </div>
+    </li>
+  );
+}
+
+/** 单页文档：扫描线自上而下，逐行"点亮" */
+function DocPage({ active, rows = 14 }: { active: boolean; rows?: number }) {
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4">
+      <div className="mb-3 h-2 w-24 rounded-full bg-white/15" />
+      <div className="space-y-2">
+        {Array.from({ length: rows }).map((_, i) => (
+          <div
+            key={i}
+            className="h-1.5 rounded-full bg-white/10 transition-colors duration-500"
+            style={
+              active
+                ? {
+                    width: `${100 - ((i * 37) % 46)}%`,
+                    animation: `line-in 0.4s ease ${(i * REVEAL_MS) / rows / 1000}s both`,
+                    background: "rgba(245,165,36,0.22)",
+                  }
+                : { width: `${100 - ((i * 37) % 46)}%` }
+            }
+          />
+        ))}
+      </div>
+      {active && (
+        <div
+          className="animate-scan pointer-events-none absolute inset-x-0 h-14"
+          style={{
+            background:
+              "linear-gradient(to bottom, transparent, rgba(245,165,36,0.16) 55%, rgba(255,200,120,0.7))",
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * 分析中界面：左半屏文档逐页扫描，右半屏 AI 思考流逐条打字。
+ * @param phase 后端返回的当前真实阶段（可选，会高亮显示）
+ */
+export default function AnalyzingStage({ phase }: { phase?: string | null }) {
+  const [step, setStep] = useState(0);
+  const scrollerRef = useRef<HTMLUListElement>(null);
+
+  useEffect(() => {
+    const id = setInterval(
+      () => setStep((s) => (s >= SCRIPT.length ? s : s + 1)),
+      REVEAL_MS,
+    );
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    scrollerRef.current?.scrollTo({
+      top: scrollerRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [step]);
+
+  const shown = Math.min(step, SCRIPT.length);
+
+  return (
+    <div className="animate-collapse mx-auto grid w-full max-w-6xl gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)]">
+      {/* 左：文档扫描 */}
+      <div className="relative rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-xs font-medium uppercase tracking-[0.25em] text-white/35">
+            Parsing
+          </p>
+          <span className="flex items-center gap-1.5 text-xs text-white/40">
+            <span className="animate-ring-spin inline-block h-2.5 w-2.5 rounded-full border border-accent/30 border-t-accent" />
+            page {Math.min(step + 1, 27)} / 27
+          </span>
+        </div>
+
+        <div className="relative h-[19rem]">
+          {/* 叠放的两页文档 */}
+          <div className="absolute inset-x-3 top-2 -rotate-2 opacity-30">
+            <DocPage active={false} rows={10} />
+          </div>
+          <div className="absolute inset-x-0 top-5">
+            <DocPage active rows={15} />
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {["candidate_cv.pdf", "cover_letter.pdf", "research_statement.pdf", "teaching_statement.pdf"].map(
+            (f, i) => (
+              <span
+                key={f}
+                className="rounded-full border px-2.5 py-1 text-[11px] transition-colors duration-500"
+                style={{
+                  borderColor: i < Math.min(step + 1, 4) ? "rgba(245,165,36,0.35)" : "rgba(255,255,255,0.1)",
+                  color: i < Math.min(step + 1, 4) ? "#ffc978" : "rgba(255,255,255,0.3)",
+                  background: i < Math.min(step + 1, 4) ? "rgba(245,165,36,0.08)" : "transparent",
+                }}
+              >
+                {f}
+              </span>
+            ),
+          )}
+        </div>
+      </div>
+
+      {/* 右：思考流 */}
+      <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-xl">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-xs font-medium uppercase tracking-[0.25em] text-white/35">
+            Reasoning trace
+          </p>
+          <span className="font-mono text-xs text-white/30">
+            {shown} / {SCRIPT.length}
+          </span>
+        </div>
+
+        {phase && (
+          <p className="mb-3 rounded-lg border border-accent/25 bg-accent/[0.07] px-3 py-2 text-xs text-accent-soft">
+            backend · {phase}
+          </p>
+        )}
+
+        <ul ref={scrollerRef} className="max-h-[16.5rem] overflow-hidden">
+          {SCRIPT.slice(0, shown).map((s, i) => (
+            <ThinkingRow
+              key={s.label}
+              label={s.label}
+              detail={s.detail}
+              active={i === shown - 1}
+              typing={i === shown - 1}
+            />
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
