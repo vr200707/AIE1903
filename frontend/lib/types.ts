@@ -196,12 +196,34 @@ export interface UploadResponse {
   documents: UploadedDocument[];
 }
 
+export interface ChunkInitFile {
+  file_index: number;
+  filename: string;
+  total_bytes: number;
+  chunk_count: number;
+}
+
+export interface ChunkInitResponse {
+  session_id: string;
+  chunk_size: number;
+  files: ChunkInitFile[];
+}
+
+export type AnalyzeStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "completed_with_warnings"
+  | "failed";
+
 export interface AnalyzeResponse {
-  profile_id: string;
-  status: string;
-  schema_version: string;
-  candidate: Candidate;
-  warnings: AnalysisWarning[];
+  upload_id?: string;
+  profile_id?: string;
+  status: AnalyzeStatus;
+  schema_version?: string;
+  candidate?: Candidate;
+  warnings?: AnalysisWarning[];
+  error?: AnalysisError;
 }
 
 export interface AnalysisWarning {
@@ -210,6 +232,11 @@ export interface AnalysisWarning {
   message: string;
   retryable: boolean;
   source: string | null;
+}
+
+export interface AnalysisError {
+  code: string;
+  detail: string;
 }
 
 export interface QAResponse {

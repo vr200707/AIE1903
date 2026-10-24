@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { mockProfile } from "@/lib/mock";
-import { uploadFiles, analyze, askQuestion } from "@/lib/api";
+import { uploadFiles, analyze, getAnalyzeStatus, askQuestion } from "@/lib/api";
 import { Section, sectionArt } from "@/components/Section";
 import Starfield from "@/components/Starfield";
 import AnalyzingStage from "@/components/AnalyzingStage";
@@ -157,16 +157,46 @@ export default function Home() {
     try {
       const { upload_id } = await uploadFiles(files);
       setLoadingMessage("Extracting profile and verifying public sources...");
-      const { profile_id, candidate, warnings } = await analyze(upload_id);
-      setProfileId(profile_id);
-      setCandidate(candidate);
-      setAnalysisWarnings(warnings ?? []);
+      const first = await analyze(upload_id);
+      if (
+        first.status === "completed" ||
+        first.status === "completed_with_warnings"
+      ) {
+        setProfileId(first.profile_id ?? null);
+        setCandidate(first.candidate ?? null);
+        setAnalysisWarnings(first.warnings ?? []);
+      } else {
+        await pollAnalyze(upload_id);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Analysis failed. Please try again.");
     } finally {
       setLoading(false);
       setLoadingMessage(null);
     }
+  };
+
+  const pollAnalyze = async (uploadId: string) => {
+    // 分析在后台运行；每 1.5s 轮询一次，最长约 10 分钟。
+    for (let attempt = 0; attempt < 400; attempt += 1) {
+      const res = await getAnalyzeStatus(uploadId);
+      if (
+        res.status === "completed" ||
+        res.status === "completed_with_warnings"
+      ) {
+        setProfileId(res.profile_id ?? null);
+        setCandidate(res.candidate ?? null);
+        setAnalysisWarnings(res.warnings ?? []);
+        return;
+      }
+      if (res.status === "failed") {
+        throw new Error(
+          res.error?.detail ?? "Analysis failed on the server. Please try again.",
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+    throw new Error("Analysis timed out. Please try again.");
   };
 
   const handleAsk = async () => {

@@ -148,7 +148,8 @@ http://localhost:3000
 
 - `/health/live` 与 `/health/ready` 返回 `200`
 - `/api/upload` 返回 `201` 和 `upload_id`
-- `/api/analyze` 返回 `200` 和 `status=completed`
+- `/api/analyze` 返回 `202`，轮询 `GET /api/analyze/{upload_id}` 后进入
+  `completed` 或 `completed_with_warnings`
 - `/api/profile` 能按 `upload_id` 或 `profile_id` 返回档案
 - 前端能展示六大模块和证据
 - 证据弹窗、筛选和人工修正可交互

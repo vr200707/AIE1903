@@ -1,4 +1,5 @@
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -80,14 +81,33 @@ class ApiTests(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(api.app)
         api._UPLOADS.clear()
+        api._CHUNK_SESSIONS.clear()
         self.original_upload_dir = api.UPLOAD_DIR
+        self.original_chunk_dir = api.CHUNK_DIR
         self.temp_dir = tempfile.TemporaryDirectory()
         api.UPLOAD_DIR = Path(self.temp_dir.name) / "uploads"
+        api.CHUNK_DIR = api.UPLOAD_DIR / ".chunks"
 
     def tearDown(self):
         api._UPLOADS.clear()
+        api._CHUNK_SESSIONS.clear()
         api.UPLOAD_DIR = self.original_upload_dir
+        api.CHUNK_DIR = self.original_chunk_dir
         self.temp_dir.cleanup()
+
+    def _wait_analysis(self, upload_id: str, timeout: float = 5.0):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            response = self.client.get(f"/api/analyze/{upload_id}")
+            body = response.json()
+            if body.get("status") in (
+                "completed",
+                "completed_with_warnings",
+                "failed",
+            ):
+                return response
+            time.sleep(0.05)
+        raise AssertionError("analysis did not finish in time")
 
     def test_health(self):
         response = self.client.get("/health")
@@ -130,7 +150,10 @@ class ApiTests(unittest.TestCase):
         with mock.patch.object(api, "parse_document", return_value=_parsed()), mock.patch.object(
             api, "extract_profile", return_value=(profile, [])
         ), mock.patch.object(api, "verify_profile", return_value=profile):
-            analyzed = self.client.post("/api/analyze", json={"upload_id": upload_id})
+            started = self.client.post("/api/analyze", json={"upload_id": upload_id})
+            self.assertEqual(started.status_code, 202)
+            self.assertEqual(started.json()["status"], "processing")
+            analyzed = self._wait_analysis(upload_id)
 
         self.assertEqual(analyzed.status_code, 200)
         body = analyzed.json()
@@ -159,9 +182,11 @@ class ApiTests(unittest.TestCase):
         ), mock.patch.object(
             api, "verify_profile", side_effect=lambda profile, verify_web: profile
         ):
-            response = self.client.post(
+            started = self.client.post(
                 "/api/analyze", json={"upload_id": "upl_partial"}
             )
+            self.assertEqual(started.status_code, 202)
+            response = self._wait_analysis("upl_partial")
 
         self.assertEqual(response.status_code, 200)
         body = response.json()
@@ -181,9 +206,11 @@ class ApiTests(unittest.TestCase):
         ), mock.patch.object(
             api, "verify_profile", side_effect=RuntimeError("network")
         ):
-            response = self.client.post(
+            started = self.client.post(
                 "/api/analyze", json={"upload_id": "upl_verify_fail"}
             )
+            self.assertEqual(started.status_code, 202)
+            response = self._wait_analysis("upl_verify_fail")
 
         self.assertEqual(response.status_code, 200)
         body = response.json()
@@ -218,9 +245,11 @@ class ApiTests(unittest.TestCase):
         ), mock.patch.object(
             api, "verify_profile", return_value=profile
         ):
-            response = self.client.post(
+            started = self.client.post(
                 "/api/analyze", json={"upload_id": "upl_partial_verify"}
             )
+            self.assertEqual(started.status_code, 202)
+            response = self._wait_analysis("upl_partial_verify")
 
         self.assertEqual(response.status_code, 200)
         body = response.json()
@@ -234,14 +263,55 @@ class ApiTests(unittest.TestCase):
         with mock.patch.object(
             api, "parse_document", return_value=_parsed(text="")
         ):
-            response = self.client.post(
+            started = self.client.post(
                 "/api/analyze", json={"upload_id": "upl_empty"}
             )
+            self.assertEqual(started.status_code, 202)
+            response = self._wait_analysis("upl_empty")
 
-        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "failed")
         self.assertEqual(
-            response.json()["detail"]["code"], "no_readable_documents"
+            response.json()["error"]["code"], "no_readable_documents"
         )
+
+    def test_failed_analysis_can_be_retried(self):
+        upload = self.client.post(
+            "/api/upload",
+            files=[("files", ("a.pdf", b"%PDF-fake", "application/pdf"))],
+        )
+        upload_id = upload.json()["upload_id"]
+        profile = _full_profile()
+
+        with mock.patch.object(
+            api, "parse_document", return_value=_parsed()
+        ), mock.patch.object(
+            api,
+            "extract_profile",
+            side_effect=RuntimeError("temporary"),
+        ):
+            started = self.client.post(
+                "/api/analyze", json={"upload_id": upload_id}
+            )
+            self.assertEqual(started.status_code, 202)
+            failed = self._wait_analysis(upload_id)
+
+        self.assertEqual(failed.json()["status"], "failed")
+        self.assertEqual(failed.json()["error"]["code"], "extraction_failed")
+
+        with mock.patch.object(
+            api, "parse_document", return_value=_parsed()
+        ), mock.patch.object(
+            api, "extract_profile", return_value=(profile, [])
+        ), mock.patch.object(api, "verify_profile", return_value=profile):
+            retried = self.client.post(
+                "/api/analyze", json={"upload_id": upload_id}
+            )
+            self.assertEqual(retried.status_code, 202)
+            completed = self._wait_analysis(upload_id)
+
+        self.assertEqual(completed.json()["status"], "completed")
+        self.assertEqual(completed.json()["candidate"], profile["candidate"])
 
     def test_profile_missing_id_is_422(self):
         response = self.client.get("/api/profile")
