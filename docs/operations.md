@@ -31,7 +31,8 @@ DeepSeek、Crossref、OpenAlex 或 Bing，避免产生费用和额外限流。
 - Crossref、OpenAlex 或 Bing 失败时，不会把故障解释为候选人声明为假。
 - 外部核验整体异常时，已抽取档案仍会返回，API 状态为
   `completed_with_warnings`。
-- 所有文档都没有可提取文本时，API 返回 `422 no_readable_documents`。
+- 所有文档都没有可提取文本时，异步任务状态为 `failed`，错误代码为
+  `no_readable_documents`。
 
 ## 常见问题
 
@@ -50,9 +51,17 @@ DeepSeek、Crossref、OpenAlex 或 Bing，避免产生费用和额外限流。
 
 ### 分析耗时过长
 
-- `/api/analyze` 当前是同步接口。
+- `/api/analyze` 首次请求返回 `202`，使用 `GET /api/analyze/{upload_id}` 轮询。
+- 后台分析并发数可通过 `ANALYSIS_MAX_WORKERS` 调整。
 - 可通过 `VERIFY_MAX_WORKERS` 调整核验并发数。
-- 当前没有任务队列、进度回传或取消机制。
+- 当前是进程内线程池，没有持久化任务队列、细粒度进度或取消机制。
+
+### 大文件上传失败
+
+- 前端对总大小超过 8 MB 的文件改用 4 MB 分片上传。
+- 未完成的分片会话默认保留 1 小时，可通过 `CHUNK_SESSION_TTL_SECONDS` 调整。
+- 活跃分片会话默认最多 32 个，可通过 `MAX_CHUNK_SESSIONS` 调整。
+- 单文件默认上限 100 MB，可通过 `MAX_FILE_BYTES` 调整。
 
 ### 网页核验不稳定
 

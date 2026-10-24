@@ -2,6 +2,46 @@
 
 > 记录方式：按日期追加续写，最新在上；每次只新增日期条目，不改写历史条目。
 
+## 2026-10-21
+
+### 已完成
+
+- 定位「文件上传失败」根因（已实测复现）：
+  1. Next.js rewrites 代理的请求体缓冲上限默认约 10MB；单文件或总请求体超过 10MB 时，
+     代理在请求到达后端前就截断，日志报 `Request body exceeded 10MB ... socket hang up`，
+     前端收到 500（而不是后端 413）。实测：15MB 文件直连后端 `POST /api/upload` 返回 201，
+     同一请求经 :3000 代理返回 500。
+  2. 溯源核验 `verify_profile(verify_web=True)` 逐条串行调用 Bing/Crossref/OpenAlex，
+     单条最长约 20s，整体可超过 Next 代理默认 30s `proxyTimeout`；前端把「上传 + analyze」
+     串成一步，核验超时/失败被呈现为整体上传失败。
+- 修复（后端 `app/api.py`）：
+  - 新增分片上传协议：`POST /api/upload/init` → `PUT /api/upload/session/{sid}/files/{i}/chunks/{j}`
+    → `POST /api/upload/session/{sid}/complete`，4MB/片（远低于代理 10MB 上限），
+    合并后返回 `upload_id`；保留原有小文件 multipart `POST /api/upload`。
+  - 单文件业务上限 `DEFAULT_MAX_FILE_BYTES=100MB`（策略上限，可经 `MAX_FILE_BYTES` 覆盖），
+    与传输层上限解耦。
+  - `/api/analyze` 改为异步：立即返回 202，后台线程池执行「解析→抽取→核验」，
+    新增 `GET /api/analyze/{upload_id}` 轮询；失败任务可通过再次 POST 重试。
+- 修复（后端 `app/verify.py`）：沿用主线的 `notes` 证据与结构化 `AnalysisWarning`，
+  Crossref/OpenAlex/Bing 不可用时追加 `to_verify` 证据，不把故障误判为造假或未找到。
+- 修复（前端）：`lib/api.ts` 总大小 >8MB 走分片上传（4MB/片）；`page.tsx` 上传后异步 analyze +
+  轮询（每 1.5s，最长约 10 分钟）；新增结构化警告横幅，逐条展示 warning code 与说明。
+- 集成：以最新 `main` 为基线合并 PR #21，保留主线健康检查、安全解析与核验降级逻辑，
+  同时引入 PR 的分片上传和异步状态机。
+- 验证：
+  - 后端 `python -m unittest discover -s tests -v`：102 项全部通过（2 项 OCR 测试按环境跳过）。
+  - 前端 `npm run lint`：0 错误（1 条与本次无关的既有 `<img>` 警告）；`npm run build`：通过。
+  - 端到端：25MB 文件经 :8000 直连与经 :3000 Next 代理分片上传均 201、落盘字节一致、
+    分片会话清理正常；`/api/analyze` 立即 202 并进入终态；小文件 multipart 路径仍 201。
+- 修复在 `codex/integrate-pr21-upload-async` 集成分支完成合并与验证。
+
+### 待办
+
+- 分片上传/异步分析目前为进程内字典 + 落盘 `.cache/uploads`，生产需替换持久化存储与多实例协调。
+- 后台分析使用进程内线程池；生产部署仍需持久化任务队列、多实例协调和取消机制。
+- 端到端用伪 PDF 验证了「解析失败会正确标记 failed」；尚未用真实简历在网页端完整走一遍
+  「上传→分析→档案→警告横幅」。
+
 ## 2026-09-30
 
 ### 已完成
