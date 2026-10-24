@@ -23,6 +23,7 @@ import type {
   Evidence,
   EvidenceStatus,
   Candidate,
+  AnalysisWarning,
   QAResponse,
 } from "@/lib/types";
 
@@ -113,6 +114,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [analysisWarnings, setAnalysisWarnings] = useState<AnalysisWarning[]>([]);
   const [filter, setFilter] = useState<FilterState>({ tags: [], search: "" });
   const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(null);
   const [corrections, setCorrections] = useState<Map<Evidence, EvidenceStatus>>(
@@ -151,12 +153,14 @@ export default function Home() {
     setLoading(true);
     setLoadingMessage("Uploading and parsing documents...");
     setError(null);
+    setAnalysisWarnings([]);
     try {
       const { upload_id } = await uploadFiles(files);
       setLoadingMessage("Extracting profile and verifying public sources...");
-      const { profile_id, candidate } = await analyze(upload_id);
+      const { profile_id, candidate, warnings } = await analyze(upload_id);
       setProfileId(profile_id);
       setCandidate(candidate);
+      setAnalysisWarnings(warnings ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Analysis failed. Please try again.");
     } finally {
@@ -185,6 +189,7 @@ export default function Home() {
     setFilter({ tags: [], search: "" });
     setSelectedEvidence(null);
     setCorrections(new Map());
+    setAnalysisWarnings([]);
     setQaResult(null);
     setQaError(null);
     setQuestion("");
@@ -288,8 +293,12 @@ export default function Home() {
                 />
               </label>
               <button
-                onClick={() => setCandidate(mockProfile.candidate)}
-                className="animate-sweep relative overflow-hidden rounded-full border border-white/20 px-9 py-3.5 text-sm text-white/70 transition hover:border-white/40 hover:text-white"
+                onClick={() => {
+                  setAnalysisWarnings([]);
+                  setCandidate(mockProfile.candidate);
+                }}
+                disabled={loading}
+                className="animate-sweep relative overflow-hidden rounded-full border border-white/20 px-9 py-3.5 text-sm text-white/70 transition hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span className="relative z-10">Load example data</span>
               </button>
@@ -401,6 +410,25 @@ export default function Home() {
         <div className="animate-pop" style={{ animationDelay: "0.05s" }}>
           <BackButton onClick={resetToHome} />
         </div>
+        {analysisWarnings.length > 0 && (
+          <div
+            className="animate-fade-in-up rounded-lg border border-amber-400/30 bg-amber-400/[0.08] p-4 text-sm"
+            role="status"
+          >
+            <p className="font-semibold text-amber-200">
+              Analysis completed with warnings
+            </p>
+            <ul className="mt-2 space-y-1 text-amber-100/75">
+              {analysisWarnings.map((item, index) => (
+                <li key={`${item.code}-${index}`}>
+                  {item.source ? `${item.source}: ` : ""}
+                  {item.message}
+                  {item.retryable ? " You can retry the analysis." : ""}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div className="animate-pop" style={{ animationDelay: "0.05s" }}>
           <TagFilter tags={tags} filter={filter} onChange={setFilter} />
         </div>

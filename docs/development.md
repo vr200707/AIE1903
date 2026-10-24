@@ -14,7 +14,8 @@
 
 ### 联调顺序
 
-1. 每人先在本机启动后端并确认 `curl http://localhost:8000/health` 返回 `{"status":"ok"}`。
+1. 每人先在本机启动后端，确认 `/health/live` 返回 `200`，且 `/health/ready`
+   返回 `ready`。
 2. 每人再在本机启动前端并打开 `http://localhost:3000`。
 3. 赵越提供一份用于联调的 PDF 或 DOCX 样本（发给需要演示的人即可）。
 4. 各自在前端执行一次完整流程。
@@ -56,6 +57,7 @@ uvicorn app.main:app --reload --port 8000
 
 ```bash
 curl http://localhost:8000/health
+curl http://localhost:8000/health/ready
 ```
 
 预期返回：
@@ -144,7 +146,7 @@ http://localhost:3000
 
 全部满足即可确认 D5 完成：
 
-- `/health` 返回 `200`
+- `/health/live` 与 `/health/ready` 返回 `200`
 - `/api/upload` 返回 `201` 和 `upload_id`
 - `/api/analyze` 返回 `200` 和 `status=completed`
 - `/api/profile` 能按 `upload_id` 或 `profile_id` 返回档案

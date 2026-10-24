@@ -201,6 +201,15 @@ export interface AnalyzeResponse {
   status: string;
   schema_version: string;
   candidate: Candidate;
+  warnings: AnalysisWarning[];
+}
+
+export interface AnalysisWarning {
+  code: string;
+  stage: string;
+  message: string;
+  retryable: boolean;
+  source: string | null;
 }
 
 export interface QAResponse {

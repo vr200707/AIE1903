@@ -19,6 +19,8 @@ from typing import Any, Iterator
 from dotenv import load_dotenv
 from openai import OpenAI
 
+from app import health
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE_KEYS = {"source", "evidence", "evidence_status", "query_date"}
@@ -116,16 +118,21 @@ def _build_user_message(
 def _call_model(system_prompt: str, user_message: str) -> str:
     """调用 DeepSeek 并返回原始文本。测试里会替换掉这个函数。"""
     _load_dotenv()  # 必须先加载 .env，否则读不到 DEEPSEEK_API_KEY
-    client = OpenAI(api_key=os.getenv("DEEPSEEK_API_KEY"), base_url=_base_url())
-    response = client.chat.completions.create(
-        model=_model_name(),
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message},
-        ],
-        temperature=0,
-        response_format={"type": "json_object"},
-    )
+    try:
+        client = OpenAI(api_key=os.getenv("DEEPSEEK_API_KEY"), base_url=_base_url())
+        response = client.chat.completions.create(
+            model=_model_name(),
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            temperature=0,
+            response_format={"type": "json_object"},
+        )
+    except Exception as exc:
+        health.record_dependency_failure("deepseek", exc)
+        raise
+    health.record_dependency_success("deepseek")
     return response.choices[0].message.content or "{}"
 
 
