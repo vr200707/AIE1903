@@ -34,6 +34,8 @@ Web 界面。
 - 使用网页搜索为奖项、经费、职位等非论文声明补充公开线索。
 - 展示证据状态、来源链接、原文摘录、页码和查询日期。
 - 支持关键词与标签筛选、会话内人工修正和基于证据的档案问答。
+- 从已生成档案生成 5 至 7 道英文视频面试问题，并导出 Markdown/TXT。
+- 上传英文面试视频，异步完成时间戳转写、逐题评析和沟通表现测量。
 
 ## 系统架构
 
@@ -189,8 +191,15 @@ NEXT_PUBLIC_API_BASE=http://<backend-host>:8000
 | `GET` | `/api/analyze/{upload_id}` | 查询异步分析状态与结果 |
 | `GET` | `/api/profile` | 按 `profile_id` 或 `upload_id` 读取档案 |
 | `POST` | `/api/qa` | 基于档案与证据回答问题 |
+| `POST` | `/api/interview/question-sets` | 从档案生成英文问题集 |
+| `GET` | `/api/interview/question-sets/{id}/document` | 下载问题清单 |
+| `POST` | `/api/interview/interviews` | 创建面试 |
+| `POST` | `/api/interview/interviews/{id}/video/init` | 初始化视频分片上传 |
+| `POST` | `/api/interview/interviews/{id}/analyze` | 异步分析视频面试 |
+| `GET` | `/api/interview/interviews/{id}/report` | 获取时间戳溯源报告 |
 
-完整请求、响应和错误约定见 [docs/api.md](docs/api.md)。
+完整请求、响应和错误约定见 [docs/api.md](docs/api.md)。视频面试流程、上下文限制与
+本地 ASR 配置见 [docs/interview-api.md](docs/interview-api.md)。
 
 ## 数据契约
 
@@ -226,6 +235,9 @@ NEXT_PUBLIC_API_BASE=http://<backend-host>:8000
 | `WEB_SEARCH_PROVIDER` | 否 | 搜索后端，当前为 `bing` |
 | `WEB_SEARCH_BASE_URL` | 否 | 搜索端点覆盖 |
 | `VERIFY_MAX_WORKERS` | 否 | 外部核验并发数，默认 `8` |
+| `INTERVIEW_ASR_MODEL` | 否 | 本地英文 Whisper 模型，默认 `small.en` |
+| `INTERVIEW_LLM_INPUT_CHAR_BUDGET` | 否 | 面试模型单次输入字符预算，默认 `24000` |
+| `INTERVIEW_MAX_VIDEO_SECONDS` | 否 | 面试视频时长上限，默认 `1200` |
 | `NEXT_PUBLIC_API_BASE` | 否 | 前端代理的后端地址 |
 
 ## 测试与检查

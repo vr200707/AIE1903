@@ -3,6 +3,10 @@
 本文档定义候选人简历分析系统的后端接口。所有结构化数据均遵循
 [`schema.json`](../contracts/schema.json) 的数据契约，未在 schema 中声明的字段一律不接受。
 
+视频面试工作流使用独立契约
+[`interview.schema.json`](../contracts/interview.schema.json)，完整端点、状态与本地
+语音转写说明见 [`interview-api.md`](interview-api.md)。
+
 ## 概述（Overview）
 
 | 项 | 值 |

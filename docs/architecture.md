@@ -33,6 +33,12 @@
 | `app/verify.py` | 论文和非论文声明核验 |
 | `app/search.py` | 网页搜索适配层 |
 | `app/qa.py` | 证据索引与档案问答 |
+| `app/interview_questions.py` | 从档案 claim 生成英文问题集 |
+| `app/interview_media.py` | 视频探测、本地英文 ASR 与客观语流指标 |
+| `app/interview_analysis.py` | segment ID 对齐、上下文限长的逐题分析 |
+| `app/interview_store.py` | 问题集、任务状态和报告的 SQLite 存储 |
+| `app/interview_service.py` | 分片上传与异步面试分析编排 |
+| `app/interview_api.py` | 视频面试 HTTP 路由 |
 
 ## 3. 前端模块
 
@@ -50,6 +56,7 @@
 ## 4. 契约与漂移风险
 
 - `contracts/schema.json` 是档案契约的权威来源。
+- `contracts/interview.schema.json` 是问题集和面试报告的权威来源。
 - `docs/api.md` 是 HTTP 契约的权威来源。
 - `frontend/lib/types.ts` 是手工同步的 TypeScript 映射。
 - `app/extractor.py` 在运行时加载 `contracts/schema.json`。
