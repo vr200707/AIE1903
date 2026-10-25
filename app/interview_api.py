@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 from app.interview_media import InterviewMediaError
 from app.interview_questions import DEFAULT_QUESTION_COUNT, QUESTION_MAX, QUESTION_MIN
@@ -21,6 +21,7 @@ from app.interview_service import (
     get_question_document,
     get_question_set,
     get_report,
+    get_video_asset,
     init_video_upload,
     start_interview_analysis,
     upload_video_chunk,
@@ -274,6 +275,22 @@ def create_interview_router(
             ) from exc
         status_code = 202 if result["accepted"] else 200
         return JSONResponse(status_code=status_code, content=result)
+
+    @router.get("/interviews/{interview_id}/video")
+    def stream_video(interview_id: str) -> FileResponse:
+        asset = get_video_asset(interview_id)
+        if asset is None:
+            raise _http_error(
+                404,
+                "video_not_found",
+                "Interview video is not available.",
+            )
+        path, video = asset
+        return FileResponse(
+            path=path,
+            media_type=video.get("content_type", "video/mp4"),
+            headers={"Cache-Control": "private, max-age=0"},
+        )
 
     @router.get("/interviews/{interview_id}/report")
     def read_report(interview_id: str) -> dict[str, Any]:

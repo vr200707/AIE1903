@@ -45,6 +45,9 @@
 | 模块 | 职责 |
 |---|---|
 | `frontend/app/page.tsx` | 上传、分析、档案展示和交互主界面 |
+| `frontend/app/interview/[profileId]/page.tsx` | 问题生成、视频上传、分析状态和报告主流程 |
+| `frontend/components/interview/InterviewReportView.tsx` | 视频播放器、时间戳 inventory 与逐题报告 |
+| `frontend/lib/interview.ts` | 面试 TypeScript 契约、分片上传与页面状态恢复 |
 | `frontend/app/methodology/page.tsx` | 证据规则说明 |
 | `frontend/components/*` | 区块、标签、证据徽章、证据列表和详情弹窗 |
 | `frontend/lib/api.ts` | HTTP 请求封装 |

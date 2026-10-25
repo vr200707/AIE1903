@@ -34,8 +34,11 @@ Web 界面。
 - 使用网页搜索为奖项、经费、职位等非论文声明补充公开线索。
 - 展示证据状态、来源链接、原文摘录、页码和查询日期。
 - 支持关键词与标签筛选、会话内人工修正和基于证据的档案问答。
+- 支持从本地档案历史中移除单个候选人，或一次清空全部历史记录。
 - 从已生成档案生成 5 至 7 道英文视频面试问题，并导出 Markdown/TXT。
 - 上传英文面试视频，异步完成时间戳转写、逐题评析和沟通表现测量。
+- `Interview Studio` 分步页面支持问题配置、视频上传、分析状态、播放器定位和
+  逐题时间戳报告。
 
 ## 系统架构
 
@@ -196,6 +199,7 @@ NEXT_PUBLIC_API_BASE=http://<backend-host>:8000
 | `POST` | `/api/interview/interviews` | 创建面试 |
 | `POST` | `/api/interview/interviews/{id}/video/init` | 初始化视频分片上传 |
 | `POST` | `/api/interview/interviews/{id}/analyze` | 异步分析视频面试 |
+| `GET` | `/api/interview/interviews/{id}/video` | 播放已上传的视频 |
 | `GET` | `/api/interview/interviews/{id}/report` | 获取时间戳溯源报告 |
 
 完整请求、响应和错误约定见 [docs/api.md](docs/api.md)。视频面试流程、上下文限制与

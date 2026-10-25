@@ -140,6 +140,18 @@ def get_report(interview_id: str) -> dict[str, Any] | None:
     return STORE.get_report(interview_id)
 
 
+def get_video_asset(
+    interview_id: str,
+) -> tuple[Path, dict[str, Any]] | None:
+    interview = STORE.get_interview(interview_id)
+    if interview is None or not isinstance(interview.get("video"), dict):
+        return None
+    path = STORE.get_video_path(interview_id)
+    if path is None:
+        return None
+    return path, interview["video"]
+
+
 def init_video_upload(
     interview_id: str,
     *,
@@ -357,7 +369,7 @@ def complete_video_upload(
 
     with _VIDEO_LOCK:
         _VIDEO_SESSIONS.pop(session_id, None)
-    STORE.update_interview(
+    updated = STORE.update_interview(
         interview_id,
         status="uploaded",
         stage="video_ready",
@@ -367,11 +379,12 @@ def complete_video_upload(
         warnings=[],
         error=None,
     )
-    return {
-        "interview_id": interview_id,
-        "status": "uploaded",
-        "video": video,
-    }
+    if updated is None:
+        raise InterviewWorkflowError(
+            "interview_not_found",
+            "Interview disappeared while finalizing the upload.",
+        )
+    return updated
 
 
 def start_interview_analysis(interview_id: str) -> dict[str, Any]:

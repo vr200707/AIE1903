@@ -652,6 +652,11 @@ class InterviewApiTests(unittest.TestCase):
             )
         self.assertEqual(complete.status_code, 200)
         self.assertEqual(complete.json()["status"], "uploaded")
+        video_response = self.client.get(
+            f"/api/interview/interviews/{interview_id}/video"
+        )
+        self.assertEqual(video_response.status_code, 200)
+        self.assertEqual(video_response.content, b"abcde")
 
         question = question_set["questions"][0]
         segment = _segments(1)[0]

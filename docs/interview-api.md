@@ -186,7 +186,15 @@ Question set 只有 `ready` 状态，因为本网站面向考官，没有审核�
 前端轮询此端点。`stage` 会依次进入 `transcribing`、`aligning_answers`、
 `analyzing_questions`、`completed`。`progress` 是粗粒度进度，不应作为精确百分比。
 
-### 5.10 获取报告
+### 5.10 播放视频
+
+`GET /interviews/{interview_id}/video`
+
+返回已上传的本地视频，媒体类型取自 interview 元数据。前端可直接把该地址赋给
+`<video src>`。Starlette `FileResponse` 负责处理浏览器发起的 Range 请求，因此可拖动
+进度条定位到 `timestamp_inventory` 中的时间点。
+
+### 5.11 获取报告
 
 `GET /interviews/{interview_id}/report`
 
@@ -200,7 +208,7 @@ Question set 只有 `ready` 状态，因为本网站面向考官，没有审核�
 - `communication_profile`：语速、停顿、填充词、覆盖率等可测量信号。
 - `warnings`：对齐失败、模型失败、map-reduce 或无效引用等降级信息。
 
-### 5.11 删除 interview
+### 5.12 删除 interview
 
 `DELETE /interviews/{interview_id}`
 

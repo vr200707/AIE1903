@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { mockProfile } from "@/lib/mock";
 import {
   uploadFiles,
@@ -170,7 +171,34 @@ function OverviewButton({
   );
 }
 
+function InterviewButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-4 py-2 text-sm text-white/65 transition hover:border-accent/35 hover:bg-accent/[0.06] hover:text-accent-soft"
+    >
+      <svg
+        viewBox="0 0 16 16"
+        className="h-4 w-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        aria-hidden="true"
+      >
+        <rect x="2" y="4" width="9" height="8" rx="1.5" />
+        <path d="m11 6.5 3-1.5v6l-3-1.5" strokeLinejoin="round" />
+      </svg>
+      Prepare interview
+      <span className="text-accent/70 transition-transform group-hover:translate-x-0.5">
+        →
+      </span>
+    </button>
+  );
+}
+
 export default function Home() {
+  const router = useRouter();
   const { setIdentity } = useIdentity();
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(false);
@@ -586,10 +614,19 @@ export default function Home() {
           style={{ animationDelay: "0.05s" }}
         >
           <BackButton onClick={resetToHome} />
-          <OverviewButton
-            onClick={() => setOverviewOpen(true)}
-            score={assessment?.overall ?? null}
-          />
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {profileId && (
+              <InterviewButton
+                onClick={() =>
+                  router.push(`/interview/${encodeURIComponent(profileId)}`)
+                }
+              />
+            )}
+            <OverviewButton
+              onClick={() => setOverviewOpen(true)}
+              score={assessment?.overall ?? null}
+            />
+          </div>
         </div>
         {analysisWarnings.length > 0 && (
           <div

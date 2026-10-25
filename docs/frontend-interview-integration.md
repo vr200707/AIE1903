@@ -6,7 +6,7 @@ HTTP 细节见 [`docs/interview-api.md`](interview-api.md)。
 
 ## 1. 路由与入口
 
-建议新增独立页面：
+独立页面已经实现：
 
 ```text
 /interview/[profileId]
