@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { ArchiveEntry } from "@/lib/archive";
 
 const STARS = [
@@ -14,19 +15,23 @@ const STARS = [
 export function ArchiveFolder({
   entry,
   onClick,
+  onDelete,
 }: {
   entry: ArchiveEntry;
   onClick: () => void;
+  onDelete?: () => void;
 }) {
+  const [confirming, setConfirming] = useState(false);
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="archive-folder group block w-full text-left"
-      title={`${entry.name}${entry.institution ? ` · ${entry.institution}` : ""}`}
-    >
+    <div className="archive-folder group relative">
       <span className="folder-tab" aria-hidden="true" />
-      <span className="folder-body relative block overflow-hidden">
+      <button
+        type="button"
+        onClick={onClick}
+        className="folder-body relative block w-full overflow-hidden text-left"
+        title={`${entry.name}${entry.institution ? ` · ${entry.institution}` : ""}`}
+      >
         <span
           aria-hidden="true"
           className="absolute inset-0"
@@ -50,7 +55,7 @@ export function ArchiveFolder({
             }}
           />
         ))}
-        <span className="relative z-10 flex h-full flex-col items-center justify-center gap-1 px-3 py-4">
+        <span className="relative z-10 flex h-full flex-col items-center justify-center gap-1 px-9 py-4">
           <span className="line-clamp-1 w-full text-center text-[13px] font-semibold leading-tight text-white/90">
             {entry.name}
           </span>
@@ -63,7 +68,53 @@ export function ArchiveFolder({
             </span>
           </span>
         </span>
-      </span>
-    </button>
+      </button>
+
+      {onDelete && !confirming && (
+        <button
+          type="button"
+          onClick={() => setConfirming(true)}
+          className="absolute right-2 top-[18px] z-20 grid h-6 w-6 place-items-center rounded-md text-white/25 opacity-100 transition hover:bg-rose-400/10 hover:text-rose-200 focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+          aria-label={`Remove ${entry.name} from history`}
+          title="Remove from history"
+        >
+          <svg
+            viewBox="0 0 16 16"
+            className="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            aria-hidden="true"
+          >
+            <path d="M3.5 4.5h9M6 4.5V3h4v1.5M5 6.2l.5 6.3h5l.5-6.3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      )}
+
+      {confirming && (
+        <div className="absolute inset-x-1 bottom-1 top-[12px] z-30 flex flex-col justify-center rounded-md border border-rose-300/20 bg-[#090d20]/95 px-3 py-2 shadow-xl">
+          <p className="text-center text-[11px] text-white/70">Remove from history?</p>
+          <div className="mt-2 flex justify-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              className="rounded-md border border-white/10 px-2 py-1 text-[10px] text-white/50 transition hover:text-white/80"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirming(false);
+                onDelete?.();
+              }}
+              className="rounded-md bg-rose-400/15 px-2 py-1 text-[10px] text-rose-200 transition hover:bg-rose-400/25"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

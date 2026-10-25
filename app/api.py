@@ -32,6 +32,7 @@ from fastapi.responses import JSONResponse
 
 from app import health as health_monitor
 from app.extractor import extract_profile
+from app.interview_api import create_interview_router
 from app.parser import (
     CONTENT_TYPES,
     SUPPORTED_SUFFIXES,
@@ -203,6 +204,21 @@ def _find_entry(*, profile_id: str | None, upload_id: str | None) -> dict[str, A
             raise _http_error(404, "not_found", "upload_id not found")
         return entry
     raise _http_error(422, "missing_id", "Provide either profile_id or upload_id")
+
+
+def _resolve_interview_profile(profile_id: str) -> dict[str, Any]:
+    entry = _find_entry(profile_id=profile_id, upload_id=None)
+    profile = entry.get("profile")
+    if not isinstance(profile, dict):
+        raise _http_error(
+            404,
+            "not_analyzed",
+            "Profile has not been generated. Analyze candidate documents first.",
+        )
+    return {
+        "schema_version": profile.get("schema_version", "1.0.0"),
+        "candidate": profile.get("candidate", {}),
+    }
 
 
 def _chunk_count(total_bytes: int, chunk_size: int) -> int:
@@ -858,3 +874,6 @@ def qa(body: dict[str, Any]) -> dict[str, Any]:
         return answer_question(entry["profile"], question)
     except ValueError as exc:
         raise _http_error(500, "qa_failed", f"Q&A failed: {exc}") from exc
+
+
+app.include_router(create_interview_router(_resolve_interview_profile))

@@ -20,3 +20,9 @@
 
 前端 TypeScript 类型位于 `frontend/lib/types.ts`，当前为手工同步。任何 schema
 枚举、必填字段或嵌套结构变化都必须同时检查该文件。
+
+## 面试工作流契约
+
+`interview.schema.json` 定义英文视频面试的问题集和最终报告。其根节点使用
+`oneOf`，可通过 `$defs.QuestionSet` 与 `$defs.InterviewReport` 分别生成前端类型。
+报告中的 `timestamp_inventory` 是前端视频定位与问题溯源的主入口。

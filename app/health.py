@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import shutil
@@ -23,6 +24,7 @@ DEPENDENCY_NAMES = (
     "crossref",
     "openalex",
     "bing",
+    "interview_asr",
 )
 
 _LOCK = Lock()
@@ -120,6 +122,16 @@ def dependency_snapshot(*, project_root: str | Path | None = None) -> dict[str, 
             "endpoint": os.getenv(
                 "WEB_SEARCH_BASE_URL", "https://cn.bing.com/search"
             ),
+        },
+        "interview_asr": {
+            "configured": (
+                importlib.util.find_spec("faster_whisper") is not None
+                and importlib.util.find_spec("av") is not None
+            ),
+            "provider": "faster-whisper",
+            "model": os.getenv("INTERVIEW_ASR_MODEL", "small.en"),
+            "device": os.getenv("INTERVIEW_ASR_DEVICE", "cpu"),
+            "compute_type": os.getenv("INTERVIEW_ASR_COMPUTE_TYPE", "int8"),
         },
     }
 

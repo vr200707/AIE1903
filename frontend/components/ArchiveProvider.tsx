@@ -12,6 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 import {
   buildArchive,
+  clearArchives,
   listArchives,
   removeArchive,
   upsertArchive,
@@ -28,6 +29,7 @@ type ArchiveContextValue = {
   ) => void;
   openArchive: (id: string) => void;
   removeArchive: (id: string) => void;
+  clearArchives: () => void;
   pendingId: string | null;
   clearPending: () => void;
 };
@@ -37,6 +39,7 @@ const ArchiveContext = createContext<ArchiveContextValue>({
   saveArchive: () => {},
   openArchive: () => {},
   removeArchive: () => {},
+  clearArchives: () => {},
   pendingId: null,
   clearPending: () => {},
 });
@@ -74,6 +77,11 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
     setArchives(removeArchive(id));
   }, []);
 
+  const handleClear = useCallback(() => {
+    clearArchives();
+    setArchives([]);
+  }, []);
+
   const clearPending = useCallback(() => setPendingId(null), []);
 
   const value = useMemo(
@@ -82,10 +90,11 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
       saveArchive,
       openArchive,
       removeArchive: handleRemove,
+      clearArchives: handleClear,
       pendingId,
       clearPending,
     }),
-    [archives, saveArchive, openArchive, handleRemove, pendingId, clearPending],
+    [archives, saveArchive, openArchive, handleRemove, handleClear, pendingId, clearPending],
   );
 
   return (

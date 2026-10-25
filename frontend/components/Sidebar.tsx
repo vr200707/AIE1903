@@ -1,10 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useIdentity } from "./IdentityProvider";
 import { useArchive } from "./ArchiveProvider";
 import { ArchiveFolder } from "./ArchiveFolder";
+import {
+  clearAllInterviewSessions,
+  clearInterviewSession,
+} from "@/lib/interview";
 
 const NAV = [
   {
@@ -33,12 +38,24 @@ const NAV = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { identity } = useIdentity();
-  const { archives, openArchive } = useArchive();
+  const { archives, openArchive, removeArchive, clearArchives } = useArchive();
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const initials = (identity?.name ?? "AIE")
     .split(/\s+/)
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
+
+  const removeFromHistory = (id: string, profileId: string) => {
+    removeArchive(id);
+    clearInterviewSession(profileId);
+  };
+
+  const clearHistory = () => {
+    clearAllInterviewSessions();
+    clearArchives();
+    setClearConfirmOpen(false);
+  };
 
   return (
     <aside className="sticky top-0 z-20 hidden h-screen w-[220px] shrink-0 flex-col border-r border-white/[0.07] bg-white/[0.03] px-4 py-6 backdrop-blur-2xl lg:flex">
@@ -58,7 +75,10 @@ export default function Sidebar() {
       {/* 导航 */}
       <nav className="flex flex-col gap-1">
         {NAV.map((item) => {
-          const active = pathname === item.href;
+          const active =
+            item.href === "/"
+              ? pathname === "/" || pathname.startsWith("/interview")
+              : pathname === item.href;
           return (
             <Link
               key={item.href}
@@ -87,8 +107,19 @@ export default function Sidebar() {
           <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/35">
             档案库 Archive
           </span>
-          <span className="text-[11px] tabular-nums text-white/25">
-            {archives.length}
+          <span className="flex items-center gap-2">
+            {archives.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setClearConfirmOpen(true)}
+                className="text-[10px] text-white/25 transition hover:text-rose-200"
+              >
+                Clear
+              </button>
+            )}
+            <span className="text-[11px] tabular-nums text-white/25">
+              {archives.length}
+            </span>
           </span>
         </div>
         <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-0.5">
@@ -104,6 +135,7 @@ export default function Sidebar() {
                 key={entry.id}
                 entry={entry}
                 onClick={() => openArchive(entry.id)}
+                onDelete={() => removeFromHistory(entry.id, entry.profileId)}
               />
             ))
           )}
@@ -131,6 +163,49 @@ export default function Sidebar() {
           </span>
         </span>
       </div>
+
+      {clearConfirmOpen && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
+          role="presentation"
+          onClick={() => setClearConfirmOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="clear-history-title"
+            className="w-full max-w-sm rounded-2xl border border-white/12 bg-[#090d20] p-5 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p className="text-[10px] uppercase tracking-[0.2em] text-rose-200/55">
+              Archive history
+            </p>
+            <h2 id="clear-history-title" className="mt-2 font-display text-2xl text-white/90">
+              Clear all profile history?
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-white/45">
+              This removes all locally saved candidate profiles and their interview
+              workspace links from this browser. Server-side data is not changed.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setClearConfirmOpen(false)}
+                className="rounded-full border border-white/10 px-4 py-2 text-xs text-white/55 transition hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={clearHistory}
+                className="rounded-full bg-rose-400/15 px-4 py-2 text-xs text-rose-200 transition hover:bg-rose-400/25"
+              >
+                Clear history
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

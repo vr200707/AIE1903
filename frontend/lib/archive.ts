@@ -93,3 +93,7 @@ export function removeArchive(id: string): ArchiveEntry[] {
   writeAll(all);
   return all.sort((a, b) => b.createdAt - a.createdAt);
 }
+
+export function clearArchives(): void {
+  writeAll([]);
+}

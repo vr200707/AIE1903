@@ -41,6 +41,9 @@
 ## 执行映射
 
 - 合成立即测试位于 `tests/test_schema_validation.py`。
+- 面试问题、时间戳引用、上下文 map-reduce 和 API 链路位于
+  `tests/test_interview_workflow.py`。
+- PyAV 媒体探测与客观语流指标位于 `tests/test_interview_media.py`。
 - schema 元校验入口为 `python -m scripts.schema_validation --schema contracts/schema.json`。
 - 收到真实样本后新增 `S-*` 用例，记录样本哈希、脱敏状态、来源文件和预期结果。
 - 真实候选人材料不得提交入库；只在本地私有目录执行。
