@@ -241,6 +241,33 @@ def _decode_audio(path: Path) -> Any:
         ) from exc
 
 
+UNCERTAIN_NO_SPEECH_THRESHOLD = 0.35
+UNCERTAIN_LOGPROB_THRESHOLD = -1.1
+
+
+def _segment_uncertain(
+    avg_logprob: float | None,
+    no_speech_prob: float | None,
+) -> bool:
+    """Flag ASR segments whose confidence metrics suggest human review.
+
+    A high ``no_speech_prob`` means the model suspects the audio chunk is not
+    speech, and a very negative ``avg_logprob`` means the model was unsure
+    about the words it did emit. Either one marks the wording as uncertain.
+    """
+    if (
+        isinstance(no_speech_prob, (int, float))
+        and no_speech_prob > UNCERTAIN_NO_SPEECH_THRESHOLD
+    ):
+        return True
+    if (
+        isinstance(avg_logprob, (int, float))
+        and avg_logprob < UNCERTAIN_LOGPROB_THRESHOLD
+    ):
+        return True
+    return False
+
+
 def transcribe_video(path: Path) -> dict[str, Any]:
     """Transcribe an English interview video with segment timestamps."""
     model = _get_model()
@@ -262,12 +289,30 @@ def transcribe_video(path: Path) -> dict[str, Any]:
                 continue
             start_ms = max(0, int(round(float(segment.start) * 1000)))
             end_ms = max(start_ms + 1, int(round(float(segment.end) * 1000)))
+            raw_logprob = getattr(segment, "avg_logprob", None)
+            raw_no_speech = getattr(segment, "no_speech_prob", None)
+            avg_logprob = (
+                round(float(raw_logprob), 4)
+                if isinstance(raw_logprob, (int, float))
+                else None
+            )
+            no_speech_prob = (
+                round(float(raw_no_speech), 4)
+                if isinstance(raw_no_speech, (int, float))
+                else None
+            )
             segments.append(
                 {
                     "segment_id": f"s{index:05d}",
                     "start_ms": start_ms,
                     "end_ms": end_ms,
                     "text": text,
+                    "avg_logprob": avg_logprob,
+                    "no_speech_prob": no_speech_prob,
+                    "uncertain": _segment_uncertain(
+                        avg_logprob,
+                        no_speech_prob,
+                    ),
                 }
             )
     except Exception as exc:

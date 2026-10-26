@@ -18,12 +18,14 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shutil
 import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Optional
 
@@ -51,6 +53,7 @@ from app.verify import mark_verification_incomplete, verify_profile
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 UPLOAD_DIR = PROJECT_ROOT / ".cache" / "uploads"
+PROFILE_DIR = PROJECT_ROOT / ".cache" / "profiles"
 SCHEMA_PATH = PROJECT_ROOT / "contracts" / "schema.json"
 CHUNK_DIR = UPLOAD_DIR / ".chunks"
 MAX_FILES = 4
@@ -63,14 +66,95 @@ DEFAULT_CHUNK_SESSION_TTL_SECONDS = 60 * 60
 DEFAULT_MAX_CHUNK_SESSIONS = 32
 DEFAULT_ANALYSIS_MAX_WORKERS = 4
 
-app = FastAPI(title="AIE1903 Candidate Analysis", version="0.1.0")
-
 # upload_id -> {"documents": [...], "paths": [...], "profile": ..., "profile_id": ...}
 _UPLOADS: dict[str, dict[str, Any]] = {}
 # session_id -> {"chunk_size": int, "files": [{"filename", "total_bytes", "chunk_count", "received": set}]}
 _CHUNK_SESSIONS: dict[str, dict[str, Any]] = {}
 _UPLOAD_LOCK = threading.Lock()
 _CHUNK_LOCK = threading.Lock()
+
+
+def _save_profile_snapshot(upload_id: str, entry: dict[str, Any]) -> None:
+    """Atomically persist one upload's state so restarts do not lose profiles."""
+    PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+    target = PROFILE_DIR / f"{upload_id}.json"
+    temporary = PROFILE_DIR / f"{upload_id}.json.tmp"
+    payload = {
+        "upload_id": upload_id,
+        "profile_id": entry.get("profile_id"),
+        "documents": entry.get("documents", []),
+        "paths": entry.get("paths", []),
+        "profile": entry.get("profile"),
+        "assessment": entry.get("assessment"),
+        "warnings": entry.get("warnings", []),
+        "status": entry.get("status"),
+        "progress": entry.get("progress"),
+        "error": entry.get("error"),
+    }
+    try:
+        temporary.write_text(
+            json.dumps(payload, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        os.replace(temporary, target)
+    except (OSError, TypeError, ValueError):
+        # Persistence must never break the analysis flow itself.
+        pass
+
+
+def load_profile_snapshots() -> int:
+    """Restore persisted uploads into `_UPLOADS`. Returns entries loaded."""
+    if not PROFILE_DIR.exists():
+        return 0
+    loaded = 0
+    for path in sorted(PROFILE_DIR.glob("*.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(payload, dict):
+            continue
+        upload_id = payload.get("upload_id") or path.stem
+        if not isinstance(upload_id, str) or not upload_id:
+            continue
+        documents = payload.get("documents")
+        paths = payload.get("paths")
+        profile = payload.get("profile")
+        warnings = payload.get("warnings")
+        entry: dict[str, Any] = {
+            "documents": documents if isinstance(documents, list) else [],
+            "paths": paths if isinstance(paths, list) else [],
+            "profile": profile if isinstance(profile, dict) else None,
+            "profile_id": payload.get("profile_id"),
+            "assessment": payload.get("assessment"),
+            "warnings": warnings if isinstance(warnings, list) else [],
+            "status": payload.get("status"),
+            "progress": payload.get("progress"),
+            "error": payload.get("error"),
+        }
+        if entry.get("status") == "processing":
+            # The analysis thread died with the previous process. The raw
+            # files remain on disk, so downgrade to a retryable state.
+            entry["status"] = "created"
+            entry["progress"] = {"stage": "queued", "done": 0, "total": 0}
+            entry["error"] = None
+            _save_profile_snapshot(upload_id, entry)
+        _UPLOADS[upload_id] = entry
+        loaded += 1
+    return loaded
+
+
+@asynccontextmanager
+async def _lifespan(_: FastAPI):
+    load_profile_snapshots()
+    yield
+
+
+app = FastAPI(
+    title="AIE1903 Candidate Analysis",
+    version="0.1.0",
+    lifespan=_lifespan,
+)
 
 
 class _AnalysisFailure(Exception):
@@ -314,6 +398,7 @@ def upload(files: list[UploadFile] = File(...)) -> JSONResponse:
         "documents": documents,
         "paths": [str(p) for p in sorted(dest.iterdir())],
     }
+    _save_profile_snapshot(upload_id, _UPLOADS[upload_id])
     return JSONResponse(status_code=201, content={"upload_id": upload_id, "documents": documents})
 
 
@@ -576,6 +661,7 @@ def upload_complete(session_id: str) -> JSONResponse:
                 "documents": documents,
                 "paths": [str(path) for path in sorted(dest.iterdir())],
             }
+            _save_profile_snapshot(upload_id, _UPLOADS[upload_id])
         with _CHUNK_LOCK:
             _CHUNK_SESSIONS.pop(session_id, None)
         shutil.rmtree(session_dir, ignore_errors=True)
@@ -695,10 +781,12 @@ def _run_analysis(upload_id: str, entry: dict[str, Any]) -> None:
                 "completed_with_warnings" if warnings else "completed"
             )
             entry.pop("error", None)
+            _save_profile_snapshot(upload_id, entry)
     except _AnalysisFailure as exc:
         with _UPLOAD_LOCK:
             entry["status"] = "failed"
             entry["error"] = {"code": exc.code, "detail": exc.detail}
+            _save_profile_snapshot(upload_id, entry)
     except Exception as exc:
         with _UPLOAD_LOCK:
             entry["status"] = "failed"
@@ -706,6 +794,7 @@ def _run_analysis(upload_id: str, entry: dict[str, Any]) -> None:
                 "code": "analysis_failed",
                 "detail": f"Analysis failed ({type(exc).__name__}). Retry the analysis.",
             }
+            _save_profile_snapshot(upload_id, entry)
 
 
 @app.post("/api/analyze")
@@ -737,6 +826,7 @@ def analyze(body: dict[str, Any]) -> JSONResponse:
         entry["status"] = "processing"
         entry["warnings"] = []
         entry["progress"] = {"stage": "queued", "done": 0, "total": 0}
+        _save_profile_snapshot(upload_id, entry)
     try:
         _ANALYSIS_POOL.submit(_run_analysis, upload_id, entry)
     except Exception as exc:

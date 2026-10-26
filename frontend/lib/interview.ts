@@ -58,13 +58,15 @@ export interface InterviewQuestion {
   why_it_matters: string;
   answer_seconds: number;
   source_claims: SourceClaim[];
+  approved: boolean;
 }
 
 export interface QuestionSet {
   schema_version: "1.0.0";
   question_set_id: string;
   profile_id: string;
-  status: "ready";
+  status: "draft" | "published";
+  candidate_token: string | null;
   language: "en";
   role_context: string | null;
   candidate_name: string | null;
@@ -79,6 +81,39 @@ export interface QuestionSet {
   };
   warnings: InterviewWarning[];
   created_at: string;
+}
+
+export interface QuestionUpdateInput {
+  text?: string;
+  objective?: string;
+  why_it_matters?: string;
+  answer_seconds?: number;
+  competency?: InterviewCompetency;
+  approved?: boolean;
+}
+
+export interface CandidateQuestionSet {
+  schema_version: "1.0.0";
+  question_set_id: string;
+  candidate_name: string | null;
+  role_context: string | null;
+  questions: InterviewQuestion[];
+}
+
+export interface InterviewClip {
+  question_id: string;
+  start_ms: number;
+  end_ms: number;
+  available: boolean;
+  url: string;
+}
+
+export interface QuestionCreateInput {
+  text: string;
+  objective?: string;
+  why_it_matters?: string;
+  answer_seconds?: number;
+  competency?: InterviewCompetency;
 }
 
 export interface InterviewVideo {
@@ -111,6 +146,22 @@ export interface TranscriptSegment {
   start_ms: number;
   end_ms: number;
   text: string;
+  avg_logprob?: number | null;
+  no_speech_prob?: number | null;
+  uncertain?: boolean;
+}
+
+export interface InterviewTranscript {
+  language: string;
+  language_probability: number;
+  duration_ms: number;
+  segments: TranscriptSegment[];
+  asr: {
+    provider: string;
+    model: string;
+    device: string;
+    compute_type: string;
+  };
 }
 
 export interface AnswerWindow {
@@ -319,6 +370,95 @@ export async function getQuestionDocument(
   return response.text();
 }
 
+export async function updateQuestion(
+  questionSetId: string,
+  questionId: string,
+  updates: QuestionUpdateInput,
+): Promise<QuestionSet> {
+  return request<QuestionSet>(
+    `${API_BASE}/api/interview/question-sets/${encodeURIComponent(questionSetId)}/questions/${encodeURIComponent(questionId)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    },
+  );
+}
+
+export async function addQuestion(
+  questionSetId: string,
+  input: QuestionCreateInput,
+): Promise<QuestionSet> {
+  return request<QuestionSet>(
+    `${API_BASE}/api/interview/question-sets/${encodeURIComponent(questionSetId)}/questions`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export async function deleteQuestion(
+  questionSetId: string,
+  questionId: string,
+): Promise<QuestionSet> {
+  return request<QuestionSet>(
+    `${API_BASE}/api/interview/question-sets/${encodeURIComponent(questionSetId)}/questions/${encodeURIComponent(questionId)}`,
+    { method: "DELETE" },
+  );
+}
+
+export async function publishQuestionSet(
+  questionSetId: string,
+): Promise<QuestionSet> {
+  return request<QuestionSet>(
+    `${API_BASE}/api/interview/question-sets/${encodeURIComponent(questionSetId)}/publish`,
+    { method: "POST" },
+  );
+}
+
+export async function unpublishQuestionSet(
+  questionSetId: string,
+): Promise<QuestionSet> {
+  return request<QuestionSet>(
+    `${API_BASE}/api/interview/question-sets/${encodeURIComponent(questionSetId)}/unpublish`,
+    { method: "POST" },
+  );
+}
+
+export async function getCandidateQuestionSet(
+  candidateToken: string,
+): Promise<CandidateQuestionSet> {
+  return request<CandidateQuestionSet>(
+    `${API_BASE}/api/interview/candidate/${encodeURIComponent(candidateToken)}`,
+  );
+}
+
+export async function createCandidateInterview(
+  candidateToken: string,
+): Promise<InterviewSession> {
+  return request<InterviewSession>(
+    `${API_BASE}/api/interview/candidate/${encodeURIComponent(candidateToken)}/interviews`,
+    { method: "POST" },
+  );
+}
+
+export async function getInterviewClips(
+  interviewId: string,
+): Promise<{ interview_id: string; clips: InterviewClip[] }> {
+  return request(
+    `${API_BASE}/api/interview/interviews/${encodeURIComponent(interviewId)}/clips`,
+  );
+}
+
+export function interviewClipUrl(
+  interviewId: string,
+  questionId: string,
+): string {
+  return `${API_BASE}/api/interview/interviews/${encodeURIComponent(interviewId)}/clips/${encodeURIComponent(questionId)}`;
+}
+
 export async function createInterviewSession(
   questionSetId: string,
 ): Promise<InterviewSession> {
@@ -340,6 +480,7 @@ export async function getInterviewSession(
 export async function uploadInterviewVideo(input: {
   interviewId: string;
   file: File;
+  marks?: { question_id: string; start_ms: number }[];
   onProgress?: (progress: {
     uploadedBytes: number;
     totalBytes: number;
@@ -347,7 +488,7 @@ export async function uploadInterviewVideo(input: {
     totalChunks: number;
   }) => void;
 }): Promise<InterviewSession> {
-  const { interviewId, file, onProgress } = input;
+  const { interviewId, file, marks, onProgress } = input;
   const init = await request<{
     session_id: string;
     chunk_size: number;
@@ -387,7 +528,11 @@ export async function uploadInterviewVideo(input: {
   }
   return request<InterviewSession>(
     `${API_BASE}/api/interview/interviews/${encodeURIComponent(interviewId)}/video/sessions/${encodeURIComponent(init.session_id)}/complete`,
-    { method: "POST" },
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question_marks: marks ?? [] }),
+    },
   );
 }
 
@@ -405,6 +550,14 @@ export async function getInterviewReport(
 ): Promise<InterviewReport> {
   return request<InterviewReport>(
     `${API_BASE}/api/interview/interviews/${encodeURIComponent(interviewId)}/report`,
+  );
+}
+
+export async function getInterviewTranscript(
+  interviewId: string,
+): Promise<InterviewTranscript> {
+  return request<InterviewTranscript>(
+    `${API_BASE}/api/interview/interviews/${encodeURIComponent(interviewId)}/transcript`,
   );
 }
 

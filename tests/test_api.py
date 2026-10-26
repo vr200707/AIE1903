@@ -1,3 +1,4 @@
+import json
 import tempfile
 import time
 import unittest
@@ -88,15 +89,18 @@ class ApiTests(unittest.TestCase):
         api._CHUNK_SESSIONS.clear()
         self.original_upload_dir = api.UPLOAD_DIR
         self.original_chunk_dir = api.CHUNK_DIR
+        self.original_profile_dir = api.PROFILE_DIR
         self.temp_dir = tempfile.TemporaryDirectory()
         api.UPLOAD_DIR = Path(self.temp_dir.name) / "uploads"
         api.CHUNK_DIR = api.UPLOAD_DIR / ".chunks"
+        api.PROFILE_DIR = Path(self.temp_dir.name) / "profiles"
 
     def tearDown(self):
         api._UPLOADS.clear()
         api._CHUNK_SESSIONS.clear()
         api.UPLOAD_DIR = self.original_upload_dir
         api.CHUNK_DIR = self.original_chunk_dir
+        api.PROFILE_DIR = self.original_profile_dir
         self.temp_dir.cleanup()
 
     def _wait_analysis(self, upload_id: str, timeout: float = 5.0):
@@ -388,6 +392,107 @@ class ApiTests(unittest.TestCase):
                 "/api/qa", json={"profile_id": "prf_test", "question": "hi"}
             )
         self.assertEqual(response.status_code, 500)
+
+
+class ProfileSnapshotTests(unittest.TestCase):
+    def setUp(self):
+        self.client = TestClient(api.app)
+        api._UPLOADS.clear()
+        self.original_profile_dir = api.PROFILE_DIR
+        self.original_upload_dir = api.UPLOAD_DIR
+        self.temp_dir = tempfile.TemporaryDirectory()
+        api.PROFILE_DIR = Path(self.temp_dir.name) / "profiles"
+        api.UPLOAD_DIR = Path(self.temp_dir.name) / "uploads"
+
+    def tearDown(self):
+        api._UPLOADS.clear()
+        api.PROFILE_DIR = self.original_profile_dir
+        api.UPLOAD_DIR = self.original_upload_dir
+        self.temp_dir.cleanup()
+
+    def _wait_analysis(self, upload_id: str, timeout: float = 5.0):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            response = self.client.get(f"/api/analyze/{upload_id}")
+            body = response.json()
+            if body.get("status") in (
+                "completed",
+                "completed_with_warnings",
+                "failed",
+            ):
+                return response
+            time.sleep(0.05)
+        raise AssertionError("analysis did not finish in time")
+
+    def test_completed_snapshot_survives_restart(self):
+        upload = self.client.post(
+            "/api/upload",
+            files=[("files", ("a.pdf", b"%PDF-fake", "application/pdf"))],
+        )
+        self.assertEqual(upload.status_code, 201)
+        upload_id = upload.json()["upload_id"]
+
+        profile = {"schema_version": "1.0.0", "candidate": {"basic_info": {}}}
+        with mock.patch.object(
+            api, "parse_document", return_value=_parsed()
+        ), mock.patch.object(
+            api, "extract_profile", return_value=(profile, [])
+        ), mock.patch.object(
+            api, "verify_profile", return_value=profile
+        ), mock.patch.object(api, "score_candidate", return_value=_assessment()):
+            started = self.client.post(
+                "/api/analyze", json={"upload_id": upload_id}
+            )
+            self.assertEqual(started.status_code, 202)
+            analyzed = self._wait_analysis(upload_id)
+        self.assertEqual(analyzed.json()["status"], "completed")
+
+        snapshot = api.PROFILE_DIR / f"{upload_id}.json"
+        self.assertTrue(snapshot.exists())
+
+        # Simulate a process restart: drop memory and restore from disk.
+        api._UPLOADS.clear()
+        self.assertEqual(api.load_profile_snapshots(), 1)
+        restored = api._UPLOADS[upload_id]
+        self.assertEqual(restored["status"], "completed")
+        self.assertTrue(restored["profile_id"].startswith("prf_"))
+        self.assertEqual(
+            restored["profile"]["candidate"]["basic_info"],
+            {},
+        )
+        self.assertEqual(restored["assessment"]["overall"], 7.5)
+
+        fetched = self.client.get(
+            "/api/profile", params={"upload_id": upload_id}
+        )
+        self.assertEqual(fetched.status_code, 200)
+        by_profile = self.client.get(
+            "/api/profile", params={"profile_id": restored["profile_id"]}
+        )
+        self.assertEqual(by_profile.status_code, 200)
+
+    def test_processing_snapshot_downgraded_on_load(self):
+        entry = {
+            "documents": [],
+            "paths": [],
+            "status": "processing",
+            "progress": {"stage": "verifying_publications", "done": 2, "total": 4},
+        }
+        api._save_profile_snapshot("upl_crashed", entry)
+        api._UPLOADS.clear()
+        self.assertEqual(api.load_profile_snapshots(), 1)
+        restored = api._UPLOADS["upl_crashed"]
+        self.assertEqual(restored["status"], "created")
+        self.assertIsNone(restored["error"])
+        self.assertEqual(
+            restored["progress"],
+            {"stage": "queued", "done": 0, "total": 0},
+        )
+        # The downgraded state is itself persisted, so the next restart keeps it.
+        payload = json.loads(
+            (api.PROFILE_DIR / "upl_crashed.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(payload["status"], "created")
 
 
 if __name__ == "__main__":

@@ -2,12 +2,16 @@ import tempfile
 import unittest
 from fractions import Fraction
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 import av
 import numpy as np
 
+import app.interview_media as interview_media
 from app.interview_media import (
     InterviewMediaError,
+    _segment_uncertain,
     audio_metrics,
     communication_metrics,
     probe_video,
@@ -65,6 +69,59 @@ class InterviewMediaTests(unittest.TestCase):
     def test_unsupported_suffix_is_rejected(self):
         with self.assertRaises(InterviewMediaError):
             validate_video_suffix("answer.txt")
+
+    def test_segment_uncertainty_thresholds(self):
+        self.assertFalse(_segment_uncertain(-0.5, 0.1))
+        self.assertFalse(_segment_uncertain(None, None))
+        self.assertTrue(_segment_uncertain(-1.2, 0.1))
+        self.assertTrue(_segment_uncertain(-0.5, 0.4))
+        self.assertTrue(_segment_uncertain(None, 0.9))
+        self.assertTrue(_segment_uncertain(-2.0, None))
+
+    def test_transcribe_video_marks_uncertain_segments(self):
+        class FakeSegment:
+            def __init__(self, text, start, end, avg_logprob, no_speech_prob):
+                self.text = text
+                self.start = start
+                self.end = end
+                self.avg_logprob = avg_logprob
+                self.no_speech_prob = no_speech_prob
+
+        class FakeModel:
+            def transcribe(self, *args, **kwargs):
+                return iter(
+                    [
+                        FakeSegment("Solid words.", 0.0, 2.0, -0.2, 0.05),
+                        FakeSegment(" ", 2.0, 2.5, -0.2, 0.05),
+                        FakeSegment("Mumbled words.", 2.5, 4.0, -1.4, 0.10),
+                    ],
+                ), SimpleNamespace(duration=4.5, language_probability=0.98)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "answer.mp4"
+            path.write_bytes(b"placeholder")
+            with (
+                mock.patch.object(
+                    interview_media,
+                    "_get_model",
+                    return_value=FakeModel(),
+                ),
+                mock.patch.object(
+                    interview_media,
+                    "_decode_audio",
+                    return_value=np.zeros(16_000, dtype=np.float32),
+                ),
+            ):
+                result = interview_media.transcribe_video(path)
+
+        self.assertEqual(
+            [segment["text"] for segment in result["segments"]],
+            ["Solid words.", "Mumbled words."],
+        )
+        self.assertFalse(result["segments"][0]["uncertain"])
+        self.assertEqual(result["segments"][0]["avg_logprob"], -0.2)
+        self.assertTrue(result["segments"][1]["uncertain"])
+        self.assertEqual(result["segments"][1]["no_speech_prob"], 0.1)
 
     def test_communication_metrics_from_timestamped_segments(self):
         segments = [

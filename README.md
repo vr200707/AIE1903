@@ -179,6 +179,88 @@ CORS。若前端需要连接另一台机器上的后端，在 `frontend/.env.loc
 NEXT_PUBLIC_API_BASE=http://<backend-host>:8000
 ```
 
+## TA 复现流程（Reproducibility Checklist）
+
+以下步骤从零走通 P1 + P2 全链路，供课程 TA 快速验收。每步给出命令与预期结果。
+
+### 0. 生成合成样本 CV（可选，但推荐）
+
+没有脱敏 CV 时先生成合成样本：
+
+```bash
+python scripts/fixtures/generate_cv_fixtures.py
+```
+
+输出位于 `data/samples/cv-fixtures-<日期>/`，包含 ATS、双栏、中文、扫描件等
+多种排版。验收建议使用其中排版正常的学术 PDF；扫描件需要本机安装 Tesseract
+与 Poppler，否则 OCR 步骤会跳过或失败。
+
+### 1. 启动服务
+
+按“快速开始”安装依赖并配置 `.env`（至少 `DEEPSEEK_API_KEY`；核验环节建议
+配置 `OPENALEX_MAILTO=真实邮箱` 并设置 `VERIFY_MAX_WORKERS=2`）。先后启动：
+
+```bash
+uvicorn app.main:app --reload --port 8000
+cd frontend && npm run dev
+```
+
+预期：`curl http://localhost:8000/health/ready` 返回 `{"status":"ok"}`；
+访问 `http://localhost:3000` 能看到档案库首页。
+
+### 2. P1：上传 CV 生成档案
+
+首页上传合成 CV → 开始分析 → 页面轮询状态至 `completed` 或
+`completed_with_warnings`。预期：档案库出现新档案，六大模块齐全，每条事实
+带证据状态（`confirmed` / `not_found_public` / `to_verify` 等）。
+
+### 3. P2：生成题集与委员会审校
+
+进入该档案的 `Prepare interview`（`/interview/{profileId}`）→ 填写目标岗位
+描述 → Generate。预期：生成 5–7 道英文题，每道下方可展开来源 claim。
+
+委员会操作：逐题 Approve / Edit / Delete，也可以手动加题。页内的
+Committee check（清晰 / 与岗位相关 / 候选人专属）是本地勾选、不落库，仅作
+人工审阅辅助。批准至少 1 题后 Publish，页面会给出候选人链接
+`http://localhost:3000/candidate/{token}`。
+
+### 4. 候选人录制或上传视频
+
+> **警告：这一步需要真人开口说话。** 后端本地 Whisper 会拒绝无声或纯合成
+> 视频（错误码 `no_audio_stream` / `no_speech_detected`），静音占位视频无法
+> 通过验收。TA 若没有电脑麦克风，可先用手机录好一段口语作答再上传。
+
+候选人页支持两种路径，最终都得到一段完整视频：
+
+- 浏览器内录制：一路不间断录像，屏幕上方逐题显示题目，答完点
+  `Next question` 只切换题目文本，录像不中断；
+- 上传视频：直接上传手机或相机录好的完整作答（`mp4/m4v/mov/webm/mkv`，
+  前端上限 500 MB，后端时长上限 1200 秒）。
+
+上传完成后开始分析，页面轮询 `analyzing → completed`。预期：报告阶段出现
+视频播放器、逐题时间戳、分题切片与完整转录。
+
+### 5. 审阅报告
+
+报告页（Interview Studio 的 Report 阶段）要点：
+
+- Timestamp inventory：按题定位视频时间点，点击即跳转播放；
+- 每道题：摘要、五项评分、带段落实证的优点与关注点、答案剪辑片段；
+- Full transcript：完整转录时间轴，琥珀色段落是模型标记的不确定措辞，
+  需要人工复核；
+- Communication profile：语速 / 停顿 / 填充词 / 覆盖率等本地测量。
+
+### 验收对照
+
+| 课程要求 | 实现位置 |
+|---|---|
+| 候选人专属、有证据、可解释的题集 | 生成 prompt + claim 锚定，见 [docs/interview-methodology.md](docs/interview-methodology.md) |
+| 委员会增删改 / 批准 / 发布 | Interview Studio 题集编辑区 |
+| 一段完整视频作答全部题目 | 浏览器连续录制或整段上传 |
+| 带时间戳转录 + 不确定措辞复核 | 报告页 Full transcript |
+| 证据链接的 AI 评论 | 每题 strengths/concerns 锚定 transcript segment |
+| 可复现性 | 本文档 + 后端测试 `python -m unittest discover -v` |
+
 ## API 摘要
 
 | 方法 | 路径 | 用途 |
@@ -323,6 +405,7 @@ scripts/fixtures/generate_cv_fixtures.py
 - [架构与模块关系](docs/architecture.md)
 - [API 契约](docs/api.md)
 - [方法与证据规则](docs/methodology.md)
+- [视频面试方法说明](docs/interview-methodology.md)
 - [本地开发与联调](docs/development.md)
 - [运行与故障排查](docs/operations.md)
 - [测试策略](docs/testing.md)

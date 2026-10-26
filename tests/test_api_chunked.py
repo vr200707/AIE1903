@@ -66,15 +66,18 @@ class TemporaryUploadDirsMixin:
         api._CHUNK_SESSIONS.clear()
         self.original_upload_dir = api.UPLOAD_DIR
         self.original_chunk_dir = api.CHUNK_DIR
+        self.original_profile_dir = api.PROFILE_DIR
         self.temp_dir = tempfile.TemporaryDirectory()
         api.UPLOAD_DIR = Path(self.temp_dir.name) / "uploads"
         api.CHUNK_DIR = api.UPLOAD_DIR / ".chunks"
+        api.PROFILE_DIR = Path(self.temp_dir.name) / "profiles"
 
     def tearDown(self):
         api._UPLOADS.clear()
         api._CHUNK_SESSIONS.clear()
         api.UPLOAD_DIR = self.original_upload_dir
         api.CHUNK_DIR = self.original_chunk_dir
+        api.PROFILE_DIR = self.original_profile_dir
         self.temp_dir.cleanup()
 
 

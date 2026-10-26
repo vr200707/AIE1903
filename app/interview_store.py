@@ -23,6 +23,16 @@ def _id(prefix: str) -> str:
 _MISSING = object()
 
 
+def _normalize_questions(
+    questions: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Fill in per-question defaults so old rows match the current contract."""
+    return [
+        {**question, "approved": bool(question.get("approved", False))}
+        for question in questions
+    ]
+
+
 class InterviewStore:
     """Small local store suitable for the current single-process demo."""
 
@@ -58,6 +68,8 @@ class InterviewStore:
                     language TEXT NOT NULL,
                     role_context TEXT,
                     candidate_name TEXT,
+                    status TEXT NOT NULL DEFAULT 'draft',
+                    candidate_token TEXT,
                     questions_json TEXT NOT NULL,
                     document_markdown TEXT NOT NULL,
                     generation_json TEXT NOT NULL,
@@ -88,6 +100,21 @@ class InterviewStore:
                     ON interviews(question_set_id);
                 """
             )
+            columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(question_sets)"
+                ).fetchall()
+            }
+            if "status" not in columns:
+                connection.execute(
+                    "ALTER TABLE question_sets "
+                    "ADD COLUMN status TEXT NOT NULL DEFAULT 'draft'"
+                )
+            if "candidate_token" not in columns:
+                connection.execute(
+                    "ALTER TABLE question_sets ADD COLUMN candidate_token TEXT"
+                )
 
     def create_question_set(
         self,
@@ -131,11 +158,12 @@ class InterviewStore:
             "schema_version": "1.0.0",
             "question_set_id": question_set_id,
             "profile_id": profile_id,
-            "status": "ready",
+            "status": "draft",
+            "candidate_token": None,
             "language": language,
             "role_context": role_context,
             "candidate_name": candidate_name,
-            "questions": questions,
+            "questions": _normalize_questions(questions),
             "generation": generation,
             "warnings": warnings,
             "created_at": created_at,
@@ -153,15 +181,53 @@ class InterviewStore:
             "schema_version": "1.0.0",
             "question_set_id": row["id"],
             "profile_id": row["profile_id"],
-            "status": "ready",
+            "status": row["status"],
+            "candidate_token": row["candidate_token"],
             "language": row["language"],
             "role_context": row["role_context"],
             "candidate_name": row["candidate_name"],
-            "questions": json.loads(row["questions_json"]),
+            "questions": _normalize_questions(json.loads(row["questions_json"])),
             "generation": json.loads(row["generation_json"]),
             "warnings": json.loads(row["warnings_json"]),
             "created_at": row["created_at"],
         }
+
+    def get_question_set_by_token(
+        self,
+        candidate_token: str,
+    ) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT id FROM question_sets WHERE candidate_token = ?",
+                (candidate_token,),
+            ).fetchone()
+        if row is None:
+            return None
+        return self.get_question_set(str(row["id"]))
+
+    def set_publish_state(
+        self,
+        question_set_id: str,
+        *,
+        published: bool,
+        candidate_token: str | None = None,
+    ) -> dict[str, Any] | None:
+        with self._lock, self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE question_sets
+                SET status = ?, candidate_token = COALESCE(?, candidate_token)
+                WHERE id = ?
+                """,
+                (
+                    "published" if published else "draft",
+                    candidate_token if published else None,
+                    question_set_id,
+                ),
+            )
+        if cursor.rowcount == 0:
+            return None
+        return self.get_question_set(question_set_id)
 
     def get_question_document(self, question_set_id: str) -> str | None:
         with self._connect() as connection:
@@ -171,9 +237,67 @@ class InterviewStore:
             ).fetchone()
         return None if row is None else str(row["document_markdown"])
 
+    def has_submitted_interview(self, question_set_id: str) -> bool:
+        """Return True when the question set already has a submitted session.
+
+        Merely starting the interview (status ``created``) does not lock the
+        questions.  Locking starts once a video has been uploaded or a report
+        has been generated, so questions stay editable until the user actually
+        submits something.
+        """
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT 1 FROM interviews
+                WHERE question_set_id = ?
+                  AND (video_json IS NOT NULL OR report_json IS NOT NULL)
+                LIMIT 1
+                """,
+                (question_set_id,),
+            ).fetchone()
+        return row is not None
+
+    def replace_question_set_questions(
+        self,
+        question_set_id: str,
+        questions: list[dict[str, Any]],
+        document_markdown: str,
+    ) -> dict[str, Any] | None:
+        with self._lock, self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE question_sets
+                SET questions_json = ?, document_markdown = ?
+                WHERE id = ?
+                """,
+                (
+                    json.dumps(questions, ensure_ascii=False),
+                    document_markdown,
+                    question_set_id,
+                ),
+            )
+        if cursor.rowcount == 0:
+            return None
+        return self.get_question_set(question_set_id)
+
     def create_interview(self, question_set_id: str) -> dict[str, Any] | None:
         if self.get_question_set(question_set_id) is None:
             return None
+        with self._lock, self._connect() as connection:
+            existing = connection.execute(
+                """
+                SELECT id FROM interviews
+                WHERE question_set_id = ?
+                  AND video_json IS NULL
+                  AND report_json IS NULL
+                ORDER BY created_at DESC, rowid DESC
+                LIMIT 1
+                """,
+                (question_set_id,),
+            ).fetchone()
+        if existing is not None:
+            # Reuse an untouched session instead of piling up empty rows.
+            return self.get_interview(existing["id"])
         interview_id = _id("int_")
         created_at = _now()
         with self._lock, self._connect() as connection:

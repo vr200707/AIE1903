@@ -167,6 +167,22 @@ Question set 只有 `ready` 状态，因为本网站面向考官，没有审核�
 服务端合并分片、计算 SHA-256、读取媒体时长和分辨率。非法视频、无视频流或超时长
 会返回错误，interview 回到可重新上传状态。
 
+可选 JSON 请求体（候选人使用浏览器录制时为必传项）：
+
+```json
+{
+  "question_marks": [
+    {"question_id": "q_01J0ABCDEF", "start_ms": 0},
+    {"question_id": "q_02J0ABCDEF", "start_ms": 41230}
+  ]
+}
+```
+
+`question_marks`（分题边界时间戳）由前端录制器在每次点击「下一题」时记录。它会被
+写入 interview 的 `video.question_marks`，分析完成后优先作为切片窗口的权威依据；
+转录对齐（transcription alignment）只作为没有录制元数据时的兜底。服务端会去重、
+校验非负整数并把时间钳制到视频总时长内。
+
 ### 5.8 启动分析
 
 `POST /interviews/{interview_id}/analyze`
@@ -184,7 +200,8 @@ Question set 只有 `ready` 状态，因为本网站面向考官，没有审核�
 `GET /interviews/{interview_id}`
 
 前端轮询此端点。`stage` 会依次进入 `transcribing`、`aligning_answers`、
-`analyzing_questions`、`completed`。`progress` 是粗粒度进度，不应作为精确百分比。
+`analyzing_questions`、`clipping_answers`、`completed`。`progress` 是粗粒度进度，
+不应作为精确百分比。
 
 ### 5.10 播放视频
 
@@ -208,7 +225,62 @@ Question set 只有 `ready` 状态，因为本网站面向考官，没有审核�
 - `communication_profile`：语速、停顿、填充词、覆盖率等可测量信号。
 - `warnings`：对齐失败、模型失败、map-reduce 或无效引用等降级信息。
 
-### 5.12 删除 interview
+### 5.12 获取完整转录
+
+`GET /interviews/{interview_id}/transcript`
+
+返回 `transcribe_video` 落库的完整转录对象，结构为：
+
+```json
+{
+  "language": "en",
+  "language_probability": 0.99,
+  "duration_ms": 245000,
+  "segments": [
+    {
+      "segment_id": "s00001",
+      "start_ms": 0,
+      "end_ms": 4800,
+      "text": "I led the migration project.",
+      "avg_logprob": -0.28,
+      "no_speech_prob": 0.03,
+      "uncertain": false
+    }
+  ],
+  "asr": {"provider": "faster-whisper", "model": "small", "device": "cpu", "compute_type": "int8"}
+}
+```
+
+每个 segment 附带 ASR 自身的不确定度信号：
+
+- `avg_logprob`：该段平均词级对数概率（越低越不确定）。
+- `no_speech_prob`：模型认为该段不是语音的概率。
+- `uncertain`：`no_speech_prob > 0.35` 或 `avg_logprob < -1.1` 时为 `true`，
+  表示措辞需要人工复核（课程要求保留“uncertain wording”供审阅）。
+
+转录在分析完成前即已落库；仍在转写时返回 `409 analysis_in_progress`，未上传视频或
+未开始分析时返回 `409 transcript_not_ready`。
+
+### 5.13 分题片段（answer clips）
+
+`GET /interviews/{interview_id}/clips`
+
+返回每个题目的切片可用性：
+
+```json
+{
+  "interview_id": "int_01J0ABCDEF",
+  "clips": [
+    {"question_id": "q_01J0ABCDEF", "available": true, "url": "/api/interview/interviews/int_01J0ABCDEF/clips/q_01J0ABCDEF"}
+  ]
+}
+```
+
+`GET /interviews/{interview_id}/clips/{question_id}` 返回 `video/mp4`。切片窗口优先
+使用 `question_marks`（见 5.7），否则回退到 `timestamp_inventory` 的转录对齐结果；
+空窗口（例如候选人在下一题秒切）不生成切片。切片文件在删除 interview 时一并清理。
+
+### 5.14 删除 interview
 
 `DELETE /interviews/{interview_id}`
 
