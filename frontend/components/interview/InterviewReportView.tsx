@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   InterviewConfidence,
   InterviewReport,
+  InterviewTranscript,
   QuestionResult,
   QuestionScores,
   QuestionSet,
@@ -13,6 +14,9 @@ import {
   competencyLabel,
   formatFileSize,
   formatTimecode,
+  getInterviewClips,
+  getInterviewTranscript,
+  interviewClipUrl,
   interviewVideoUrl,
   scoreLabel,
 } from "@/lib/interview";
@@ -78,10 +82,12 @@ function ScoreBar({ value, label }: { value: number | null; label: string }) {
 function QuestionDetail({
   result,
   questionSet,
+  clipUrl,
   onSeek,
 }: {
   result: QuestionResult;
   questionSet: QuestionSet;
+  clipUrl: string | null;
   onSeek: (milliseconds: number) => void;
 }) {
   const question = questionSet.questions.find(
@@ -114,17 +120,40 @@ function QuestionDetail({
       </div>
 
       {result.answer_window && (
-        <button
-          type="button"
-          onClick={() => onSeek(result.answer_window!.start_ms)}
-          className="mt-4 inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/[0.07] px-3 py-1.5 text-xs text-accent-soft transition hover:bg-accent/[0.12]"
-        >
-          <span className="grid h-5 w-5 place-items-center rounded-full border border-accent/35 text-[9px]">
-            ▶
-          </span>
-          Play answer · {formatTimecode(result.answer_window.start_ms)}–
-          {formatTimecode(result.answer_window.end_ms)}
-        </button>
+        <div className="mt-4 space-y-3">
+          {clipUrl ? (
+            <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-black/25">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-3 py-2">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-accent/65">
+                  Extracted answer clip
+                </p>
+                <span className="font-mono text-[10px] text-white/35">
+                  {formatTimecode(result.answer_window.start_ms)}–
+                  {formatTimecode(result.answer_window.end_ms)}
+                </span>
+              </div>
+              <video
+                src={clipUrl}
+                controls
+                playsInline
+                preload="metadata"
+                className="aspect-video w-full bg-black"
+              />
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => onSeek(result.answer_window!.start_ms)}
+            className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/[0.07] px-3 py-1.5 text-xs text-accent-soft transition hover:bg-accent/[0.12]"
+          >
+            <span className="grid h-5 w-5 place-items-center rounded-full border border-accent/35 text-[9px]">
+              ▶
+            </span>
+            {clipUrl ? "Open in full recording" : "Play answer"} ·{" "}
+            {formatTimecode(result.answer_window.start_ms)}–
+            {formatTimecode(result.answer_window.end_ms)}
+          </button>
+        </div>
       )}
 
       <p className="mt-5 border-l border-accent/35 pl-4 text-sm leading-relaxed text-white/68">
@@ -243,12 +272,25 @@ function QuestionDetail({
                 key={segment.segment_id}
                 type="button"
                 onClick={() => onSeek(segment.start_ms)}
-                className="flex w-full gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-white/[0.04]"
+                className={`flex w-full items-start gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-white/[0.04] ${
+                  segment.uncertain ? "bg-amber-400/[0.06]" : ""
+                }`}
               >
                 <span className="w-12 shrink-0 pt-0.5 font-mono text-[10px] text-accent/60">
                   {formatTimecode(segment.start_ms)}
                 </span>
-                <span className="text-xs leading-relaxed text-white/55">{segment.text}</span>
+                <span
+                  className={`min-w-0 flex-1 text-xs leading-relaxed ${
+                    segment.uncertain ? "text-amber-100/80" : "text-white/55"
+                  }`}
+                >
+                  {segment.text}
+                </span>
+                {segment.uncertain && (
+                  <span className="shrink-0 rounded-full border border-amber-300/30 bg-amber-400/10 px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-amber-200/80">
+                    review
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -270,6 +312,10 @@ export function InterviewReportView({
   onNewQuestions: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [clipAvailability, setClipAvailability] = useState<Record<string, boolean>>(
+    {},
+  );
+  const [transcript, setTranscript] = useState<InterviewTranscript | null>(null);
   const firstAnswered =
     report.question_results.find((item) => item.answered)?.question_id ??
     report.question_results[0]?.question_id ??
@@ -292,6 +338,39 @@ export function InterviewReportView({
     return scores.reduce((sum, value) => sum + value, 0) / scores.length;
   }, [report.question_results]);
   const metrics = report.communication_profile.metrics;
+
+  useEffect(() => {
+    let active = true;
+    getInterviewClips(report.interview_id)
+      .then(({ clips }) => {
+        if (!active) return;
+        const availability: Record<string, boolean> = {};
+        for (const clip of clips) {
+          availability[clip.question_id] = clip.available;
+        }
+        setClipAvailability(availability);
+      })
+      .catch(() => {
+        // Clip listing is optional; the full recording still works.
+      });
+    return () => {
+      active = false;
+    };
+  }, [report.interview_id]);
+
+  useEffect(() => {
+    let active = true;
+    getInterviewTranscript(report.interview_id)
+      .then((value) => {
+        if (active) setTranscript(value);
+      })
+      .catch(() => {
+        // The full transcript is optional; per-question segments remain.
+      });
+    return () => {
+      active = false;
+    };
+  }, [report.interview_id]);
 
   const seek = (milliseconds: number) => {
     const player = videoRef.current;
@@ -321,6 +400,32 @@ export function InterviewReportView({
               </p>
             ))}
           </div>
+        </div>
+      )}
+
+      {answeredCount < report.question_results.length && (
+        <div className="rounded-xl border border-rose-400/25 bg-rose-400/[0.07] p-4">
+          <p className="text-sm font-medium text-rose-200">
+            Incomplete coverage · {answeredCount} of {report.question_results.length}{" "}
+            questions located
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-rose-100/65">
+            The recording did not yield a locatable answer for the following
+            questions. Re-record or upload a complete take before treating this
+            report as final.
+          </p>
+          <ul className="mt-2 space-y-1">
+            {report.question_results
+              .filter((item) => !item.answered)
+              .map((item) => (
+                <li key={item.question_id} className="flex gap-2.5 text-xs text-rose-100/70">
+                  <span className="font-mono text-[10px] text-rose-200/50">
+                    {String(item.order).padStart(2, "0")}
+                  </span>
+                  <span className="line-clamp-2">{item.question}</span>
+                </li>
+              ))}
+          </ul>
         </div>
       )}
 
@@ -435,7 +540,16 @@ export function InterviewReportView({
           </div>
 
           {selected && (
-            <QuestionDetail result={selected} questionSet={questionSet} onSeek={seek} />
+            <QuestionDetail
+              result={selected}
+              questionSet={questionSet}
+              clipUrl={
+                clipAvailability[selected.question_id]
+                  ? interviewClipUrl(report.interview_id, selected.question_id)
+                  : null
+              }
+              onSeek={seek}
+            />
           )}
         </div>
 
@@ -495,6 +609,63 @@ export function InterviewReportView({
           </div>
         </aside>
       </div>
+
+      {transcript && transcript.segments.length > 0 && (
+        <section className="glass rounded-2xl p-5 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-accent/65">
+                Full transcript
+              </p>
+              <h2 className="mt-1 font-display text-2xl text-white/85">
+                Every word, timestamped.
+              </h2>
+            </div>
+            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/50">
+              <span className="h-2 w-2 rounded-full bg-amber-300" />
+              {transcript.segments.filter((item) => item.uncertain).length}{" "}
+              wording
+              {transcript.segments.filter((item) => item.uncertain).length === 1
+                ? ""
+                : "s"}{" "}
+              to review
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-white/35">
+            Amber rows are segments the speech model itself marked uncertain
+            (low word confidence or suspected non-speech). Listen before
+            trusting the wording.
+          </p>
+          <div className="mt-4 max-h-[46vh] divide-y divide-white/[0.04] overflow-y-auto rounded-xl border border-white/[0.06] bg-black/15">
+            {transcript.segments.map((segment) => (
+              <button
+                key={segment.segment_id}
+                type="button"
+                onClick={() => seek(segment.start_ms)}
+                className={`flex w-full items-start gap-3 px-3 py-2 text-left transition hover:bg-white/[0.04] ${
+                  segment.uncertain ? "bg-amber-400/[0.06]" : ""
+                }`}
+              >
+                <span className="w-12 shrink-0 pt-0.5 font-mono text-[10px] text-accent/60">
+                  {formatTimecode(segment.start_ms)}
+                </span>
+                <span
+                  className={`min-w-0 flex-1 text-xs leading-relaxed ${
+                    segment.uncertain ? "text-amber-100/80" : "text-white/55"
+                  }`}
+                >
+                  {segment.text}
+                </span>
+                {segment.uncertain && (
+                  <span className="shrink-0 rounded-full border border-amber-300/30 bg-amber-400/10 px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-amber-200/80">
+                    review
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <div className="glass rounded-2xl p-5 sm:p-6">

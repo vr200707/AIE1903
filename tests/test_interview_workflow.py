@@ -232,6 +232,29 @@ class InterviewStoreTests(unittest.TestCase):
             self.assertEqual(updated["status"], "uploaded")
             self.assertIsNone(updated["error"])
 
+    def test_question_set_lock_requires_submission(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = InterviewStore(Path(temp_dir))
+            result = _build_set()
+            question_set = _stored_question_set(store, result)
+            question_set_id = question_set["question_set_id"]
+            self.assertFalse(store.has_submitted_interview(question_set_id))
+
+            first = store.create_interview(question_set_id)
+            second = store.create_interview(question_set_id)
+            self.assertEqual(first["interview_id"], second["interview_id"])
+            self.assertFalse(store.has_submitted_interview(question_set_id))
+
+            store.update_interview(
+                first["interview_id"],
+                status="uploaded",
+                stage="video_ready",
+                progress={"done": 1, "total": 1},
+                video={"filename": "answer.mp4"},
+                error=None,
+            )
+            self.assertTrue(store.has_submitted_interview(question_set_id))
+
 
 class InterviewQuestionTests(unittest.TestCase):
     def test_question_set_is_evidence_grounded(self):
@@ -648,10 +671,35 @@ class InterviewApiTests(unittest.TestCase):
                 (
                     f"/api/interview/interviews/{interview_id}/video/sessions/"
                     f"{session_id}/complete"
-                )
+                ),
+                json={
+                    "question_marks": [
+                        {
+                            "question_id": question_set["questions"][0][
+                                "question_id"
+                            ],
+                            "start_ms": 1200,
+                        },
+                        {
+                            "question_id": question_set["questions"][0][
+                                "question_id"
+                            ],
+                            "start_ms": 9000,
+                        },
+                    ],
+                },
             )
         self.assertEqual(complete.status_code, 200)
         self.assertEqual(complete.json()["status"], "uploaded")
+        self.assertEqual(
+            complete.json()["video"]["question_marks"],
+            [
+                {
+                    "question_id": question_set["questions"][0]["question_id"],
+                    "start_ms": 1200,
+                }
+            ],
+        )
         video_response = self.client.get(
             f"/api/interview/interviews/{interview_id}/video"
         )
@@ -731,6 +779,460 @@ class InterviewApiTests(unittest.TestCase):
             report_response.json()["interview_id"],
             interview_id,
         )
+
+    def test_transcript_endpoint_before_analysis(self):
+        with mock.patch(
+            "app.interview_questions.chat_json",
+            return_value=_question_payload(),
+        ):
+            created = self.client.post(
+                "/api/interview/question-sets",
+                json={
+                    "profile_id": "prf_test",
+                    "role_context": "Faculty role in trustworthy AI.",
+                    "question_count": 5,
+                    "language": "en",
+                },
+            )
+        question_set_id = created.json()["question_set_id"]
+        interview = self.client.post(
+            "/api/interview/interviews",
+            json={"question_set_id": question_set_id},
+        )
+        self.assertEqual(interview.status_code, 201)
+        interview_id = interview.json()["interview_id"]
+
+        not_ready = self.client.get(
+            f"/api/interview/interviews/{interview_id}/transcript"
+        )
+        self.assertEqual(not_ready.status_code, 409)
+        self.assertEqual(
+            not_ready.json()["detail"]["code"],
+            "transcript_not_ready",
+        )
+
+        unknown = self.client.get(
+            "/api/interview/interviews/int_does_not_exist/transcript"
+        )
+        self.assertEqual(unknown.status_code, 404)
+        self.assertEqual(unknown.json()["detail"]["code"], "interview_not_found")
+
+    def test_question_edits_lock_only_after_submission(self):
+        with mock.patch(
+            "app.interview_questions.chat_json",
+            return_value=_question_payload(),
+        ):
+            created = self.client.post(
+                "/api/interview/question-sets",
+                json={
+                    "profile_id": "prf_test",
+                    "role_context": "Faculty role in trustworthy AI.",
+                    "question_count": 5,
+                    "language": "en",
+                },
+            )
+        self.assertEqual(created.status_code, 201)
+        question_set = created.json()
+        question_set_id = question_set["question_set_id"]
+        question_id = question_set["questions"][0]["question_id"]
+
+        interview_response = self.client.post(
+            "/api/interview/interviews",
+            json={"question_set_id": question_set_id},
+        )
+        self.assertEqual(interview_response.status_code, 201)
+        interview_id = interview_response.json()["interview_id"]
+
+        edited = self.client.patch(
+            (
+                f"/api/interview/question-sets/{question_set_id}"
+                f"/questions/{question_id}"
+            ),
+            json={"text": "Updated while the session is still empty."},
+        )
+        self.assertEqual(edited.status_code, 200)
+
+        reused = self.client.post(
+            "/api/interview/interviews",
+            json={"question_set_id": question_set_id},
+        )
+        self.assertEqual(reused.status_code, 201)
+        self.assertEqual(reused.json()["interview_id"], interview_id)
+
+        init = self.client.post(
+            f"/api/interview/interviews/{interview_id}/video/init",
+            json={
+                "filename": "answer.mp4",
+                "total_bytes": 5,
+                "content_type": "video/mp4",
+            },
+        )
+        self.assertEqual(init.status_code, 201)
+        session_id = init.json()["session_id"]
+        chunk = self.client.put(
+            (
+                f"/api/interview/interviews/{interview_id}/video/sessions/"
+                f"{session_id}/chunks/0"
+            ),
+            content=b"abcde",
+        )
+        self.assertEqual(chunk.status_code, 200)
+        with mock.patch.object(
+            interview_service,
+            "probe_video",
+            return_value={
+                "duration_ms": 60_000,
+                "width": 1280,
+                "height": 720,
+            },
+        ):
+            complete = self.client.post(
+                (
+                    f"/api/interview/interviews/{interview_id}/video/sessions/"
+                    f"{session_id}/complete"
+                )
+            )
+        self.assertEqual(complete.status_code, 200)
+
+        locked = self.client.patch(
+            (
+                f"/api/interview/question-sets/{question_set_id}"
+                f"/questions/{question_id}"
+            ),
+            json={"text": "This edit must be rejected."},
+        )
+        self.assertEqual(locked.status_code, 409)
+        self.assertEqual(locked.json()["detail"]["code"], "question_set_locked")
+
+    def test_question_update_and_delete(self):
+        with mock.patch(
+            "app.interview_questions.chat_json",
+            return_value=_question_payload(),
+        ):
+            created = self.client.post(
+                "/api/interview/question-sets",
+                json={
+                    "profile_id": "prf_test",
+                    "role_context": "Faculty role.",
+                    "question_count": 5,
+                    "language": "en",
+                },
+            )
+        self.assertEqual(created.status_code, 201)
+        question_set = created.json()
+        question_set_id = question_set["question_set_id"]
+        question_id = question_set["questions"][0]["question_id"]
+
+        patched = self.client.patch(
+            f"/api/interview/question-sets/{question_set_id}/questions/{question_id}",
+            json={
+                "text": "Rewritten question text.",
+                "answer_seconds": 120,
+                "why_it_matters": "Updated rationale.",
+            },
+        )
+        self.assertEqual(patched.status_code, 200)
+        updated = patched.json()
+        self.assertEqual(updated["questions"][0]["text"], "Rewritten question text.")
+        self.assertEqual(updated["questions"][0]["answer_seconds"], 120)
+        self.assertEqual(
+            updated["questions"][0]["why_it_matters"],
+            "Updated rationale.",
+        )
+
+        document = self.client.get(
+            f"/api/interview/question-sets/{question_set_id}/document"
+        )
+        self.assertEqual(document.status_code, 200)
+        self.assertIn("Rewritten question text.", document.text)
+
+        removed = self.client.delete(
+            f"/api/interview/question-sets/{question_set_id}/questions/{question_id}"
+        )
+        self.assertEqual(removed.status_code, 200)
+        remaining = removed.json()["questions"]
+        self.assertEqual(len(remaining), 4)
+        self.assertEqual(remaining[0]["order"], 1)
+        self.assertEqual(remaining[0]["question_id"], "q_01")
+
+        missing = self.client.patch(
+            f"/api/interview/question-sets/{question_set_id}/questions/missing",
+            json={"text": "Anything."},
+        )
+        self.assertEqual(missing.status_code, 404)
+
+        invalid_competency = self.client.patch(
+            (
+                f"/api/interview/question-sets/{question_set_id}/questions/"
+                f"{remaining[0]['question_id']}"
+            ),
+            json={"competency": "not_a_competency"},
+        )
+        self.assertEqual(invalid_competency.status_code, 422)
+
+        empty_text = self.client.patch(
+            (
+                f"/api/interview/question-sets/{question_set_id}/questions/"
+                f"{remaining[0]['question_id']}"
+            ),
+            json={"text": "   "},
+        )
+        self.assertEqual(empty_text.status_code, 422)
+
+    def test_question_add(self):
+        with mock.patch(
+            "app.interview_questions.chat_json",
+            return_value=_question_payload(),
+        ):
+            created = self.client.post(
+                "/api/interview/question-sets",
+                json={
+                    "profile_id": "prf_test",
+                    "question_count": 5,
+                    "language": "en",
+                },
+            )
+        self.assertEqual(created.status_code, 201)
+        question_set_id = created.json()["question_set_id"]
+
+        added = self.client.post(
+            f"/api/interview/question-sets/{question_set_id}/questions",
+            json={
+                "text": "Committee-authored follow-up question.",
+                "competency": "collaboration",
+                "why_it_matters": "Probes team behavior.",
+                "answer_seconds": 60,
+            },
+        )
+        self.assertEqual(added.status_code, 200)
+        updated = added.json()
+        self.assertEqual(len(updated["questions"]), 6)
+        appended = updated["questions"][-1]
+        self.assertEqual(appended["question_id"], "q_06")
+        self.assertEqual(appended["order"], 6)
+        self.assertEqual(appended["competency"], "collaboration")
+        self.assertEqual(appended["answer_seconds"], 60)
+        self.assertEqual(appended["source_claims"], [])
+
+        document = self.client.get(
+            f"/api/interview/question-sets/{question_set_id}/document"
+        )
+        self.assertEqual(document.status_code, 200)
+        self.assertIn("Committee-authored follow-up question.", document.text)
+
+        missing_text = self.client.post(
+            f"/api/interview/question-sets/{question_set_id}/questions",
+            json={"text": "   "},
+        )
+        self.assertEqual(missing_text.status_code, 422)
+
+        bad_competency = self.client.post(
+            f"/api/interview/question-sets/{question_set_id}/questions",
+            json={"text": "Another question.", "competency": "nope"},
+        )
+        self.assertEqual(bad_competency.status_code, 422)
+
+        bad_seconds = self.client.post(
+            f"/api/interview/question-sets/{question_set_id}/questions",
+            json={"text": "Another question.", "answer_seconds": True},
+        )
+        self.assertEqual(bad_seconds.status_code, 422)
+
+    def test_publish_and_candidate_flow(self):
+        with mock.patch(
+            "app.interview_questions.chat_json",
+            return_value=_question_payload(),
+        ):
+            created = self.client.post(
+                "/api/interview/question-sets",
+                json={
+                    "profile_id": "prf_test",
+                    "question_count": 5,
+                    "language": "en",
+                },
+            )
+        self.assertEqual(created.status_code, 201)
+        question_set_id = created.json()["question_set_id"]
+        first_question_id = created.json()["questions"][0]["question_id"]
+
+        empty_publish = self.client.post(
+            f"/api/interview/question-sets/{question_set_id}/publish"
+        )
+        self.assertEqual(empty_publish.status_code, 409)
+        self.assertEqual(
+            empty_publish.json()["detail"]["code"],
+            "no_approved_questions",
+        )
+
+        approved = self.client.patch(
+            (
+                f"/api/interview/question-sets/{question_set_id}/questions/"
+                f"{first_question_id}"
+            ),
+            json={"approved": True},
+        )
+        self.assertEqual(approved.status_code, 200)
+        self.assertTrue(approved.json()["questions"][0]["approved"])
+
+        published = self.client.post(
+            f"/api/interview/question-sets/{question_set_id}/publish"
+        )
+        self.assertEqual(published.status_code, 200)
+        self.assertEqual(published.json()["status"], "published")
+        candidate_token = published.json()["candidate_token"]
+        self.assertTrue(candidate_token)
+
+        locked_edit = self.client.patch(
+            (
+                f"/api/interview/question-sets/{question_set_id}/questions/"
+                f"{first_question_id}"
+            ),
+            json={"text": "Should be locked."},
+        )
+        self.assertEqual(locked_edit.status_code, 409)
+        self.assertEqual(
+            locked_edit.json()["detail"]["code"],
+            "question_set_locked",
+        )
+
+        candidate_set = self.client.get(f"/api/interview/candidate/{candidate_token}")
+        self.assertEqual(candidate_set.status_code, 200)
+        self.assertEqual(len(candidate_set.json()["questions"]), 1)
+        self.assertEqual(
+            candidate_set.json()["questions"][0]["question_id"],
+            first_question_id,
+        )
+
+        candidate_interview = self.client.post(
+            f"/api/interview/candidate/{candidate_token}/interviews"
+        )
+        self.assertEqual(candidate_interview.status_code, 201)
+        self.assertEqual(
+            candidate_interview.json()["question_set_id"],
+            question_set_id,
+        )
+
+        unpublished = self.client.post(
+            f"/api/interview/question-sets/{question_set_id}/unpublish"
+        )
+        self.assertEqual(unpublished.status_code, 200)
+        self.assertEqual(unpublished.json()["status"], "draft")
+
+        editable_again = self.client.patch(
+            (
+                f"/api/interview/question-sets/{question_set_id}/questions/"
+                f"{first_question_id}"
+            ),
+            json={"text": "Editable after unpublish."},
+        )
+        self.assertEqual(editable_again.status_code, 200)
+
+        unpublished_view = self.client.get(
+            f"/api/interview/candidate/{candidate_token}"
+        )
+        self.assertEqual(unpublished_view.status_code, 409)
+        self.assertEqual(
+            unpublished_view.json()["detail"]["code"],
+            "candidate_set_not_published",
+        )
+
+        missing_token = self.client.get("/api/interview/candidate/nope")
+        self.assertEqual(missing_token.status_code, 404)
+
+    def test_questions_lock_once_video_submitted(self):
+        with mock.patch(
+            "app.interview_questions.chat_json",
+            return_value=_question_payload(),
+        ):
+            created = self.client.post(
+                "/api/interview/question-sets",
+                json={
+                    "profile_id": "prf_test",
+                    "question_count": 5,
+                    "language": "en",
+                },
+            )
+        question_set_id = created.json()["question_set_id"]
+        question_id = created.json()["questions"][0]["question_id"]
+
+        interview_response = self.client.post(
+            "/api/interview/interviews",
+            json={"question_set_id": question_set_id},
+        )
+        self.assertEqual(interview_response.status_code, 201)
+        interview_id = interview_response.json()["interview_id"]
+
+        editable = self.client.patch(
+            f"/api/interview/question-sets/{question_set_id}/questions/{question_id}",
+            json={"text": "Still editable before submission."},
+        )
+        self.assertEqual(editable.status_code, 200)
+
+        interview_service.STORE.update_interview(
+            interview_id,
+            status="uploaded",
+            stage="video_ready",
+            progress={"done": 1, "total": 1},
+            video={"filename": "answer.mp4"},
+            error=None,
+        )
+
+        patched = self.client.patch(
+            f"/api/interview/question-sets/{question_set_id}/questions/{question_id}",
+            json={"text": "Locked edit."},
+        )
+        self.assertEqual(patched.status_code, 409)
+
+        removed = self.client.delete(
+            f"/api/interview/question-sets/{question_set_id}/questions/{question_id}"
+        )
+        self.assertEqual(removed.status_code, 409)
+
+        discarded = self.client.delete(
+            f"/api/interview/interviews/{interview_id}"
+        )
+        self.assertEqual(discarded.status_code, 200)
+        self.assertEqual(discarded.json()["deleted"], True)
+
+        unlocked = self.client.patch(
+            f"/api/interview/question-sets/{question_set_id}/questions/{question_id}",
+            json={"text": "Editable again after the session is discarded."},
+        )
+        self.assertEqual(unlocked.status_code, 200)
+
+    def test_cannot_delete_last_question(self):
+        with mock.patch(
+            "app.interview_questions.chat_json",
+            return_value=_question_payload(),
+        ):
+            created = self.client.post(
+                "/api/interview/question-sets",
+                json={
+                    "profile_id": "prf_test",
+                    "question_count": 5,
+                    "language": "en",
+                },
+            )
+        question_set_id = created.json()["question_set_id"]
+        questions = created.json()["questions"]
+
+        for _ in range(len(questions) - 1):
+            current = self.client.get(
+                f"/api/interview/question-sets/{question_set_id}"
+            ).json()["questions"]
+            removed = self.client.delete(
+                f"/api/interview/question-sets/{question_set_id}/questions/"
+                f"{current[0]['question_id']}"
+            )
+            self.assertEqual(removed.status_code, 200)
+
+        last = self.client.get(
+            f"/api/interview/question-sets/{question_set_id}"
+        ).json()["questions"][0]["question_id"]
+        final = self.client.delete(
+            f"/api/interview/question-sets/{question_set_id}/questions/{last}"
+        )
+        self.assertEqual(final.status_code, 422)
 
     def test_endpoint_rejects_non_english_questions(self):
         response = self.client.post(
