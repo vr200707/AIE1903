@@ -37,7 +37,7 @@ SCHEMA_PATH = PROJECT_ROOT / "contracts" / "schema.json"
 CACHE_DIR = PROJECT_ROOT / ".cache" / "extraction"
 QUERY_DATE = "2026-09-29"  # 样本集标明的查询日期
 
-EXTRACTION_STRATEGY = "split-v1"
+EXTRACTION_STRATEGY = "split-v2-meta-fallback"
 PUBLICATIONS_PER_CHUNK = 12
 DEFAULT_MAX_OUTPUT_TOKENS = 8192
 
@@ -339,6 +339,138 @@ def _parse_json(raw: str, context: str) -> Any:
         raise ValueError(f"LLM did not return valid JSON for {context}: {exc}") from exc
 
 
+_META_FALLBACK_SECTIONS: tuple[tuple[str, ...], ...] = (
+    ("basic_info", "education_employment"),
+    ("awards_funding",),
+    ("publications_impact",),
+    ("academic_service",),
+    ("overall_evaluation",),
+)
+
+
+def _partial_meta_schema(fields: tuple[str, ...]) -> dict[str, Any]:
+    """Build a small schema for one fallback extraction request."""
+    schema = _load_schema()
+    candidate_schema = schema["properties"]["candidate"]
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$defs": schema["$defs"],
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["schema_version", "candidate"],
+        "properties": {
+            "schema_version": schema["properties"]["schema_version"],
+            "candidate": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": list(fields),
+                "properties": {
+                    name: candidate_schema["properties"][name] for name in fields
+                },
+            },
+        },
+    }
+
+
+def _validate_partial_meta(
+    payload: dict[str, Any], fields: tuple[str, ...]
+) -> list[str]:
+    validator = Draft202012Validator(_partial_meta_schema(fields))
+    errors = sorted(validator.iter_errors(payload), key=lambda e: list(e.path))
+    messages: list[str] = []
+    for error in errors:
+        path = "/".join(str(part) for part in error.path) or "(root)"
+        messages.append(f"{path}: {error.message}")
+    return messages
+
+
+def _meta_section_prompt(fields: tuple[str, ...]) -> str:
+    schema = _partial_meta_schema(fields)
+    publication_rule = (
+        "\npublications_impact.publications 必须为空数组 []；"
+        "total_citations 和 citation_query_date 仅在文档明确写出时填写。"
+        if "publications_impact" in fields
+        else ""
+    )
+    return (
+        "你是候选人简历结构化抽取引擎。只抽取下面 JSON Schema 要求的模块，"
+        "不要输出其他模块。\n\n"
+        + _EVIDENCE_RULES
+        + publication_rule
+        + "\n\n输出限制：每条事实最多一个 evidence，单条 evidence 原文不超过 "
+        "180 个字符；整体评价保持简洁；必须返回一个语法完整、没有截断的 JSON 对象。"
+        "\n\nJSON Schema:\n"
+        + json.dumps(schema, ensure_ascii=False)
+    )
+
+
+def _extract_meta_section(
+    rendered: str, fields: tuple[str, ...], max_retries: int
+) -> dict[str, Any]:
+    last_errors: list[str] = []
+    system_prompt = _meta_section_prompt(fields)
+    for _ in range(max_retries + 1):
+        user_content = rendered
+        if last_errors:
+            user_content = (
+                "上一次输出无法解析或不符合 Schema。请修正以下问题，重新输出"
+                "完整且合法的 JSON：\n"
+                + "\n".join(last_errors)
+                + "\n\n"
+                + rendered
+            )
+        raw = _chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content},
+            ]
+        )
+        try:
+            data = _parse_json(raw, f"basic modules fallback ({', '.join(fields)})")
+        except ValueError as exc:
+            last_errors = [
+                str(exc),
+                "输出必须完整结束；请缩短证据原文并避免重复内容。",
+            ]
+            continue
+
+        candidate = data.get("candidate") if isinstance(data, dict) else None
+        if not isinstance(candidate, dict):
+            last_errors = ["输出缺少 candidate 对象"]
+            continue
+
+        fragment = {name: candidate.get(name) for name in fields}
+        if "publications_impact" in fields:
+            publications_impact = fragment.get("publications_impact")
+            if isinstance(publications_impact, dict):
+                publications_impact.setdefault("publications", [])
+                publications_impact.setdefault("total_citations", None)
+                publications_impact.setdefault("citation_query_date", None)
+
+        payload = {
+            "schema_version": "1.0.0",
+            "candidate": fragment,
+        }
+        last_errors = _validate_partial_meta(payload, fields)
+        if not last_errors:
+            return fragment
+
+    raise ValueError(
+        f"Basic-module fallback failed for {', '.join(fields)}:\n"
+        + "\n".join(last_errors)
+    )
+
+
+def _extract_meta_in_sections(rendered: str, max_retries: int) -> dict[str, Any]:
+    """Fallback to smaller requests when one full basic-module response is invalid."""
+    candidate: dict[str, Any] = {}
+    for fields in _META_FALLBACK_SECTIONS:
+        candidate.update(
+            _extract_meta_section(rendered, fields, max_retries=max_retries)
+        )
+    return candidate
+
+
 def _extract_meta(rendered: str, max_retries: int) -> dict[str, Any]:
     """抽取基础模块（含空 publications + 汇总字段），失败自动带错误反馈重试。"""
     last_errors: list[str] = []
@@ -357,7 +489,12 @@ def _extract_meta(rendered: str, max_retries: int) -> dict[str, Any]:
                 {"role": "user", "content": user_content},
             ]
         )
-        data = _parse_json(raw, "basic modules")
+        try:
+            data = _parse_json(raw, "basic modules")
+        except ValueError:
+            # A malformed response is usually truncated. Repeating the same large
+            # request tends to fail identically, so retry with smaller modules.
+            return _extract_meta_in_sections(rendered, max_retries)
         candidate = data.get("candidate") if isinstance(data, dict) else None
         if not isinstance(candidate, dict):
             raise ValueError("Basic-module extraction is missing the candidate field")

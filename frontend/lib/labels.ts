@@ -1,4 +1,4 @@
-// 枚举 → 中文文案（D2/D3/D4 复用）
+// 枚举 → 展示文案（D2/D3/D4 复用）
 import type {
   EvidenceStatus,
   AuthorRole,

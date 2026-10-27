@@ -32,7 +32,7 @@ function TagChips({ label, items }: { label: string; items: string[] }) {
   if (items.length === 0) return null;
   return (
     <div className="mt-3">
-      <p className="text-xs text-ink/70">{label}</p>
+      <p className="text-xs text-ink/75">{label}</p>
       <div className="mt-1.5 flex flex-wrap gap-1.5">
         {items.map((x, i) => (
           <span key={i} className="rounded-full bg-ink/10 px-2.5 py-1 text-xs text-ink/75">
@@ -48,10 +48,10 @@ function SimpleList({ label, items }: { label: string; items: string[] }) {
   if (items.length === 0) return null;
   return (
     <div className="mt-3">
-      <p className="text-xs text-ink/70">{label}</p>
+      <p className="text-xs text-ink/75">{label}</p>
       <ul className="mt-1.5 space-y-1">
         {items.map((x, i) => (
-          <li key={i} className="flex gap-2 text-sm text-ink/70">
+          <li key={i} className="flex gap-2 text-sm text-ink/75">
             <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent/70" />
             {x}
           </li>
@@ -68,7 +68,7 @@ function DetailBody({ m, candidate }: { m: ModuleAssessment; candidate: Candidat
       return (
         <>
           <p className="text-lg font-semibold">{n(c.basic_info.name)}</p>
-          <p className="mt-1 text-sm text-ink/60">
+          <p className="mt-1 text-sm text-ink/75">
             {n(c.basic_info.position)}
             {c.basic_info.institution ? ` · ${c.basic_info.institution}` : ""}
             {c.basic_info.highest_degree ? ` · ${c.basic_info.highest_degree}` : ""}
@@ -78,11 +78,11 @@ function DetailBody({ m, candidate }: { m: ModuleAssessment; candidate: Candidat
           <SimpleList label="Strengths" items={c.basic_info.strengths} />
           {c.basic_info.to_verify.length > 0 && (
             <div className="mt-3">
-              <p className="text-xs text-ink/70">Items to verify</p>
+              <p className="text-xs text-ink/75">Items to verify</p>
               {c.basic_info.to_verify.map((v, i) => (
                 <div key={i} className="mt-2 border-t border-ink/10 pt-2 first:border-t-0">
                   <p className="text-sm text-ink/85">{v.claim}</p>
-                  <p className="mt-0.5 text-xs text-ink/55">{v.reason}</p>
+                  <p className="mt-0.5 text-xs text-ink/75">{v.reason}</p>
                 </div>
               ))}
             </div>
@@ -97,10 +97,10 @@ function DetailBody({ m, candidate }: { m: ModuleAssessment; candidate: Candidat
               <p className="font-semibold">
                 {n(e.degree)} · {n(e.field)}
               </p>
-              <p className="mt-0.5 text-xs text-ink/55">
+              <p className="mt-0.5 text-xs text-ink/75">
                 {n(e.institution)} · Advisor: {n(e.advisor)}
               </p>
-              <p className="text-xs text-ink/55">{dateRange(e.start_date, e.end_date)}</p>
+              <p className="text-xs text-ink/75">{dateRange(e.start_date, e.end_date)}</p>
             </div>
           ))}
           {c.education_employment.employment.map((e, i) => (
@@ -108,7 +108,7 @@ function DetailBody({ m, candidate }: { m: ModuleAssessment; candidate: Candidat
               <p className="font-semibold">
                 {n(e.position)} · {n(e.institution)}
               </p>
-              <p className="mt-0.5 text-xs text-ink/55">{dateRange(e.start_date, e.end_date)}</p>
+              <p className="mt-0.5 text-xs text-ink/75">{dateRange(e.start_date, e.end_date)}</p>
             </div>
           ))}
         </>
@@ -119,7 +119,7 @@ function DetailBody({ m, candidate }: { m: ModuleAssessment; candidate: Candidat
           {c.awards_funding.awards.map((a, i) => (
             <div key={i} className="mt-3 border-t border-ink/10 pt-3 first:mt-0 first:border-t-0 first:pt-0">
               <p className="font-semibold">{a.name}</p>
-              <p className="mt-0.5 text-xs text-ink/55">
+              <p className="mt-0.5 text-xs text-ink/75">
                 {a.year ?? "?"} · Awarding body: {n(a.awarding_body)}
               </p>
             </div>
@@ -127,7 +127,7 @@ function DetailBody({ m, candidate }: { m: ModuleAssessment; candidate: Candidat
           {c.awards_funding.funding.map((f, i) => (
             <div key={i} className="mt-3 border-t border-ink/10 pt-3">
               <p className="font-semibold">{f.project_name}</p>
-              <p className="mt-0.5 text-xs text-ink/55">
+              <p className="mt-0.5 text-xs text-ink/75">
                 {n(f.funder)} · {fundingRoleLabel[f.role]}
                 {f.amount != null ? ` · ${f.amount.toLocaleString()} ${f.currency ?? ""}` : ""}
               </p>
@@ -138,13 +138,13 @@ function DetailBody({ m, candidate }: { m: ModuleAssessment; candidate: Candidat
     case "publications_impact":
       return (
         <>
-          <p className="text-sm text-ink/70">
+          <p className="text-sm text-ink/75">
             Total citations: {c.publications_impact.total_citations ?? "—"}
           </p>
           {c.publications_impact.publications.map((p, i) => (
             <div key={i} className="mt-3 border-t border-ink/10 pt-3 first:mt-0 first:border-t-0 first:pt-0">
               <p className="font-semibold">{p.title}</p>
-              <p className="mt-0.5 text-xs text-ink/55">
+              <p className="mt-0.5 text-xs text-ink/75">
                 {p.year ?? "?"} · {authorRoleLabel[p.author_role]} · {n(p.venue)} ·{" "}
                 {venueTypeLabel[p.venue_type]}
                 {p.ranking ? ` · ${p.ranking}` : ""}
@@ -160,12 +160,12 @@ function DetailBody({ m, candidate }: { m: ModuleAssessment; candidate: Candidat
           {c.academic_service.services.map((s, i) => (
             <div key={i} className="mt-3 border-t border-ink/10 pt-3 first:mt-0 first:border-t-0 first:pt-0">
               <p className="font-semibold">{s.organization_or_venue}</p>
-              <p className="mt-0.5 text-xs text-ink/55">
+              <p className="mt-0.5 text-xs text-ink/75">
                 {serviceTypeLabel[s.service_type]}
                 {s.role ? ` · ${s.role}` : ""} · {s.start_year ?? "?"} ~ {s.end_year ?? "Present"}
               </p>
               {s.research_areas.length > 0 && (
-                <p className="mt-0.5 text-xs text-ink/55">
+                <p className="mt-0.5 text-xs text-ink/75">
                   Areas: {s.research_areas.join(", ")}
                 </p>
               )}
@@ -176,13 +176,13 @@ function DetailBody({ m, candidate }: { m: ModuleAssessment; candidate: Candidat
     case "overall_evaluation":
       return (
         <>
-          <p className="text-sm text-ink/70">{n(c.overall_evaluation.summary)}</p>
+          <p className="text-sm text-ink/75">{n(c.overall_evaluation.summary)}</p>
           <SimpleList label="Strengths" items={c.overall_evaluation.strengths} />
           <SimpleList label="Risks" items={c.overall_evaluation.risks} />
           {c.overall_evaluation.dimensions.map((d, i) => (
             <div key={i} className="mt-3 border-t border-ink/10 pt-3 first:mt-0 first:border-t-0 first:pt-0">
               <p className="font-semibold">{d.dimension}</p>
-              <p className="mt-0.5 text-sm text-ink/70">{d.assessment}</p>
+              <p className="mt-0.5 text-sm text-ink/75">{d.assessment}</p>
             </div>
           ))}
         </>
@@ -235,13 +235,13 @@ export function PlanetOverview({
           <div className="flex items-center justify-between px-6 pt-4 sm:px-8 sm:pt-5">
           <div className="flex items-baseline gap-3">
             <span className="font-display text-xl font-semibold">Candidate Overview</span>
-            <span className="text-xs uppercase tracking-[0.18em] text-ink/70">
+            <span className="text-xs uppercase tracking-[0.18em] text-ink/75">
               Candidate Overview
             </span>
           </div>
           <button
             onClick={onClose}
-            className="grid h-9 w-9 place-items-center rounded-full border border-ink/15 bg-ink/5 text-ink/70 transition hover:bg-ink/10 hover:text-ink"
+            className="grid h-9 w-9 place-items-center rounded-full border border-ink/15 bg-ink/5 text-ink/75 transition hover:bg-ink/10 hover:text-ink"
             aria-label="Close"
           >
             ✕
@@ -251,7 +251,7 @@ export function PlanetOverview({
           {/* 顶部约 1/6：大头照 + 综合评分 */}
           <div className="flex items-center justify-center gap-6 px-6 py-3 sm:px-8 sm:py-4">
           <div className="flex items-center gap-3">
-            <span className="grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-accent-soft to-accent-deep text-2xl font-semibold text-ink">
+            <span className="grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-accent to-accent-deep text-2xl font-semibold text-white">
               {initial}
             </span>
             <span className="min-w-0">
@@ -267,7 +267,7 @@ export function PlanetOverview({
           <div className="flex items-center gap-4">
             <ScoreRing score={assessment.overall} size={94} label="Score" variant="score" />
             {scoreLoading && assessment.overall == null && (
-              <span className="animate-pulse text-[11px] text-accent-soft">
+              <span className="animate-pulse text-[11px] text-accent">
                 Scoring…
               </span>
             )}
@@ -299,20 +299,20 @@ export function PlanetOverview({
                   <div className="flex items-baseline gap-2">
                     <span className="text-sm font-semibold">{m.title}</span>
                   </div>
-                  <div className="mt-0.5 text-xs text-ink/60">
+                  <div className="mt-0.5 text-xs text-ink/75">
                     {m.pros} · {m.cons}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <span className="inline-flex items-center gap-1 rounded-full border border-ink/[0.12] bg-ink/[0.06] px-2.5 py-0.5 text-xs tabular-nums">
-                    <b className="text-accent-soft">
+                    <b className="text-accent">
                       {m.score != null ? m.score.toFixed(1) : "—"}
                     </b>
-                    <span className="text-ink/60">Score</span>
+                    <span className="text-ink/75">Score</span>
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-full border border-sky-300/[0.18] bg-sky-400/[0.08] px-2.5 py-0.5 text-xs tabular-nums">
-                    <b className="text-sky-300">{m.credibility.toFixed(1)}</b>
-                    <span className="text-ink/60">Credibility</span>
+                    <b className="text-sky-800">{m.credibility.toFixed(1)}</b>
+                    <span className="text-ink/75">Credibility</span>
                   </span>
                 </div>
               </button>
@@ -320,8 +320,8 @@ export function PlanetOverview({
           </div>
         </div>
 
-        <div className="pb-3 text-center text-[11.5px] tracking-wide text-ink/70">
-          Click a <b className="font-semibold text-accent-soft">section</b> to view details
+        <div className="pb-3 text-center text-[11.5px] tracking-wide text-ink/75">
+          Click a <b className="font-semibold text-accent">section</b> to view details
         </div>
       </div>
 
@@ -344,10 +344,10 @@ export function PlanetOverview({
                 <h2 className="text-lg font-semibold">
                   {selectedModule.title}
                 </h2>
-                <p className="mt-1 text-xs text-ink/50">
+                <p className="mt-1 text-xs text-ink/75">
                   Score: {selectedModule.pros} · {selectedModule.cons}
                 </p>
-                <p className="mt-1 text-xs text-sky-300/80">
+                <p className="mt-1 text-xs text-sky-800">
                   Credibility: {selectedModule.credPros} · {selectedModule.credCons}
                 </p>
               </div>
@@ -374,7 +374,7 @@ export function PlanetOverview({
             </div>
 
             <div className="mt-5 border-t border-ink/10 pt-4">
-              <p className="text-xs text-ink/70">
+              <p className="text-xs text-ink/75">
                 Evidence (click to review and correct)
               </p>
               <EvidenceList

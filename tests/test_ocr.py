@@ -45,7 +45,11 @@ def _find_font() -> str | None:
 
 FONT_PATH = _find_font()
 # OCR 依赖本机字体 + Tesseract；缺任一项时跳过图像类测试，纯逻辑测试照常跑。
-OCR_AVAILABLE = FONT_PATH is not None and shutil.which("tesseract") is not None
+ocr._load_dotenv()
+TESSERACT_CMD = ocr._tesseract_cmd()
+OCR_AVAILABLE = FONT_PATH is not None and (
+    Path(TESSERACT_CMD).is_file() or shutil.which(TESSERACT_CMD) is not None
+)
 
 
 def _text_image() -> Image.Image:

@@ -97,7 +97,7 @@ function ThinkingRow({
             <span className="animate-caret ml-0.5 inline-block h-3.5 w-[2px] translate-y-0.5 bg-accent" />
           )}
         </p>
-        <p className="text-xs text-ink/35">{detail}</p>
+        <p className="text-xs text-ink/75">{detail}</p>
       </div>
     </li>
   );
@@ -190,10 +190,10 @@ export default function AnalyzingStage({
       {/* 顶部：动态进度条 */}
       <div className="mb-5">
         <div className="mb-2 flex items-center justify-between text-xs">
-          <span className="font-medium uppercase tracking-[0.25em] text-ink/35">
+          <span className="font-medium uppercase tracking-[0.25em] text-ink/75">
             {progressLabel}
           </span>
-          <span className="font-mono text-accent-soft">
+          <span className="font-mono text-accent">
             {Math.round(progress * 100)}%
           </span>
         </div>
@@ -212,10 +212,10 @@ export default function AnalyzingStage({
         {/* 左：文档扫描 */}
         <div className="relative rounded-2xl border border-ink/10 bg-ink/[0.02] p-5 backdrop-blur-xl">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-[0.25em] text-ink/35">
+            <p className="text-xs font-medium uppercase tracking-[0.25em] text-ink/75">
               Parsing
             </p>
-            <span className="flex items-center gap-1.5 text-xs text-ink/40">
+            <span className="flex items-center gap-1.5 text-xs text-ink/75">
               <span className="animate-ring-spin inline-block h-2.5 w-2.5 rounded-full border border-accent/30 border-t-accent" />
               page {Math.min(step + 1, 27)} / 27
             </span>
@@ -239,7 +239,7 @@ export default function AnalyzingStage({
                   className="rounded-full border px-2.5 py-1 text-[11px] transition-colors duration-500"
                   style={{
                     borderColor: i < Math.min(step + 1, 4) ? "rgba(63, 127, 158,0.45)" : "rgba(22, 50, 74,0.14)",
-                    color: i < Math.min(step + 1, 4) ? "#2c5c78" : "rgba(22, 50, 74,0.35)",
+                    color: i < Math.min(step + 1, 4) ? "#1f5871" : "#465f73",
                     background: i < Math.min(step + 1, 4) ? "rgba(63, 127, 158,0.12)" : "transparent",
                   }}
                 >
@@ -253,16 +253,16 @@ export default function AnalyzingStage({
         {/* 右：思考流 */}
         <div className="rounded-2xl border border-ink/10 bg-ink/[0.02] p-5 backdrop-blur-xl">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-[0.25em] text-ink/35">
+            <p className="text-xs font-medium uppercase tracking-[0.25em] text-ink/75">
               Reasoning trace
             </p>
-            <span className="font-mono text-xs text-ink/30">
+            <span className="font-mono text-xs text-ink/75">
               {shown} / {SCRIPT.length}
             </span>
           </div>
 
           {phase && (
-            <p className="mb-3 rounded-lg border border-accent/25 bg-accent/[0.07] px-3 py-2 text-xs text-accent-soft">
+            <p className="mb-3 rounded-lg border border-accent/25 bg-accent/[0.07] px-3 py-2 text-xs text-accent">
               backend · {phase}
             </p>
           )}

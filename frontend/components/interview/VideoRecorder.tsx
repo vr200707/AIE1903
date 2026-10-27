@@ -237,23 +237,23 @@ export function VideoRecorder({
     <section className="glass rounded-2xl p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.18em] text-accent/60">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-accent">
             Record in the browser
           </p>
-          <p className="mt-1 text-[10px] text-ink/55">
+          <p className="mt-1 text-[10px] text-ink/75">
             One continuous take — the questions appear on screen as you answer.
           </p>
         </div>
         {(state === "recording" || state === "starting") && (
           <span className="flex items-center gap-1.5 rounded-full border border-rose-300/25 bg-rose-400/10 px-2.5 py-1">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-rose-300" />
-            <span className="font-mono text-[10px] text-rose-200">REC</span>
+            <span className="font-mono text-[10px] text-rose-800">REC</span>
           </span>
         )}
       </div>
 
       {questions.length === 0 && (
-        <p className="mt-4 text-xs text-ink/60">
+        <p className="mt-4 text-xs text-ink/75">
           No questions are available to record.
         </p>
       )}
@@ -261,7 +261,7 @@ export function VideoRecorder({
       {state === "idle" && questions.length > 0 && (
         <div className="mt-4">
           {permissionError && (
-            <p className="mb-3 rounded-lg border border-rose-300/25 bg-rose-400/[0.06] px-3 py-2 text-xs leading-relaxed text-rose-200/75">
+            <p className="mb-3 rounded-lg border border-rose-300/25 bg-rose-400/[0.06] px-3 py-2 text-xs leading-relaxed text-rose-800">
               {permissionError}
             </p>
           )}
@@ -269,19 +269,19 @@ export function VideoRecorder({
             type="button"
             onClick={() => void startRecording()}
             disabled={disabled}
-            className="flex w-full items-center justify-center gap-2.5 rounded-full border border-accent/35 bg-accent/[0.08] px-5 py-3 text-sm text-accent-soft transition hover:bg-accent/[0.14] disabled:cursor-not-allowed disabled:opacity-45"
+            className="flex w-full items-center justify-center gap-2.5 rounded-full border border-accent/35 bg-accent/[0.08] px-5 py-3 text-sm text-accent transition hover:bg-accent/[0.14] disabled:cursor-not-allowed disabled:opacity-75"
           >
             <span className="h-2.5 w-2.5 rounded-full bg-rose-300" />
             Start recording
           </button>
-          <p className="mt-2 text-center text-[10px] text-ink/50">
+          <p className="mt-2 text-center text-[10px] text-ink/75">
             Camera and microphone permission is required.
           </p>
         </div>
       )}
 
       {state === "starting" && (
-        <div className="mt-4 flex items-center justify-center gap-3 py-6 text-xs text-ink/65">
+        <div className="mt-4 flex items-center justify-center gap-3 py-6 text-xs text-ink/75">
           <span className="relative grid h-6 w-6 place-items-center">
             <span className="absolute inset-0 animate-ring-spin rounded-full border border-accent/25 border-t-accent" />
           </span>
@@ -293,10 +293,10 @@ export function VideoRecorder({
         <div className="mt-4">
           <div className="rounded-xl border border-ink/[0.08] bg-background/25 px-4 py-4">
             <div className="flex items-center justify-between gap-3">
-              <span className="font-mono text-[10px] text-accent/65">
+              <span className="font-mono text-[10px] text-accent">
                 Question {questionIndex + 1} of {questions.length}
               </span>
-              <span className="font-mono text-[10px] tabular-nums text-ink/65">
+              <span className="font-mono text-[10px] tabular-nums text-ink/75">
                 {formatClock(elapsedSeconds)} / {formatClock(maxSeconds)}
               </span>
             </div>
@@ -304,10 +304,10 @@ export function VideoRecorder({
               {currentQuestion.question}
             </p>
             <div className="mt-4 flex items-center justify-between gap-3">
-              <span className="text-[10px] text-ink/50">
+              <span className="text-[10px] text-ink/75">
                 Answer out loud, then continue.
               </span>
-              <span className="text-[10px] tabular-nums text-accent-soft/70">
+              <span className="text-[10px] tabular-nums text-accent">
                 {formatClock(remainingSeconds)} left
               </span>
             </div>
@@ -325,7 +325,7 @@ export function VideoRecorder({
             <button
               type="button"
               onClick={stopRecording}
-              className="rounded-full border border-rose-300/30 bg-rose-400/[0.07] px-4 py-2.5 text-xs text-rose-200 transition hover:bg-rose-400/[0.14]"
+              className="rounded-full border border-rose-300/30 bg-rose-400/[0.07] px-4 py-2.5 text-xs text-rose-800 transition hover:bg-rose-400/[0.14]"
             >
               Stop
             </button>
@@ -354,7 +354,7 @@ export function VideoRecorder({
               type="button"
               onClick={restart}
               disabled={disabled}
-              className="flex-1 rounded-full border border-ink/12 bg-ink/[0.03] px-4 py-2.5 text-xs text-ink/60 transition hover:border-ink/25 hover:text-ink/85 disabled:cursor-not-allowed disabled:opacity-45"
+              className="flex-1 rounded-full border border-ink/12 bg-ink/[0.03] px-4 py-2.5 text-xs text-ink/75 transition hover:border-ink/25 hover:text-ink/85 disabled:cursor-not-allowed disabled:opacity-75"
             >
               Record again
             </button>
@@ -362,7 +362,7 @@ export function VideoRecorder({
               type="button"
               onClick={submit}
               disabled={disabled}
-              className="flex-1 rounded-full bg-emerald-300 px-4 py-2.5 text-xs font-medium text-ink transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-45"
+              className="flex-1 rounded-full bg-emerald-300 px-4 py-2.5 text-xs font-medium text-ink transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-75"
             >
               Use this recording
             </button>
@@ -374,14 +374,14 @@ export function VideoRecorder({
         <div className="mt-4 rounded-xl border border-emerald-300/20 bg-emerald-400/[0.05] px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs text-emerald-200/80">Recording ready</p>
-              <p className="mt-0.5 truncate text-[10px] text-ink/60">{fileName}</p>
+              <p className="text-xs text-emerald-800">Recording ready</p>
+              <p className="mt-0.5 truncate text-[10px] text-ink/75">{fileName}</p>
             </div>
             <button
               type="button"
               onClick={removeSubmission}
               disabled={disabled}
-              className="text-[10px] text-ink/65 transition hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-45"
+              className="text-[10px] text-ink/75 transition hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-75"
             >
               Remove
             </button>

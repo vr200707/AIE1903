@@ -77,12 +77,12 @@ function TagRow({ label, items }: { label: string; items: string[] }) {
   if (items.length === 0) return null;
   return (
     <div className="mt-4">
-      <p className="text-xs font-medium text-ink/70">{label}</p>
+      <p className="text-xs font-medium text-ink/75">{label}</p>
       <div className="mt-1.5 flex flex-wrap gap-2">
         {items.map((x) => (
           <span
             key={x}
-            className="rounded-full bg-ink/10 px-3 py-1 text-sm text-ink/70"
+            className="rounded-full bg-ink/10 px-3 py-1 text-sm text-ink/75"
           >
             {x}
           </span>
@@ -106,7 +106,7 @@ function BulletList({
   const dot = tone === "warn" ? "bg-amber-400/70" : "bg-accent/70";
   return (
     <div className="mt-5">
-      <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink/65">
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink/75">
         {label}
       </p>
       <ul className="mt-2.5 space-y-0">
@@ -128,7 +128,7 @@ function BackButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="group inline-flex items-center gap-2 rounded-full border border-ink/12 bg-ink/[0.04] px-4 py-2 text-sm text-ink/65 backdrop-blur-xl transition hover:border-accent/30 hover:text-ink"
+      className="group inline-flex items-center gap-2 rounded-full border border-ink/12 bg-ink/[0.04] px-4 py-2 text-sm text-ink/75 backdrop-blur-xl transition hover:border-accent/30 hover:text-ink"
     >
       <span className="transition-transform group-hover:-translate-x-0.5">←</span>
       Back to home
@@ -155,7 +155,7 @@ function OverviewButton({
   return (
     <button
       onClick={onClick}
-      className="starfield-btn group relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-accent/35 px-4 py-2 text-sm text-accent-soft"
+      className="starfield-btn group relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-accent/35 px-4 py-2 text-sm text-accent"
     >
       {OVERVIEW_STARS.map((s, i) => (
         <span
@@ -178,9 +178,9 @@ function OverviewButton({
       />
       <span className="relative z-10" aria-hidden="true">✦</span>
       <span className="relative z-10">Overview</span>
-      <span className="relative z-10 inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold tabular-nums text-accent-soft">
+      <span className="relative z-10 inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold tabular-nums text-accent">
         {score != null ? score.toFixed(1) : "—"}
-        <span className="text-[10px] font-normal text-accent-soft/70">/10</span>
+        <span className="text-[10px] font-normal text-accent">/10</span>
       </span>
     </button>
   );
@@ -191,7 +191,7 @@ function InterviewButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="group inline-flex items-center gap-2 rounded-full border border-ink/12 bg-ink/[0.04] px-4 py-2 text-sm text-ink/65 transition hover:border-accent/35 hover:bg-accent/[0.06] hover:text-accent-soft"
+      className="group inline-flex items-center gap-2 rounded-full border border-ink/12 bg-ink/[0.04] px-4 py-2 text-sm text-ink/75 transition hover:border-accent/35 hover:bg-accent/[0.06] hover:text-accent"
     >
       <svg
         viewBox="0 0 16 16"
@@ -205,7 +205,7 @@ function InterviewButton({ onClick }: { onClick: () => void }) {
         <path d="m11 6.5 3-1.5v6l-3-1.5" strokeLinejoin="round" />
       </svg>
       Prepare interview
-      <span className="text-accent/70 transition-transform group-hover:translate-x-0.5">
+      <span className="text-accent transition-transform group-hover:translate-x-0.5">
         →
       </span>
     </button>
@@ -223,7 +223,7 @@ function HeroIntro() {
 
 function ScrollHint() {
   return (
-    <div className="animate-scroll-hint mt-14 flex flex-col items-center gap-2 text-ink/50">
+    <div className="animate-scroll-hint mt-14 flex flex-col items-center gap-2 text-ink/75">
       <span className="text-[11px] uppercase tracking-[0.35em]">Scroll</span>
       <svg
         viewBox="0 0 16 16"
@@ -306,7 +306,7 @@ function StepSection({ step }: { step: (typeof STEPS)[number] }) {
     >
       <div className="mx-auto grid w-full max-w-6xl items-center gap-10 lg:grid-cols-2">
         <div className={visible ? "animate-reveal" : "opacity-0"}>
-          <p className="font-display text-7xl font-light leading-none text-accent/30">
+          <p className="font-display text-7xl font-light leading-none text-accent">
             {step.num}
           </p>
           <h2 className="mt-4 font-display text-5xl font-light tracking-tight sm:text-6xl">
@@ -562,7 +562,7 @@ export default function Home() {
               className="animate-reveal mx-auto mb-9 max-w-3xl text-center"
               style={{ animationDelay: "0.08s" }}
             >
-              <p className="text-xs font-medium uppercase tracking-[0.45em] text-accent/70">
+              <p className="text-xs font-medium uppercase tracking-[0.45em] text-accent">
                 Analyzing
               </p>
               <h2 className="mt-5 font-display text-4xl font-light leading-tight sm:text-5xl">
@@ -637,7 +637,7 @@ export default function Home() {
                   void refreshLlmScore("demo", mockProfile.candidate);
                 }}
                 disabled={loading}
-                className="animate-sweep relative overflow-hidden rounded-full border border-ink/20 px-9 py-3.5 text-sm text-ink/70 transition hover:border-ink/40 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                className="animate-sweep relative overflow-hidden rounded-full border border-ink/20 px-9 py-3.5 text-sm text-ink/75 transition hover:border-ink/40 hover:text-ink disabled:cursor-not-allowed disabled:opacity-75"
               >
                 <span className="relative z-10">Load example data</span>
               </button>
@@ -646,7 +646,7 @@ export default function Home() {
             <ScrollHint />
 
             {error && (
-              <p className="animate-reveal mt-6 text-sm text-rose-400">{error}</p>
+              <p className="animate-reveal mt-6 text-sm text-rose-800">{error}</p>
             )}
               </div>
             </section>
@@ -773,10 +773,10 @@ export default function Home() {
             className="animate-fade-in-up rounded-lg border border-amber-400/30 bg-amber-400/[0.08] p-4 text-sm"
             role="status"
           >
-            <p className="font-semibold text-amber-200">
+            <p className="font-semibold text-amber-800">
               Analysis completed with warnings
             </p>
-            <ul className="mt-2 space-y-1 text-amber-100/75">
+            <ul className="mt-2 space-y-1 text-amber-800">
               {analysisWarnings.map((item, index) => (
                 <li key={`${item.code}-${index}`}>
                   {item.source ? `${item.source}: ` : ""}
@@ -837,7 +837,7 @@ export default function Home() {
               >
                 <span
                   className={`font-mono text-xs tabular-nums transition-colors ${
-                    active ? "text-white/70" : "text-ink/40 group-hover:text-ink/60"
+                    active ? "text-white" : "text-ink/75 group-hover:text-ink/75"
                   }`}
                 >
                   {t.icon}
@@ -857,9 +857,9 @@ export default function Home() {
         <Section title="Basic Information" hidden={activeSection !== "basic"} delay={0.1} className="lg:col-span-5">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h3 className="text-2xl font-semibold tracking-tight">{n(c.basic_info.name)}</h3>
-            <span className="text-ink/50">{n(c.basic_info.position)}</span>
+            <span className="text-ink/75">{n(c.basic_info.position)}</span>
           </div>
-          <p className="mt-1 text-sm text-ink/50">
+          <p className="mt-1 text-sm text-ink/75">
             {n(c.basic_info.institution)}
             {c.basic_info.highest_degree ? ` · ${c.basic_info.highest_degree}` : ""}
           </p>
@@ -870,7 +870,7 @@ export default function Home() {
 
           {toVerify.length > 0 && (
             <div className="mt-4">
-              <p className="text-xs font-medium text-ink/70">Items to verify</p>
+              <p className="text-xs font-medium text-ink/75">Items to verify</p>
               <ul className="mt-2 space-y-4">
                 {toVerify.map((v, i) => (
                   <li
@@ -883,7 +883,7 @@ export default function Home() {
                         <EvidenceBadge key={j} status={e.evidence_status} />
                       ))}
                     </div>
-                    <p className="mt-1 text-ink/50">{v.reason}</p>
+                    <p className="mt-1 text-ink/75">{v.reason}</p>
                     <EvidenceList
                       items={v.evidence}
                       onEvidenceClick={setSelectedEvidence}
@@ -896,7 +896,7 @@ export default function Home() {
           )}
 
           <div className="mt-4">
-            <p className="text-xs font-medium text-ink/70">Evidence sources</p>
+            <p className="text-xs font-medium text-ink/75">Evidence sources</p>
             <EvidenceList
               items={c.basic_info.evidence}
               onEvidenceClick={setSelectedEvidence}
@@ -909,28 +909,28 @@ export default function Home() {
         <Section title="Education & Work" hidden={activeSection !== "edu"} delay={0.15} className="lg:col-span-7">
           <h4 className="text-lg font-semibold text-ink/80">Education</h4>
           {education.length === 0 ? (
-            <p className="mt-2 text-sm text-ink/70">{emptyText}</p>
+            <p className="mt-2 text-sm text-ink/75">{emptyText}</p>
           ) : (
             <div className="mt-2">
               {education.map((ed, i) => (
                 <div key={i} className="mt-4 border-t border-ink/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     <span className="font-semibold">{n(ed.degree)}</span>
-                    <span className="text-ink/70">{n(ed.field)}</span>
+                    <span className="text-ink/75">{n(ed.field)}</span>
                   </div>
-                  <p className="mt-1 text-sm text-ink/50">
+                  <p className="mt-1 text-sm text-ink/75">
                     {n(ed.institution)} · Advisor: {n(ed.advisor)}
                   </p>
-                  <p className="text-sm text-ink/50">
+                  <p className="text-sm text-ink/75">
                     {dateRange(ed.start_date, ed.end_date)}
                   </p>
                   {ed.projects.length > 0 && (
-                    <p className="mt-1 text-sm text-ink/70">
+                    <p className="mt-1 text-sm text-ink/75">
                       Projects: {ed.projects.join(", ")}
                     </p>
                   )}
                   {ed.outcomes.length > 0 && (
-                    <p className="mt-1 text-sm text-ink/70">
+                    <p className="mt-1 text-sm text-ink/75">
                       Outcomes: {ed.outcomes.join(", ")}
                     </p>
                   )}
@@ -942,30 +942,30 @@ export default function Home() {
 
           <h4 className="mt-6 text-lg font-semibold text-ink/80">Work experience</h4>
           {employment.length === 0 ? (
-            <p className="mt-2 text-sm text-ink/70">{emptyText}</p>
+            <p className="mt-2 text-sm text-ink/75">{emptyText}</p>
           ) : (
             <div className="mt-2">
               {employment.map((em, i) => (
                 <div key={i} className="mt-4 border-t border-ink/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     <span className="font-semibold">{n(em.position)}</span>
-                    <span className="text-ink/70">{n(em.institution)}</span>
+                    <span className="text-ink/75">{n(em.institution)}</span>
                   </div>
-                  <p className="mt-1 text-sm text-ink/50">
+                  <p className="mt-1 text-sm text-ink/75">
                     {dateRange(em.start_date, em.end_date)}
                   </p>
                   {em.responsibilities.length > 0 && (
-                    <p className="mt-1 text-sm text-ink/70">
+                    <p className="mt-1 text-sm text-ink/75">
                       Responsibilities: {em.responsibilities.join(", ")}
                     </p>
                   )}
                   {em.projects.length > 0 && (
-                    <p className="mt-1 text-sm text-ink/70">
+                    <p className="mt-1 text-sm text-ink/75">
                       Projects: {em.projects.join(", ")}
                     </p>
                   )}
                   {em.outcomes.length > 0 && (
-                    <p className="mt-1 text-sm text-ink/70">
+                    <p className="mt-1 text-sm text-ink/75">
                       Outcomes: {em.outcomes.join(", ")}
                     </p>
                   )}
@@ -980,7 +980,7 @@ export default function Home() {
         <Section title="Awards & Funding" hidden={activeSection !== "awards"} delay={0.2} className="lg:col-span-5">
           <h4 className="text-lg font-semibold text-ink/80">Awards</h4>
           {awards.length === 0 ? (
-            <p className="mt-2 text-sm text-ink/70">{emptyText}</p>
+            <p className="mt-2 text-sm text-ink/75">{emptyText}</p>
           ) : (
             <div className="mt-2">
               {awards.map((a, i) => (
@@ -988,10 +988,10 @@ export default function Home() {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">{a.name}</span>
                     {a.year != null && (
-                      <span className="text-sm text-ink/50">{a.year}</span>
+                      <span className="text-sm text-ink/75">{a.year}</span>
                     )}
                   </div>
-                  <p className="mt-1 text-sm text-ink/50">
+                  <p className="mt-1 text-sm text-ink/75">
                     Awarding body: {n(a.awarding_body)}
                   </p>
                   <EvidenceList items={a.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
@@ -1002,22 +1002,22 @@ export default function Home() {
 
           <h4 className="mt-6 text-lg font-semibold text-ink/80">Funding</h4>
           {funding.length === 0 ? (
-            <p className="mt-2 text-sm text-ink/70">{emptyText}</p>
+            <p className="mt-2 text-sm text-ink/75">{emptyText}</p>
           ) : (
             <div className="mt-2">
               {funding.map((f, i) => (
                 <div key={i} className="mt-4 border-t border-ink/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">{f.project_name}</span>
-                    <span className="rounded bg-ink/10 px-1.5 py-0.5 text-xs text-ink/70">
+                    <span className="rounded bg-ink/10 px-1.5 py-0.5 text-xs text-ink/75">
                       {fundingRoleLabel[f.role]}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm text-ink/50">
+                  <p className="mt-1 text-sm text-ink/75">
                     Funder: {n(f.funder)} · {dateRange(f.start_date, f.end_date)}
                   </p>
                   {f.amount != null && (
-                    <p className="text-sm text-ink/50">
+                    <p className="text-sm text-ink/75">
                       Amount: {f.amount.toLocaleString()} {f.currency ?? ""}
                     </p>
                   )}
@@ -1030,7 +1030,7 @@ export default function Home() {
 
         {/* 4. 论文与影响 */}
         <Section title="Publications & Impact" hidden={activeSection !== "pubs"} delay={0.25} className="lg:col-span-7">
-          <p className="text-sm text-ink/70">
+          <p className="text-sm text-ink/75">
             Total citations: {c.publications_impact.total_citations ?? "—"}
             {c.publications_impact.citation_query_date
               ? ` (queried: ${c.publications_impact.citation_query_date})`
@@ -1038,33 +1038,33 @@ export default function Home() {
           </p>
 
           {publications.length === 0 ? (
-            <p className="mt-2 text-sm text-ink/70">{emptyText}</p>
+            <p className="mt-2 text-sm text-ink/75">{emptyText}</p>
           ) : (
             <div className="mt-3">
               {publications.map((p, i) => (
                 <div key={i} className="mt-4 border-t border-ink/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                   <p className="font-semibold">{p.title}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink/50">
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink/75">
                     {p.year != null && <span>{p.year}</span>}
                     <span>{authorRoleLabel[p.author_role]}</span>
                     <span>{n(p.venue)}</span>
-                    <span className="rounded bg-ink/10 px-1.5 py-0.5 text-xs text-ink/70">
+                    <span className="rounded bg-ink/10 px-1.5 py-0.5 text-xs text-ink/75">
                       {venueTypeLabel[p.venue_type]}
                     </span>
                     {p.ranking && (
-                      <span className="rounded bg-ink/10 px-1.5 py-0.5 text-xs text-ink/70">
+                      <span className="rounded bg-ink/10 px-1.5 py-0.5 text-xs text-ink/75">
                         {p.ranking}
                       </span>
                     )}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-ink/50">
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-ink/75">
                     {p.citation_count != null && <span>Citations: {p.citation_count}</span>}
                     {p.code_repository && (
                       <a
                         href={p.code_repository}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-accent-soft hover:underline"
+                        className="text-accent hover:underline"
                       >
                         Code repository ↗
                       </a>
@@ -1081,23 +1081,23 @@ export default function Home() {
         {/* 5. 学术服务 */}
         <Section title="Academic Service" hidden={activeSection !== "service"} delay={0.3} className="lg:col-span-5">
           {services.length === 0 ? (
-            <p className="text-sm text-ink/70">{emptyText}</p>
+            <p className="text-sm text-ink/75">{emptyText}</p>
           ) : (
             <div>
               {services.map((s, i) => (
                 <div key={i} className="mt-4 border-t border-ink/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">{s.organization_or_venue}</span>
-                    <span className="rounded bg-ink/10 px-1.5 py-0.5 text-xs text-ink/70">
+                    <span className="rounded bg-ink/10 px-1.5 py-0.5 text-xs text-ink/75">
                       {serviceTypeLabel[s.service_type]}
                     </span>
-                    {s.role && <span className="text-sm text-ink/50">{s.role}</span>}
+                    {s.role && <span className="text-sm text-ink/75">{s.role}</span>}
                   </div>
-                  <p className="mt-1 text-sm text-ink/50">
+                  <p className="mt-1 text-sm text-ink/75">
                     {s.start_year ?? "?"} ~ {s.end_year ?? "Present"}
                   </p>
                   {s.research_areas.length > 0 && (
-                    <p className="mt-1 text-sm text-ink/70">
+                    <p className="mt-1 text-sm text-ink/75">
                       Areas: {s.research_areas.join(", ")}
                     </p>
                   )}
@@ -1110,18 +1110,18 @@ export default function Home() {
 
         {/* 6. 综合评价 */}
         <Section title="Overall Evaluation" hidden={activeSection !== "eval"} delay={0.35} className="lg:col-span-7">
-          <p className="text-sm text-ink/70">{n(c.overall_evaluation.summary)}</p>
+          <p className="text-sm text-ink/75">{n(c.overall_evaluation.summary)}</p>
           <BulletList label="Strengths" items={evalStrengths} />
           <BulletList label="Risks" items={evalRisks} tone="warn" />
 
           {dimensions.length > 0 && (
             <div className="mt-4">
-              <p className="text-xs font-medium text-ink/70">Dimension evaluations</p>
+              <p className="text-xs font-medium text-ink/75">Dimension evaluations</p>
               <div className="mt-2">
                 {dimensions.map((d, i) => (
                   <div key={i} className="mt-4 border-t border-ink/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                     <p className="font-semibold">{d.dimension}</p>
-                    <p className="mt-1 text-sm text-ink/70">{d.assessment}</p>
+                    <p className="mt-1 text-sm text-ink/75">{d.assessment}</p>
                     <EvidenceList items={d.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
                   </div>
                 ))}
@@ -1141,31 +1141,31 @@ export default function Home() {
                 if (e.key === "Enter") void handleAsk();
               }}
               placeholder="Ask a question about this candidate…"
-              className="flex-1 rounded-lg border border-ink/10 bg-ink/[0.05] px-3 py-2 text-sm text-ink/90 outline-none placeholder:text-ink/70 focus:border-accent/50"
+              className="min-w-0 flex-1 rounded-lg border border-ink/10 bg-ink/[0.05] px-3 py-2 text-sm text-ink/90 outline-none placeholder:text-ink/75 focus:border-accent/50"
             />
             <button
               onClick={handleAsk}
               disabled={qaLoading || !question.trim()}
-              className="rounded-lg bg-accent px-4 py-2 text-sm text-white transition-opacity disabled:opacity-50"
+              className="rounded-lg bg-accent px-4 py-2 text-sm text-white transition-opacity disabled:opacity-75"
             >
               {qaLoading ? "Thinking…" : "Ask"}
             </button>
           </div>
 
-          {qaError && <p className="mt-3 text-sm text-rose-300">{qaError}</p>}
+          {qaError && <p className="mt-3 text-sm text-rose-800">{qaError}</p>}
 
           {qaResult && (
             <div className="mt-4 border-l-2 border-accent/40 pl-4">
               <div className="flex items-center gap-2">
                 <span className="font-medium">Answer</span>
-                <span className="rounded bg-ink/10 px-1.5 py-0.5 text-xs text-ink/70">
+                <span className="rounded bg-ink/10 px-1.5 py-0.5 text-xs text-ink/75">
                   Confidence: {qaResult.confidence}
                 </span>
               </div>
               <p className="mt-2 text-sm leading-relaxed text-ink/80">{qaResult.answer}</p>
               {qaResult.evidence.length > 0 && (
                 <>
-                  <p className="mt-3 text-xs font-medium text-ink/70">Supporting evidence</p>
+                  <p className="mt-3 text-xs font-medium text-ink/75">Supporting evidence</p>
                   <EvidenceList
                     items={qaResult.evidence}
                     onEvidenceClick={setSelectedEvidence}
@@ -1178,7 +1178,7 @@ export default function Home() {
 
           {qaHistory.length > 0 && (
             <div className="mt-6">
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink/65">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink/75">
                 History
               </p>
               <div className="mt-2">
@@ -1188,7 +1188,7 @@ export default function Home() {
                     className="mt-3 border-t border-ink/[0.08] pt-3 first:mt-0 first:border-t-0 first:pt-0"
                   >
                     <p className="font-medium text-ink/85">Q: {item.question}</p>
-                    <p className="mt-1 text-sm leading-relaxed text-ink/70">
+                    <p className="mt-1 text-sm leading-relaxed text-ink/75">
                       A: {item.answer}
                     </p>
                   </div>
