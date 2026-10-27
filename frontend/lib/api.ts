@@ -24,7 +24,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
       detail = detail
         .map((d: { msg?: string }) => d?.msg ?? "")
         .filter(Boolean)
-        .join("；");
+        .join("; ");
     } else if (detail && typeof detail === "object") {
       // 后端业务错误：detail 是对象 { code, detail }
       const d = detail as { code?: string; detail?: string };

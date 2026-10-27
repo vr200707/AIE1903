@@ -5,15 +5,17 @@ export interface FilterState {
   search: string;
 }
 
-// 标签筛选栏：关键词搜索 + 可点击标签
+// 搜索 + 标签筛选栏：搜索词和选中标签会真正过滤下方内容，并显示命中条数
 export function TagFilter({
   tags,
   filter,
   onChange,
+  resultCount,
 }: {
   tags: string[];
   filter: FilterState;
   onChange: (f: FilterState) => void;
+  resultCount?: number;
 }) {
   function toggleTag(tag: string) {
     const next = filter.tags.includes(tag)
@@ -22,21 +24,33 @@ export function TagFilter({
     onChange({ ...filter, tags: next });
   }
 
-  const hasFilter = filter.tags.length > 0 || filter.search !== "";
+  const hasFilter = filter.tags.length > 0 || filter.search.trim() !== "";
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-xl">
+    <div className="rounded-2xl border border-ink/10 bg-ink/[0.05] p-4 backdrop-blur-xl">
       <div className="flex items-center gap-2">
+        <svg
+          viewBox="0 0 16 16"
+          className="h-4 w-4 shrink-0 text-ink/40"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          aria-hidden="true"
+        >
+          <circle cx="7" cy="7" r="4.5" />
+          <path d="m10.5 10.5 3 3" strokeLinecap="round" />
+        </svg>
         <input
           value={filter.search}
           onChange={(e) => onChange({ ...filter, search: e.target.value })}
-          placeholder="Search name, institution, skill, publication..."
-          className="flex-1 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-sm text-white/90 outline-none placeholder:text-white/40 focus:border-teal-400/50"
+          placeholder="Search name, institution, skill, publication…"
+          className="flex-1 bg-transparent px-1 py-1.5 text-sm text-ink/90 outline-none placeholder:text-ink/50"
         />
         {hasFilter && (
           <button
+            type="button"
             onClick={() => onChange({ tags: [], search: "" })}
-            className="text-sm text-white/50 transition-colors hover:text-white/90"
+            className="shrink-0 rounded-full border border-ink/10 px-3 py-1 text-xs text-ink/60 transition hover:border-ink/30 hover:text-ink"
           >
             Clear
           </button>
@@ -44,20 +58,33 @@ export function TagFilter({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
-        {tags.map((t) => (
-          <button
-            key={t}
-            onClick={() => toggleTag(t)}
-            className={`rounded-full px-3 py-1 text-sm transition-all duration-300 ${
-              filter.tags.includes(t)
-                ? "bg-gradient-to-r from-teal-400 to-cyan-400 text-white"
-                : "bg-white/10 text-white/70 hover:bg-white/15"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
+        {tags.map((t) => {
+          const active = filter.tags.includes(t);
+          return (
+            <button
+              key={t}
+              type="button"
+              onClick={() => toggleTag(t)}
+              className={`rounded-full px-3 py-1 text-sm transition-all duration-200 ${
+                active
+                  ? "bg-accent text-white shadow-[0_6px_16px_-8px_rgba(63,127,158,0.8)]"
+                  : "bg-ink/[0.08] text-ink/70 hover:bg-ink/[0.14] hover:text-ink"
+              }`}
+            >
+              {active ? "✓ " : ""}
+              {t}
+            </button>
+          );
+        })}
       </div>
+
+      {hasFilter && (
+        <p className="mt-3 border-t border-ink/[0.08] pt-2 text-xs text-ink/50">
+          {resultCount != null
+            ? `${resultCount} matching item${resultCount === 1 ? "" : "s"}`
+            : "Filtering…"}
+        </p>
+      )}
     </div>
   );
 }

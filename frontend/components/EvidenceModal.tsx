@@ -21,18 +21,18 @@ export function EvidenceModal({
   const status = getStatus ? getStatus(e) : e.evidence_status;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="max-h-[80vh] w-full max-w-lg overflow-auto rounded-2xl border border-white/10 bg-[#0d0d1a]/90 p-6 shadow-2xl backdrop-blur-xl"
+        className="max-h-[80vh] w-full max-w-lg overflow-auto rounded-2xl border border-ink/10 bg-[#eaf1f6]/90 p-6 shadow-2xl backdrop-blur-xl"
         onClick={(ev) => ev.stopPropagation()}
       >
         <div className="flex items-start justify-between">
-          <h3 className="text-lg font-semibold text-white/90">Evidence details</h3>
+          <h3 className="text-lg font-semibold text-ink/90">Evidence details</h3>
           <button
             onClick={onClose}
-            className="text-xl leading-none text-white/50 transition-colors hover:text-white/90"
+            className="text-xl leading-none text-ink/50 transition-colors hover:text-ink/90"
             aria-label="Close"
           >
             ×
@@ -41,13 +41,13 @@ export function EvidenceModal({
 
         <div className="mt-4 space-y-3 text-sm">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-white/85">{e.source}</span>
+            <span className="font-medium text-ink/85">{e.source}</span>
             <EvidenceBadge status={status} />
           </div>
 
-          <p className="text-white/60">{e.evidence}</p>
+          <p className="text-ink/60">{e.evidence}</p>
 
-          <dl className="space-y-1 text-xs text-white/40">
+          <dl className="space-y-1 text-xs text-ink/70">
             <div className="flex gap-2">
               <dt className="w-20 shrink-0">Queried</dt>
               <dd>{e.query_date}</dd>
@@ -77,25 +77,25 @@ export function EvidenceModal({
               href={e.source_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block rounded-lg bg-gradient-to-r from-teal-400 to-cyan-400 px-3 py-1.5 text-white transition-opacity hover:opacity-90"
+              className="inline-block rounded-lg bg-gradient-to-r from-accent to-accent-soft px-3 py-1.5 text-ink transition-opacity hover:opacity-90"
             >
               View source ↗
             </a>
           )}
 
           {onCorrect && (
-            <div className="border-t border-white/10 pt-3">
-              <p className="text-xs font-medium text-white/40">
+            <div className="border-t border-ink/10 pt-3">
+              <p className="text-xs font-medium text-ink/70">
                 Correct evidence status
               </p>
               <select
                 value={status}
                 onChange={(ev) => onCorrect(e, ev.target.value as EvidenceStatus)}
-                className="mt-1.5 w-full rounded-lg border border-white/10 bg-white/[0.05] px-2 py-1.5 text-sm text-white/90 outline-none focus:border-teal-400/50"
+                className="mt-1.5 w-full rounded-lg border border-ink/10 bg-ink/[0.05] px-2 py-1.5 text-sm text-ink/90 outline-none focus:border-accent/50"
               >
                 {(Object.keys(evidenceStatusLabel) as EvidenceStatus[]).map(
                   (val) => (
-                    <option key={val} value={val} className="bg-[#0d0d1a]">
+                    <option key={val} value={val} className="bg-[#eaf1f6]">
                       {evidenceStatusLabel[val]}
                     </option>
                   ),

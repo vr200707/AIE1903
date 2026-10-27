@@ -75,12 +75,14 @@ export default function CandidatePage() {
     window.localStorage.setItem(`${SESSION_PREFIX}${token}`, interviewId);
   };
 
+  // render 期间处理 token 缺失，避免在 effect 内同步 setState
+  if (!token && phase === "loading") {
+    setError("Missing candidate link.");
+    setPhase("ready");
+  }
+
   useEffect(() => {
-    if (!token) {
-      setError("Missing candidate link.");
-      setPhase("ready");
-      return;
-    }
+    if (!token) return;
     let active = true;
 
     const restore = async () => {
@@ -256,8 +258,8 @@ export default function CandidatePage() {
           <div className="glass flex items-center gap-4 rounded-2xl px-6 py-5">
             <OrbitLoader small />
             <div>
-              <p className="text-sm text-white/65">Opening your interview</p>
-              <p className="mt-1 text-xs text-white/30">{token}</p>
+              <p className="text-sm text-ink/65">Opening your interview</p>
+              <p className="mt-1 text-xs text-ink/30">{token}</p>
             </div>
           </div>
         </main>
@@ -271,10 +273,10 @@ export default function CandidatePage() {
         <Starfield />
         <main className="relative mx-auto max-w-3xl px-6 py-24 text-center">
           <p className="text-3xl">🛰</p>
-          <h1 className="mt-5 font-display text-3xl text-white/90">
+          <h1 className="mt-5 font-display text-3xl text-ink/90">
             Interview link unavailable
           </h1>
-          <p className="mt-3 text-sm leading-relaxed text-white/45">
+          <p className="mt-3 text-sm leading-relaxed text-ink/45">
             {error ?? "This link is not valid or the interview is no longer published."}
           </p>
         </main>
@@ -291,10 +293,10 @@ export default function CandidatePage() {
             <span className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-emerald-300/30 bg-emerald-400/10 text-2xl text-emerald-200">
               ✓
             </span>
-            <h1 className="mt-6 font-display text-3xl text-white sm:text-4xl">
+            <h1 className="mt-6 font-display text-3xl text-ink sm:text-4xl">
               Recording received
             </h1>
-            <p className="mt-4 text-sm leading-relaxed text-white/45">
+            <p className="mt-4 text-sm leading-relaxed text-ink/45">
               Thank you, {candidateSet.candidate_name ?? "candidate"}. Your
               one-take interview has been submitted and is being reviewed. You
               can close this page now.
@@ -306,14 +308,14 @@ export default function CandidatePage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden text-white/90">
+    <div className="relative min-h-screen overflow-hidden text-ink/90">
       <Starfield />
       <main className="relative mx-auto max-w-[1180px] px-5 py-8 sm:px-8 lg:py-12">
         <header className="animate-fade-in-up">
           <p className="text-[11px] uppercase tracking-[0.36em] text-accent/70">
             Candidate interview
           </p>
-          <h1 className="mt-3 max-w-3xl font-display text-4xl leading-[1.06] text-white sm:text-5xl">
+          <h1 className="mt-3 max-w-3xl font-display text-4xl leading-[1.06] text-ink sm:text-5xl">
             {candidateSet.candidate_name ?? "Welcome"}
             <span className="mt-2 block text-xl italic text-accent sm:text-2xl">
               one continuous take, {questions.length} question
@@ -321,7 +323,7 @@ export default function CandidatePage() {
             </span>
           </h1>
           {candidateSet.role_context && (
-            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-white/40">
+            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-ink/40">
               {candidateSet.role_context}
             </p>
           )}
@@ -353,24 +355,24 @@ export default function CandidatePage() {
               <p className="text-[11px] uppercase tracking-[0.22em] text-accent/60">
                 Your questions
               </p>
-              <h2 className="mt-2 font-display text-3xl text-white/90">
+              <h2 className="mt-2 font-display text-3xl text-ink/90">
                 Read them once, then press record.
               </h2>
               <ol className="mt-6 space-y-3">
                 {questions.map((question, index) => (
                   <li
                     key={question.question_id}
-                    className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-3.5"
+                    className="rounded-xl border border-ink/[0.07] bg-ink/[0.025] px-4 py-3.5"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="font-mono text-[10px] text-accent/60">
                         Question {index + 1}
                       </span>
-                      <span className="text-[10px] text-white/30">
+                      <span className="text-[10px] text-ink/30">
                         ~{question.answer_seconds}s
                       </span>
                     </div>
-                    <p className="mt-2 text-sm leading-relaxed text-white/75">
+                    <p className="mt-2 text-sm leading-relaxed text-ink/75">
                       {question.text}
                     </p>
                   </li>
@@ -392,10 +394,10 @@ export default function CandidatePage() {
               />
 
               <section className="glass rounded-2xl p-5">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-white/30">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-ink/30">
                   Upload a file instead
                 </p>
-                <label className="mt-3 block cursor-pointer rounded-xl border border-dashed border-white/15 bg-black/15 px-4 py-6 text-center transition hover:border-accent/35 hover:bg-accent/[0.03]">
+                <label className="mt-3 block cursor-pointer rounded-xl border border-dashed border-ink/15 bg-background/15 px-4 py-6 text-center transition hover:border-accent/35 hover:bg-accent/[0.03]">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -403,15 +405,15 @@ export default function CandidatePage() {
                     className="sr-only"
                     onChange={chooseFile}
                   />
-                  <span className="block text-sm text-white/55">
+                  <span className="block text-sm text-ink/55">
                     {selectedFile ? selectedFile.name : "Choose a video file"}
                   </span>
-                  <span className="mt-1 block text-[10px] text-white/28">
+                  <span className="mt-1 block text-[10px] text-ink/28">
                     MP4, MOV, WebM, M4V, or MKV · up to 500 MB
                   </span>
                 </label>
                 {selectedFile && (
-                  <p className="mt-2 text-[10px] text-white/35">
+                  <p className="mt-2 text-[10px] text-ink/35">
                     {formatFileSize(selectedFile.size)}
                   </p>
                 )}
@@ -419,14 +421,14 @@ export default function CandidatePage() {
 
               <section className="glass rounded-2xl p-5">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-white/30">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-ink/30">
                     Answered questions
                   </p>
                   <span
                     className={`rounded-full border px-2.5 py-1 font-mono text-[10px] tabular-nums ${
                       unconfirmed.length === 0
                         ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-200"
-                        : "border-white/10 bg-black/20 text-white/40"
+                        : "border-ink/10 bg-background/20 text-ink/40"
                     }`}
                   >
                     {questions.length - unconfirmed.length}/{questions.length}
@@ -441,7 +443,7 @@ export default function CandidatePage() {
                         className={`flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2 transition ${
                           checked
                             ? "border-emerald-300/20 bg-emerald-400/[0.06]"
-                            : "border-white/[0.07] bg-white/[0.02] hover:border-white/[0.14]"
+                            : "border-ink/[0.07] bg-ink/[0.02] hover:border-ink/[0.14]"
                         }`}
                       >
                         <input
@@ -455,7 +457,7 @@ export default function CandidatePage() {
                           }
                           className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-amber-400"
                         />
-                        <span className="line-clamp-2 text-xs leading-relaxed text-white/50">
+                        <span className="line-clamp-2 text-xs leading-relaxed text-ink/50">
                           {question.text}
                         </span>
                       </label>
@@ -474,12 +476,12 @@ export default function CandidatePage() {
                   {uploading && uploadProgress ? (
                     <div>
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-white/45">Uploading…</span>
+                        <span className="text-ink/45">Uploading…</span>
                         <span className="tabular-nums text-accent-soft">
                           {progressPercent}%
                         </span>
                       </div>
-                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.07]">
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-ink/[0.07]">
                         <div
                           className="progress-fill h-full rounded-full"
                           style={{ width: `${progressPercent}%` }}
@@ -489,10 +491,10 @@ export default function CandidatePage() {
                   ) : (
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-xs text-white/60">
+                        <p className="truncate text-xs text-ink/60">
                           {selectedFile.name}
                         </p>
-                        <p className="mt-0.5 text-[10px] text-white/28">
+                        <p className="mt-0.5 text-[10px] text-ink/28">
                           {formatFileSize(selectedFile.size)}
                         </p>
                       </div>
@@ -502,7 +504,7 @@ export default function CandidatePage() {
                           setSelectedFile(null);
                           setRecordedMarks([]);
                         }}
-                        className="text-xs text-white/35 transition hover:text-rose-200"
+                        className="text-xs text-ink/35 transition hover:text-rose-200"
                       >
                         Remove
                       </button>
@@ -512,7 +514,7 @@ export default function CandidatePage() {
                     type="button"
                     onClick={() => void submit()}
                     disabled={uploading || unconfirmed.length > 0}
-                    className="mt-4 w-full rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-35"
+                    className="mt-4 w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-white transition hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-35"
                   >
                     {uploading
                       ? "Uploading and submitting"

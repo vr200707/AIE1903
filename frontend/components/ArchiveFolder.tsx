@@ -37,14 +37,14 @@ export function ArchiveFolder({
           className="absolute inset-0"
           style={{
             background:
-              "radial-gradient(130% 140% at 50% 0%, #17234f 0%, #0b1130 48%, #05081a 100%)",
+              "radial-gradient(130% 140% at 50% 0%, #eaf1f6 0%, #dce8f0 48%, #d7e5ed 100%)",
           }}
         />
         {STARS.map((s, i) => (
           <span
             key={i}
             aria-hidden="true"
-            className="sf-star pointer-events-none absolute rounded-full bg-white"
+            className="sf-star pointer-events-none absolute rounded-full bg-ink"
             style={{
               left: s.left,
               top: s.top,
@@ -56,7 +56,7 @@ export function ArchiveFolder({
           />
         ))}
         <span className="relative z-10 flex h-full flex-col items-center justify-center gap-1 px-9 py-4">
-          <span className="line-clamp-1 w-full text-center text-[13px] font-semibold leading-tight text-white/90">
+          <span className="line-clamp-1 w-full text-center text-[13px] font-semibold leading-tight text-ink/90">
             {entry.name}
           </span>
           <span className="inline-flex items-baseline gap-1 text-accent-soft">
@@ -64,7 +64,7 @@ export function ArchiveFolder({
               {(entry.score ?? entry.credibility).toFixed(1)}
             </b>
             <span className="text-[10px] font-normal text-accent-soft/70">
-              /10 · {entry.score != null ? "评分" : "可信度"}
+              /10 · {entry.score != null ? "Score" : "Credibility"}
             </span>
           </span>
         </span>
@@ -74,13 +74,13 @@ export function ArchiveFolder({
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="absolute right-2 top-[18px] z-20 grid h-6 w-6 place-items-center rounded-md text-white/25 opacity-100 transition hover:bg-rose-400/10 hover:text-rose-200 focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+          className="absolute right-2 top-3 z-20 grid h-8 w-8 place-items-center rounded-md text-ink/25 opacity-100 transition hover:bg-rose-400/10 hover:text-rose-200 focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
           aria-label={`Remove ${entry.name} from history`}
           title="Remove from history"
         >
           <svg
             viewBox="0 0 16 16"
-            className="h-3.5 w-3.5"
+            className="h-4 w-4"
             fill="none"
             stroke="currentColor"
             strokeWidth="1.4"
@@ -92,13 +92,13 @@ export function ArchiveFolder({
       )}
 
       {confirming && (
-        <div className="absolute inset-x-1 bottom-1 top-[12px] z-30 flex flex-col justify-center rounded-md border border-rose-300/20 bg-[#090d20]/95 px-3 py-2 shadow-xl">
-          <p className="text-center text-[11px] text-white/70">Remove from history?</p>
+        <div className="absolute inset-x-1 bottom-1 top-[12px] z-30 flex flex-col justify-center rounded-md border border-rose-300/20 bg-[#eaf1f6]/95 px-3 py-2 shadow-xl">
+          <p className="text-center text-[11px] text-ink/70">Remove from history?</p>
           <div className="mt-2 flex justify-center gap-1.5">
             <button
               type="button"
               onClick={() => setConfirming(false)}
-              className="rounded-md border border-white/10 px-2 py-1 text-[10px] text-white/50 transition hover:text-white/80"
+              className="rounded-md border border-ink/10 px-3 py-1.5 text-xs text-ink/60 transition hover:text-ink/90"
             >
               Cancel
             </button>
@@ -108,7 +108,7 @@ export function ArchiveFolder({
                 setConfirming(false);
                 onDelete?.();
               }}
-              className="rounded-md bg-rose-400/15 px-2 py-1 text-[10px] text-rose-200 transition hover:bg-rose-400/25"
+              className="rounded-md bg-rose-400/15 px-3 py-1.5 text-xs text-rose-200 transition hover:bg-rose-400/25"
             >
               Remove
             </button>

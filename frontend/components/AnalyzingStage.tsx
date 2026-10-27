@@ -86,18 +86,18 @@ function ThinkingRow({
       <span
         className={
           active
-            ? "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent shadow-[0_0_10px_2px_rgba(245,165,36,0.55)]"
-            : "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-white/25"
+            ? "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent shadow-[0_0_10px_2px_rgba(63, 127, 158,0.55)]"
+            : "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-ink/25"
         }
       />
       <div className="min-w-0">
-        <p className="text-sm text-white/85">
+        <p className="text-sm text-ink/85">
           {text}
           {typing && (
             <span className="animate-caret ml-0.5 inline-block h-3.5 w-[2px] translate-y-0.5 bg-accent" />
           )}
         </p>
-        <p className="text-xs text-white/35">{detail}</p>
+        <p className="text-xs text-ink/35">{detail}</p>
       </div>
     </li>
   );
@@ -106,19 +106,19 @@ function ThinkingRow({
 /** 单页文档：扫描线自上而下，逐行"点亮" */
 function DocPage({ active, rows = 14 }: { active: boolean; rows?: number }) {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4">
-      <div className="mb-3 h-2 w-24 rounded-full bg-white/15" />
+    <div className="relative overflow-hidden rounded-xl border border-ink/10 bg-ink/[0.03] px-4 py-4">
+      <div className="mb-3 h-2 w-24 rounded-full bg-ink/15" />
       <div className="space-y-2">
         {Array.from({ length: rows }).map((_, i) => (
           <div
             key={i}
-            className="h-1.5 rounded-full bg-white/10 transition-colors duration-500"
+            className="h-1.5 rounded-full bg-ink/10 transition-colors duration-500"
             style={
               active
                 ? {
                     width: `${100 - ((i * 37) % 46)}%`,
                     animation: `line-in 0.4s ease ${(i * REVEAL_MS) / rows / 1000}s both`,
-                    background: "rgba(245,165,36,0.22)",
+                    background: "rgba(63, 127, 158,0.22)",
                   }
                 : { width: `${100 - ((i * 37) % 46)}%` }
             }
@@ -130,7 +130,7 @@ function DocPage({ active, rows = 14 }: { active: boolean; rows?: number }) {
           className="animate-scan pointer-events-none absolute inset-x-0 h-14"
           style={{
             background:
-              "linear-gradient(to bottom, transparent, rgba(245,165,36,0.16) 55%, rgba(255,200,120,0.7))",
+              "linear-gradient(to bottom, transparent, rgba(63, 127, 158,0.16) 55%, rgba(181, 165, 78,0.7))",
           }}
         />
       )}
@@ -174,10 +174,13 @@ export default function AnalyzingStage({
   // 无真实进度时只推进到 12% 作为“启动”指示，避免假动画先冲到 100% 再回退
   const bootPercent = 0.02 + 0.1 * Math.min(shown / SCRIPT.length, 1);
   const target = livePercent ?? bootPercent;
-  // 单调递增，切换到真实进度时只往前不会往回跳
-  const peakRef = useRef(0);
-  const progress = Math.max(target, peakRef.current);
-  peakRef.current = progress;
+  // 单调递增，切换到真实进度时只往前不会往回跳。
+  // 用「调整 render 期间 state」模式替代 render 期间读写 ref。
+  const [peak, setPeak] = useState(0);
+  if (target > peak) {
+    setPeak(target);
+  }
+  const progress = Math.max(target, peak);
   const progressLabel = liveProgress
     ? backendProgressLabel(liveProgress)
     : "Analysis progress";
@@ -187,14 +190,14 @@ export default function AnalyzingStage({
       {/* 顶部：动态进度条 */}
       <div className="mb-5">
         <div className="mb-2 flex items-center justify-between text-xs">
-          <span className="font-medium uppercase tracking-[0.25em] text-white/35">
+          <span className="font-medium uppercase tracking-[0.25em] text-ink/35">
             {progressLabel}
           </span>
           <span className="font-mono text-accent-soft">
             {Math.round(progress * 100)}%
           </span>
         </div>
-        <div className="relative h-2.5 overflow-hidden rounded-full border border-white/15 bg-white/[0.07]">
+        <div className="relative h-2.5 overflow-hidden rounded-full border border-ink/15 bg-ink/[0.07]">
           <div
             className="progress-fill relative h-full rounded-full"
             style={{ width: progress > 0 ? `${Math.max(progress * 100, 3)}%` : "0%" }}
@@ -207,12 +210,12 @@ export default function AnalyzingStage({
 
       <div className="grid w-full gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)]">
         {/* 左：文档扫描 */}
-        <div className="relative rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-xl">
+        <div className="relative rounded-2xl border border-ink/10 bg-ink/[0.02] p-5 backdrop-blur-xl">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-[0.25em] text-white/35">
+            <p className="text-xs font-medium uppercase tracking-[0.25em] text-ink/35">
               Parsing
             </p>
-            <span className="flex items-center gap-1.5 text-xs text-white/40">
+            <span className="flex items-center gap-1.5 text-xs text-ink/40">
               <span className="animate-ring-spin inline-block h-2.5 w-2.5 rounded-full border border-accent/30 border-t-accent" />
               page {Math.min(step + 1, 27)} / 27
             </span>
@@ -235,9 +238,9 @@ export default function AnalyzingStage({
                   key={f}
                   className="rounded-full border px-2.5 py-1 text-[11px] transition-colors duration-500"
                   style={{
-                    borderColor: i < Math.min(step + 1, 4) ? "rgba(245,165,36,0.35)" : "rgba(255,255,255,0.1)",
-                    color: i < Math.min(step + 1, 4) ? "#ffc978" : "rgba(255,255,255,0.3)",
-                    background: i < Math.min(step + 1, 4) ? "rgba(245,165,36,0.08)" : "transparent",
+                    borderColor: i < Math.min(step + 1, 4) ? "rgba(63, 127, 158,0.45)" : "rgba(22, 50, 74,0.14)",
+                    color: i < Math.min(step + 1, 4) ? "#2c5c78" : "rgba(22, 50, 74,0.35)",
+                    background: i < Math.min(step + 1, 4) ? "rgba(63, 127, 158,0.12)" : "transparent",
                   }}
                 >
                   {f}
@@ -248,12 +251,12 @@ export default function AnalyzingStage({
         </div>
 
         {/* 右：思考流 */}
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-xl">
+        <div className="rounded-2xl border border-ink/10 bg-ink/[0.02] p-5 backdrop-blur-xl">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-[0.25em] text-white/35">
+            <p className="text-xs font-medium uppercase tracking-[0.25em] text-ink/35">
               Reasoning trace
             </p>
-            <span className="font-mono text-xs text-white/30">
+            <span className="font-mono text-xs text-ink/30">
               {shown} / {SCRIPT.length}
             </span>
           </div>

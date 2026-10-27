@@ -1,42 +1,45 @@
 @import "tailwindcss";
 
 :root {
-  --background: #05060e;
-  --foreground: #e6e8ef;
+  --background: #d7e5ed;
+  --foreground: #16324a;
+  --ink-muted: #3d5a70;
   --font-geist-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
   --font-geist-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo,
     monospace;
-  /* 唯一强调色：暖橙琥珀（青绿降级为次要语义色） */
-  --accent: #f5a524;
-  --accent-soft: #ffb454;
-  --accent-deep: #b97216;
-  --cool: #4fd1c5;
+  /* 强调色：冰蓝（冰川透出的蓝） */
+  --accent: #3f7f9e;
+  --accent-soft: #6ba3bf;
+  --accent-deep: #2c5c78;
+  --cool: #3d5a70;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-ink: var(--foreground);
+  --color-ink-muted: var(--ink-muted);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-accent-deep: var(--accent-deep);
   --color-cool: var(--cool);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  /* 高对比衬线，用于大标题 */
-  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino,
-    "Book Antiqua", Georgia, "Times New Roman", serif;
+  /* 轻几何 display，用于大标题与数字 */
+  --font-display: "Futura", "Century Gothic", "Avenir Next", "Montserrat",
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
-/* 字号重映射：整体放大一档，保证投影/后排可读 */
+/* 字号重映射：整体再放大一档，保证投影/后排可读 */
 @theme {
-  --text-xs: 13px/18px;
-  --text-sm: 15px/22px;
-  --text-base: 16px/24px;
-  --text-lg: 18px/26px;
-  --text-xl: 22px/28px;
-  --text-2xl: 28px/34px;
-  --text-3xl: 34px/40px;
+  --text-xs: 14px/19px;
+  --text-sm: 16px/23px;
+  --text-base: 18px/26px;
+  --text-lg: 20px/28px;
+  --text-xl: 24px/31px;
+  --text-2xl: 31px/38px;
+  --text-3xl: 38px/46px;
 }
 
 body {
@@ -45,22 +48,22 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* 玻璃面板：半透明渐变 + 亮边 + 内高光。
+/* 玻璃面板：浅 sage 磨砂 + 森林绿发丝边 + 内高光。
    不依赖 backdrop-filter（构建时会被 CSS 压缩器丢弃），无 blur 也成立。 */
 .glass {
   position: relative;
   background: linear-gradient(
     158deg,
-    rgba(196, 212, 255, 0.11) 0%,
-    rgba(150, 172, 240, 0.05) 42%,
-    rgba(255, 255, 255, 0.02) 100%
+    rgba(255, 255, 255, 0.46) 0%,
+    rgba(224, 228, 210, 0.32) 42%,
+    rgba(203, 207, 184, 0.24) 100%
   );
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(22, 50, 74, 0.16);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.11),
-    0 18px 50px -24px rgba(0, 0, 0, 0.9);
-  backdrop-filter: blur(28px) saturate(140%);
-  -webkit-backdrop-filter: blur(28px) saturate(140%);
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 18px 40px -28px rgba(22, 50, 74, 0.4);
+  backdrop-filter: blur(20px) saturate(120%);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
 }
 
 /* ---------- 进场动效 ---------- */
@@ -175,7 +178,7 @@ body {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.22),
+    rgba(22, 50, 74, 0.12),
     transparent
   );
 }
@@ -185,8 +188,8 @@ body {
 
 /* 主按钮光晕脉冲 */
 @keyframes halo-pulse {
-  0%, 100% { box-shadow: 0 10px 40px -12px rgba(245, 165, 36, 0.55); }
-  50% { box-shadow: 0 14px 60px -10px rgba(245, 165, 36, 0.85); }
+  0%, 100% { box-shadow: 0 10px 40px -12px rgba(63, 127, 158, 0.55); }
+  50% { box-shadow: 0 14px 60px -10px rgba(63, 127, 158, 0.85); }
 }
 .animate-halo {
   animation: halo-pulse 3.2s ease-in-out infinite;
@@ -259,33 +262,32 @@ body {
     var(--accent-soft) 100%
   );
   box-shadow:
-    0 0 16px -2px rgba(245, 165, 36, 0.65),
+    0 0 16px -2px rgba(63, 127, 158, 0.65),
     inset 0 1px 0 rgba(255, 255, 255, 0.35);
   transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* 黄条内随机白点：三层不同密度/大小，错位滚动形成流动感 */
+/* 金条内随机深色点：三层不同密度/大小，错位滚动形成流动感 */
 .progress-dots {
   background-image:
     radial-gradient(
       circle at 17px 5px,
-      rgba(255, 255, 255, 0.95) 0 1.7px,
+      rgba(22, 50, 74, 0.5) 0 1.7px,
       transparent 2.3px
     ),
     radial-gradient(
       circle at 7px 4px,
-      rgba(255, 255, 255, 0.62) 0 1.2px,
+      rgba(22, 50, 74, 0.34) 0 1.2px,
       transparent 1.8px
     ),
     radial-gradient(
       circle at 14px 3px,
-      rgba(255, 255, 255, 0.38) 0 0.9px,
+      rgba(22, 50, 74, 0.22) 0 0.9px,
       transparent 1.5px
     );
   background-size: 48px 12px, 30px 9px, 24px 7px;
   background-repeat: repeat;
   animation: progress-dots-flow 2.8s linear infinite;
-  mix-blend-mode: screen;
 }
 
 @keyframes progress-dots-flow {
@@ -317,10 +319,10 @@ body {
 
 .starfield-btn {
   background:
-    radial-gradient(120% 150% at 50% 0%, #141e45 0%, #0a1030 48%, #05081a 100%);
+    radial-gradient(120% 150% at 50% 0%, #ecefde 0%, #dce8f0 48%, #d7e5ed 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 10px 34px -14px rgba(245, 165, 36, 0.45);
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 10px 30px -14px rgba(22, 50, 74, 0.35);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   transition:
@@ -329,10 +331,10 @@ body {
     transform 0.25s ease;
 }
 .starfield-btn:hover {
-  border-color: rgba(245, 165, 36, 0.55);
+  border-color: rgba(63, 127, 158, 0.55);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 14px 44px -14px rgba(245, 165, 36, 0.65);
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 14px 40px -14px rgba(22, 50, 74, 0.45);
 }
 .starfield-btn:active {
   transform: translateY(1px);
@@ -343,7 +345,7 @@ body {
   animation-name: star-twinkle;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
-  box-shadow: 0 0 6px 1px rgba(255, 255, 255, 0.72);
+  box-shadow: 0 0 6px 1px rgba(63, 127, 158, 0.55);
 }
 @keyframes star-twinkle {
   0%, 100% { opacity: 0.2; transform: scale(0.65); }
@@ -376,33 +378,117 @@ body {
   width: 44px;
   height: 10px;
   border-radius: 3px 3px 0 0;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(22, 50, 74, 0.14);
   border-bottom: 0;
-  background: linear-gradient(180deg, rgba(86, 116, 225, 0.35), rgba(14, 21, 52, 0.92));
+  background: linear-gradient(180deg, rgba(63, 127, 158, 0.28), rgba(203, 207, 184, 0.95));
 }
 .archive-folder .folder-body {
   display: block;
   margin-top: 10px;
   min-height: 64px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(22, 50, 74, 0.14);
   border-radius: 6px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 10px 28px -16px rgba(0, 0, 0, 0.9);
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 10px 24px -16px rgba(22, 50, 74, 0.35);
   transition:
     border-color 0.25s ease,
     box-shadow 0.25s ease,
     transform 0.25s ease;
 }
 .archive-folder:hover .folder-body {
-  border-color: rgba(245, 165, 36, 0.4);
+  border-color: rgba(63, 127, 158, 0.5);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 14px 38px -16px rgba(245, 165, 36, 0.35);
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 14px 32px -16px rgba(22, 50, 74, 0.45);
   transform: translateY(-1px);
 }
 .archive-folder:active .folder-body {
   transform: translateY(0);
+}
+
+/* 飘落冰晶 */
+@keyframes snow-fall {
+  0% { transform: translateY(-8vh) translateX(0); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translateY(108vh) translateX(36px); opacity: 0; }
+}
+.animate-snow {
+  animation: snow-fall 12s linear infinite;
+}
+
+/* ---------- 开场动画：冰川浮现 → 光扫 → 虚化淡出 ---------- */
+
+.hero-intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* 冰川背景：缓缓浮现，随后被光扫虚化淡出，露出下方主屏 */
+@keyframes glacier-emerge {
+  0% { opacity: 0; transform: scale(1.14); filter: blur(8px); }
+  16% { opacity: 1; transform: scale(1.02); filter: blur(0); }
+  50% { opacity: 1; transform: scale(1); filter: blur(0); }
+  70% { opacity: 0.82; transform: scale(1.02); filter: blur(12px); }
+  100% { opacity: 0; transform: scale(1.08); filter: blur(26px); }
+}
+.hero-intro-glacier {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: glacier-emerge 4.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* 光扫：一道亮带从左向右掠过冰川 */
+@keyframes hero-light-sweep {
+  0% { transform: translateX(-130%); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translateX(230%); opacity: 0; }
+}
+.hero-intro-sweep {
+  position: absolute;
+  inset-y: 0;
+  left: 0;
+  width: 34%;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.55) 48%,
+    rgba(255, 255, 255, 0.72) 50%,
+    rgba(255, 255, 255, 0.55) 52%,
+    transparent
+  );
+  animation: hero-light-sweep 2.2s ease-in-out 0.9s both;
+}
+
+/* 向下滚动提示：轻微上下浮动 */
+@keyframes scroll-bounce {
+  0%, 100% { transform: translateY(0); opacity: 0.55; }
+  50% { transform: translateY(8px); opacity: 1; }
+}
+.animate-scroll-hint {
+  animation: scroll-bounce 1.8s ease-in-out infinite;
+}
+
+/* 滚动吸附容器：首页分屏向下翻，每屏吸附对齐 */
+.snap-scroll {
+  scroll-snap-type: y mandatory;
+}
+.snap-align {
+  scroll-snap-align: start;
+}
+
+/* 步骤配图：轻微上下浮动 */
+@keyframes step-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.step-float {
+  animation: step-float 6s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
