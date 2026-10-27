@@ -49,7 +49,7 @@ function SegmentLinks({
           key={segment.segment_id}
           type="button"
           onClick={() => onSeek(segment.start_ms)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-white/55 transition hover:border-accent/35 hover:text-accent-soft"
+          className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-ink/[0.04] px-2.5 py-1 text-[11px] text-ink/55 transition hover:border-accent/35 hover:text-accent-soft"
           title={segment.text}
         >
           <span className="h-1 w-1 rounded-full bg-accent/75" />
@@ -64,12 +64,12 @@ function ScoreBar({ value, label }: { value: number | null; label: string }) {
   return (
     <div>
       <div className="flex items-center justify-between gap-3 text-xs">
-        <span className="text-white/45">{label}</span>
-        <span className="font-medium tabular-nums text-white/75">
+        <span className="text-ink/75">{label}</span>
+        <span className="font-medium tabular-nums text-ink/75">
           {value != null ? value.toFixed(1) : "—"}
         </span>
       </div>
-      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.07]">
+      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-ink/[0.07]">
         <div
           className="h-full rounded-full bg-gradient-to-r from-accent-deep via-accent to-accent-soft"
           style={{ width: `${Math.max(0, Math.min(100, (value ?? 0) * 10))}%` }}
@@ -103,16 +103,16 @@ function QuestionDetail({
             Question {String(result.order).padStart(2, "0")} ·{" "}
             {competencyLabel(result.competency)}
           </p>
-          <h3 className="mt-2 max-w-3xl text-lg font-medium leading-relaxed text-white/90">
+          <h3 className="mt-2 max-w-3xl text-lg font-medium leading-relaxed text-ink/90">
             {result.question}
           </h3>
         </div>
-        <div className="flex items-center gap-3 rounded-full border border-white/10 bg-black/20 px-3 py-2">
+        <div className="flex items-center gap-3 rounded-full border border-ink/10 bg-background/20 px-3 py-2">
           <span className={`h-2 w-2 rounded-full ${confidenceClass(result.confidence)}`} />
-          <span className="text-xs capitalize text-white/55">
+          <span className="text-xs capitalize text-ink/55">
             {result.confidence} confidence
           </span>
-          <span className="h-4 w-px bg-white/10" />
+          <span className="h-4 w-px bg-ink/10" />
           <span className="text-lg font-semibold tabular-nums text-accent-soft">
             {result.score_overall != null ? result.score_overall.toFixed(1) : "—"}
           </span>
@@ -122,12 +122,12 @@ function QuestionDetail({
       {result.answer_window && (
         <div className="mt-4 space-y-3">
           {clipUrl ? (
-            <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-black/25">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-3 py-2">
+            <div className="overflow-hidden rounded-xl border border-ink/[0.08] bg-background/25">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink/[0.07] px-3 py-2">
                 <p className="text-[10px] uppercase tracking-[0.16em] text-accent/65">
                   Extracted answer clip
                 </p>
-                <span className="font-mono text-[10px] text-white/35">
+                <span className="font-mono text-[10px] text-ink/65">
                   {formatTimecode(result.answer_window.start_ms)}–
                   {formatTimecode(result.answer_window.end_ms)}
                 </span>
@@ -137,7 +137,7 @@ function QuestionDetail({
                 controls
                 playsInline
                 preload="metadata"
-                className="aspect-video w-full bg-black"
+                className="aspect-video w-full bg-background"
               />
             </div>
           ) : null}
@@ -156,7 +156,7 @@ function QuestionDetail({
         </div>
       )}
 
-      <p className="mt-5 border-l border-accent/35 pl-4 text-sm leading-relaxed text-white/68">
+      <p className="mt-5 border-l border-accent/35 pl-4 text-sm leading-relaxed text-ink/68">
         {result.summary}
       </p>
 
@@ -166,24 +166,24 @@ function QuestionDetail({
         ))}
       </div>
       {scoreCount === 0 && (
-        <p className="mt-3 text-xs text-white/35">
+        <p className="mt-3 text-xs text-ink/65">
           Scores are unavailable, but the transcript and grounded findings remain usable.
         </p>
       )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-ink/65">
             What held up
           </p>
           {result.strengths.length === 0 ? (
-            <p className="mt-2 text-sm text-white/35">No grounded strength was extracted.</p>
+            <p className="mt-2 text-sm text-ink/65">No grounded strength was extracted.</p>
           ) : (
             <div className="mt-2 space-y-3">
               {result.strengths.map((item, index) => (
                 <div
                   key={`${item.text}-${index}`}
-                  className="border-t border-white/[0.07] pt-3 first:border-t-0 first:pt-0"
+                  className="border-t border-ink/[0.07] pt-3 first:border-t-0 first:pt-0"
                 >
                   <p className="text-sm leading-relaxed text-emerald-100/75">{item.text}</p>
                   <SegmentLinks segments={item.supporting_segments} onSeek={onSeek} />
@@ -193,17 +193,17 @@ function QuestionDetail({
           )}
         </div>
         <div>
-          <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-ink/65">
             What needs scrutiny
           </p>
           {result.concerns.length === 0 ? (
-            <p className="mt-2 text-sm text-white/35">No grounded concern was extracted.</p>
+            <p className="mt-2 text-sm text-ink/65">No grounded concern was extracted.</p>
           ) : (
             <div className="mt-2 space-y-3">
               {result.concerns.map((item, index) => (
                 <div
                   key={`${item.text}-${index}`}
-                  className="border-t border-white/[0.07] pt-3 first:border-t-0 first:pt-0"
+                  className="border-t border-ink/[0.07] pt-3 first:border-t-0 first:pt-0"
                 >
                   <p className="text-sm leading-relaxed text-amber-100/75">{item.text}</p>
                   <SegmentLinks segments={item.supporting_segments} onSeek={onSeek} />
@@ -215,11 +215,11 @@ function QuestionDetail({
       </div>
 
       {result.missing_details.length > 0 && (
-        <div className="mt-6 border-t border-white/[0.08] pt-4">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">
+        <div className="mt-6 border-t border-ink/[0.08] pt-4">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-ink/65">
             Missing detail
           </p>
-          <ul className="mt-2 grid gap-2 text-sm text-white/55 sm:grid-cols-2">
+          <ul className="mt-2 grid gap-2 text-sm text-ink/55 sm:grid-cols-2">
             {result.missing_details.map((item, index) => (
               <li key={`${item}-${index}`} className="flex gap-2">
                 <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-rose-300/70" />
@@ -231,15 +231,15 @@ function QuestionDetail({
       )}
 
       {question && question.source_claims.length > 0 && (
-        <details className="mt-6 border-t border-white/[0.08] pt-4">
-          <summary className="cursor-pointer text-xs text-white/40 transition hover:text-white/70">
+        <details className="mt-6 border-t border-ink/[0.08] pt-4">
+          <summary className="cursor-pointer text-xs text-ink/70 transition hover:text-ink/70">
             Profile claims behind this question
           </summary>
           <div className="mt-3 space-y-2">
             {question.source_claims.map((claim) => (
               <div
                 key={claim.claim_id}
-                className="rounded-xl border border-white/[0.07] bg-black/10 px-3 py-2.5"
+                className="rounded-xl border border-ink/[0.07] bg-background/10 px-3 py-2.5"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[10px] uppercase tracking-[0.16em] text-accent/60">
@@ -248,13 +248,13 @@ function QuestionDetail({
                   {claim.evidence_statuses.map((status) => (
                     <span
                       key={status}
-                      className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/45"
+                      className="rounded-full border border-ink/10 bg-ink/[0.04] px-2 py-0.5 text-[10px] text-ink/75"
                     >
                       {status.replaceAll("_", " ")}
                     </span>
                   ))}
                 </div>
-                <p className="mt-1 text-xs leading-relaxed text-white/55">{claim.claim}</p>
+                <p className="mt-1 text-xs leading-relaxed text-ink/55">{claim.claim}</p>
               </div>
             ))}
           </div>
@@ -262,8 +262,8 @@ function QuestionDetail({
       )}
 
       {result.transcript_segments.length > 0 && (
-        <details className="mt-4 border-t border-white/[0.08] pt-4">
-          <summary className="cursor-pointer text-xs text-white/40 transition hover:text-white/70">
+        <details className="mt-4 border-t border-ink/[0.08] pt-4">
+          <summary className="cursor-pointer text-xs text-ink/70 transition hover:text-ink/70">
             Answer transcript · {result.transcript_segments.length} timestamped segments
           </summary>
           <div className="mt-3 space-y-1">
@@ -272,7 +272,7 @@ function QuestionDetail({
                 key={segment.segment_id}
                 type="button"
                 onClick={() => onSeek(segment.start_ms)}
-                className={`flex w-full items-start gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-white/[0.04] ${
+                className={`flex w-full items-start gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-ink/[0.04] ${
                   segment.uncertain ? "bg-amber-400/[0.06]" : ""
                 }`}
               >
@@ -281,7 +281,7 @@ function QuestionDetail({
                 </span>
                 <span
                   className={`min-w-0 flex-1 text-xs leading-relaxed ${
-                    segment.uncertain ? "text-amber-100/80" : "text-white/55"
+                    segment.uncertain ? "text-amber-100/80" : "text-ink/55"
                   }`}
                 >
                   {segment.text}
@@ -434,12 +434,12 @@ export function InterviewReportView({
           <p className="text-[11px] uppercase tracking-[0.34em] text-accent/70">
             Interview evidence · {candidateName}
           </p>
-          <h1 className="mt-4 max-w-3xl font-display text-4xl leading-[1.05] text-white sm:text-5xl">
+          <h1 className="mt-4 max-w-3xl font-display text-4xl leading-[1.05] text-ink sm:text-5xl">
             Answers, measured
             <br />
             <span className="italic text-accent">against the record.</span>
           </h1>
-          <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/45">
+          <p className="mt-5 max-w-2xl text-sm leading-relaxed text-ink/75">
             Every finding below points back to a timestamped transcript segment.
             Use the inventory as the source of truth, not the prose summary.
           </p>
@@ -447,7 +447,7 @@ export function InterviewReportView({
         <button
           type="button"
           onClick={onNewQuestions}
-          className="animate-sweep relative self-start overflow-hidden rounded-full border border-white/15 px-5 py-2.5 text-sm text-white/60 transition hover:border-accent/35 hover:text-white lg:self-auto"
+          className="animate-sweep relative self-start overflow-hidden rounded-full border border-ink/15 px-5 py-2.5 text-sm text-ink/60 transition hover:border-accent/35 hover:text-ink lg:self-auto"
         >
           <span className="relative z-10">Build another question set</span>
         </button>
@@ -461,18 +461,18 @@ export function InterviewReportView({
           { label: "Video length", value: formatTimecode(report.video.duration_ms) },
         ].map((item) => (
           <div key={item.label} className="glass rounded-xl px-4 py-4">
-            <p className="text-2xl font-semibold tabular-nums text-white/90">{item.value}</p>
-            <p className="mt-1 text-xs text-white/40">{item.label}</p>
+            <p className="text-2xl font-semibold tabular-nums text-ink/90">{item.value}</p>
+            <p className="mt-1 text-xs text-ink/70">{item.label}</p>
           </div>
         ))}
       </div>
 
-      <section className="grid gap-5 border-y border-white/[0.08] py-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
+      <section className="grid gap-5 border-y border-ink/[0.08] py-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.2em] text-white/35">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-ink/65">
             Overall read
           </p>
-          <p className="mt-3 font-display text-xl leading-relaxed text-white/80 sm:text-2xl">
+          <p className="mt-3 font-display text-xl leading-relaxed text-ink/80 sm:text-2xl">
             {report.overall_report.summary}
           </p>
         </div>
@@ -483,10 +483,10 @@ export function InterviewReportView({
             </p>
             <div className="mt-2 space-y-2">
               {report.overall_report.strengths.length === 0 ? (
-                <p className="text-xs text-white/30">No synthesized strength.</p>
+                <p className="text-xs text-ink/60">No synthesized strength.</p>
               ) : (
                 report.overall_report.strengths.map((item, index) => (
-                  <p key={index} className="text-xs leading-relaxed text-white/55">
+                  <p key={index} className="text-xs leading-relaxed text-ink/55">
                     <span className="mr-1 text-emerald-300/70">+</span>
                     {item.text}
                   </p>
@@ -500,10 +500,10 @@ export function InterviewReportView({
             </p>
             <div className="mt-2 space-y-2">
               {report.overall_report.risks.length === 0 ? (
-                <p className="text-xs text-white/30">No synthesized risk.</p>
+                <p className="text-xs text-ink/60">No synthesized risk.</p>
               ) : (
                 report.overall_report.risks.map((item, index) => (
-                  <p key={index} className="text-xs leading-relaxed text-white/55">
+                  <p key={index} className="text-xs leading-relaxed text-ink/55">
                     <span className="mr-1 text-amber-300/70">!</span>
                     {item.text}
                   </p>
@@ -517,10 +517,10 @@ export function InterviewReportView({
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(310px,0.75fr)]">
         <div className="space-y-5">
           <div className="glass overflow-hidden rounded-2xl">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] px-4 py-3 sm:px-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/[0.08] px-4 py-3 sm:px-5">
               <div>
-                <p className="text-sm font-medium text-white/80">{report.video.filename}</p>
-                <p className="mt-0.5 text-[11px] text-white/35">
+                <p className="text-sm font-medium text-ink/80">{report.video.filename}</p>
+                <p className="mt-0.5 text-[11px] text-ink/65">
                   {formatFileSize(report.video.size_bytes)} ·{" "}
                   {formatTimecode(report.video.duration_ms)} · local evidence
                 </p>
@@ -534,7 +534,7 @@ export function InterviewReportView({
               controls
               playsInline
               preload="metadata"
-              className="aspect-video w-full bg-black"
+              className="aspect-video w-full bg-background"
               src={interviewVideoUrl(report.interview_id)}
             />
           </div>
@@ -555,11 +555,11 @@ export function InterviewReportView({
 
         <aside className="xl:sticky xl:top-6">
           <div className="glass overflow-hidden rounded-2xl">
-            <div className="border-b border-white/[0.08] px-4 py-4">
+            <div className="border-b border-ink/[0.08] px-4 py-4">
               <p className="text-[11px] uppercase tracking-[0.2em] text-accent/65">
                 Timestamp inventory
               </p>
-              <p className="mt-1 text-xs text-white/35">Select a question to seek the video.</p>
+              <p className="mt-1 text-xs text-ink/65">Select a question to seek the video.</p>
             </div>
             <div className="max-h-[62vh] overflow-y-auto p-2">
               {report.timestamp_inventory.map((item) => {
@@ -576,15 +576,15 @@ export function InterviewReportView({
                     className={`mb-1.5 w-full rounded-xl border px-3 py-3 text-left transition last:mb-0 ${
                       active
                         ? "border-accent/30 bg-accent/[0.08]"
-                        : "border-transparent hover:border-white/10 hover:bg-white/[0.04]"
+                        : "border-transparent hover:border-ink/10 hover:bg-ink/[0.04]"
                     } disabled:cursor-not-allowed disabled:opacity-45`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <span className="flex min-w-0 gap-2.5">
-                        <span className="pt-0.5 font-mono text-[10px] text-white/30">
+                        <span className="pt-0.5 font-mono text-[10px] text-ink/60">
                           {String(item.order).padStart(2, "0")}
                         </span>
-                        <span className="line-clamp-2 text-xs leading-relaxed text-white/65">
+                        <span className="line-clamp-2 text-xs leading-relaxed text-ink/65">
                           {result?.question ?? "Question unavailable"}
                         </span>
                       </span>
@@ -596,7 +596,7 @@ export function InterviewReportView({
                       <span
                         className={`h-1.5 w-1.5 rounded-full ${confidenceClass(item.alignment_confidence)}`}
                       />
-                      <span className="text-[10px] capitalize text-white/30">
+                      <span className="text-[10px] capitalize text-ink/60">
                         {item.answered
                           ? `${item.alignment_confidence} alignment`
                           : "Answer not located"}
@@ -617,11 +617,11 @@ export function InterviewReportView({
               <p className="text-[11px] uppercase tracking-[0.2em] text-accent/65">
                 Full transcript
               </p>
-              <h2 className="mt-1 font-display text-2xl text-white/85">
+              <h2 className="mt-1 font-display text-2xl text-ink/85">
                 Every word, timestamped.
               </h2>
             </div>
-            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/50">
+            <div className="flex items-center gap-2 rounded-full border border-ink/10 bg-background/20 px-3 py-2 text-xs text-ink/50">
               <span className="h-2 w-2 rounded-full bg-amber-300" />
               {transcript.segments.filter((item) => item.uncertain).length}{" "}
               wording
@@ -631,18 +631,18 @@ export function InterviewReportView({
               to review
             </div>
           </div>
-          <p className="mt-2 text-xs text-white/35">
+          <p className="mt-2 text-xs text-ink/65">
             Amber rows are segments the speech model itself marked uncertain
             (low word confidence or suspected non-speech). Listen before
             trusting the wording.
           </p>
-          <div className="mt-4 max-h-[46vh] divide-y divide-white/[0.04] overflow-y-auto rounded-xl border border-white/[0.06] bg-black/15">
+          <div className="mt-4 max-h-[46vh] divide-y divide-white/[0.04] overflow-y-auto rounded-xl border border-ink/[0.06] bg-background/15">
             {transcript.segments.map((segment) => (
               <button
                 key={segment.segment_id}
                 type="button"
                 onClick={() => seek(segment.start_ms)}
-                className={`flex w-full items-start gap-3 px-3 py-2 text-left transition hover:bg-white/[0.04] ${
+                className={`flex w-full items-start gap-3 px-3 py-2 text-left transition hover:bg-ink/[0.04] ${
                   segment.uncertain ? "bg-amber-400/[0.06]" : ""
                 }`}
               >
@@ -651,7 +651,7 @@ export function InterviewReportView({
                 </span>
                 <span
                   className={`min-w-0 flex-1 text-xs leading-relaxed ${
-                    segment.uncertain ? "text-amber-100/80" : "text-white/55"
+                    segment.uncertain ? "text-amber-100/80" : "text-ink/55"
                   }`}
                 >
                   {segment.text}
@@ -671,14 +671,14 @@ export function InterviewReportView({
         <div className="glass rounded-2xl p-5 sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.2em] text-white/35">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-ink/65">
                 Communication profile
               </p>
-              <h2 className="mt-2 font-display text-2xl text-white/85">
+              <h2 className="mt-2 font-display text-2xl text-ink/85">
                 Measured delivery, not personality.
               </h2>
             </div>
-            <span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] text-white/35">
+            <span className="rounded-full border border-ink/10 px-2.5 py-1 text-[10px] text-ink/65">
               Descriptive
             </span>
           </div>
@@ -707,24 +707,24 @@ export function InterviewReportView({
               },
             ].map((item) => (
               <div key={item.label}>
-                <p className="text-lg font-semibold tabular-nums text-white/80">{item.value}</p>
-                <p className="mt-0.5 text-[11px] text-white/35">{item.label}</p>
+                <p className="text-lg font-semibold tabular-nums text-ink/80">{item.value}</p>
+                <p className="mt-0.5 text-[11px] text-ink/65">{item.label}</p>
               </div>
             ))}
           </div>
-          <div className="mt-5 space-y-2 border-t border-white/[0.08] pt-4">
+          <div className="mt-5 space-y-2 border-t border-ink/[0.08] pt-4">
             {report.communication_profile.interpretations.map((item, index) => (
-              <p key={index} className="text-xs leading-relaxed text-white/45">
-                <span className="text-white/65">{item.dimension}:</span> {item.observation}
+              <p key={index} className="text-xs leading-relaxed text-ink/75">
+                <span className="text-ink/65">{item.dimension}:</span> {item.observation}
               </p>
             ))}
           </div>
-          <div className="mt-4 border-t border-white/[0.08] pt-4">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-white/25">
+          <div className="mt-4 border-t border-ink/[0.08] pt-4">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-ink/55">
               Interpretation limits
             </p>
             {report.communication_profile.caveats.map((item, index) => (
-              <p key={index} className="mt-1.5 text-[11px] leading-relaxed text-white/30">
+              <p key={index} className="mt-1.5 text-[11px] leading-relaxed text-ink/60">
                 {item}
               </p>
             ))}
@@ -732,14 +732,14 @@ export function InterviewReportView({
         </div>
 
         <div className="glass rounded-2xl p-5 sm:p-6">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-white/35">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-ink/65">
             Suggested follow-up
           </p>
-          <h2 className="mt-2 font-display text-2xl text-white/85">
+          <h2 className="mt-2 font-display text-2xl text-ink/85">
             Probe what remains thin.
           </h2>
           {report.overall_report.recommended_follow_up_questions.length === 0 ? (
-            <p className="mt-4 text-sm text-white/35">
+            <p className="mt-4 text-sm text-ink/65">
               No additional question was generated for this report.
             </p>
           ) : (
@@ -748,7 +748,7 @@ export function InterviewReportView({
                 (item, index) => (
                   <li
                     key={`${item}-${index}`}
-                    className="flex gap-3 border-t border-white/[0.07] pt-3 text-sm leading-relaxed text-white/60 first:border-t-0 first:pt-0"
+                    className="flex gap-3 border-t border-ink/[0.07] pt-3 text-sm leading-relaxed text-ink/60 first:border-t-0 first:pt-0"
                   >
                     <span className="font-mono text-[10px] text-accent/60">
                       {String(index + 1).padStart(2, "0")}
@@ -759,7 +759,7 @@ export function InterviewReportView({
               )}
             </ol>
           )}
-          <p className="mt-6 border-t border-white/[0.08] pt-4 text-[11px] leading-relaxed text-white/28">
+          <p className="mt-6 border-t border-ink/[0.08] pt-4 text-[11px] leading-relaxed text-ink/58">
             This report supports human review. It intentionally provides no hire or
             no-hire recommendation.
           </p>

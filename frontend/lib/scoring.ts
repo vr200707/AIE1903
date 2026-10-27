@@ -36,37 +36,37 @@ export const MODULE_META: Record<
   { title: string; titleEn: string; planet: PlanetId; glow: string }
 > = {
   basic_info: {
-    title: "基本信息",
+    title: "Basic Info",
     titleEn: "Basic Info",
     planet: "earth",
     glow: "rgba(90, 169, 255, 0.55)",
   },
   education_employment: {
-    title: "教育与任职",
+    title: "Education & Employment",
     titleEn: "Education & Employment",
     planet: "mars",
     glow: "rgba(245, 120, 60, 0.5)",
   },
   awards_funding: {
-    title: "奖项与资助",
+    title: "Awards & Funding",
     titleEn: "Awards & Funding",
     planet: "jupiter",
     glow: "rgba(220, 180, 140, 0.55)",
   },
   publications_impact: {
-    title: "论文与影响力",
+    title: "Publications & Impact",
     titleEn: "Publications & Impact",
     planet: "saturn",
     glow: "rgba(230, 200, 140, 0.5)",
   },
   academic_service: {
-    title: "学术服务",
+    title: "Academic Service",
     titleEn: "Academic Service",
     planet: "venus",
     glow: "rgba(255, 220, 170, 0.5)",
   },
   overall_evaluation: {
-    title: "综合评价",
+    title: "Overall Evaluation",
     titleEn: "Overall Evaluation",
     planet: "neptune",
     glow: "rgba(90, 140, 255, 0.55)",
@@ -243,26 +243,26 @@ function summarizeCredibility(
 
   let pros: string;
   if (score >= 7 && counts.confirmedCount >= 3) {
-    pros = "来源权威，证据链完整";
+    pros = "Authoritative sources with a complete evidence chain";
   } else if (counts.confirmedCount >= 1) {
-    pros = "已有公开证据支撑";
+    pros = "Supported by public evidence";
   } else if (evidences.length > 0) {
-    pros = "有来源但多为自述";
+    pros = "Has sources, but mostly self-reported";
   } else {
-    pros = "暂无外部证据";
+    pros = "No external evidence yet";
   }
 
   let cons: string;
   if (counts.conflictCount > 0) {
-    cons = `${counts.conflictCount} 条证据存在冲突`;
+    cons = `${counts.conflictCount} conflicting evidence item(s)`;
   } else if (counts.notFoundCount > 0) {
-    cons = `${counts.notFoundCount} 条来源公开检索不到`;
+    cons = `${counts.notFoundCount} source(s) not found publicly`;
   } else if (counts.toVerifyCount > 0) {
-    cons = `${counts.toVerifyCount} 条证据待核实`;
+    cons = `${counts.toVerifyCount} evidence item(s) pending verification`;
   } else if (evidences.length === 0) {
-    cons = "缺少公开证据";
+    cons = "Lacking public evidence";
   } else {
-    cons = "无明显短板";
+    cons = "No notable weaknesses";
   }
 
   return { pros, cons, ...counts };

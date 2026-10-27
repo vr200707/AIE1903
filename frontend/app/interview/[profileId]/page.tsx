@@ -9,7 +9,7 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
-import Starfield from "@/components/Starfield";
+import Starfield, { HERO_IMAGE } from "@/components/Starfield";
 import { useArchive } from "@/components/ArchiveProvider";
 import { useIdentity } from "@/components/IdentityProvider";
 import { EvidenceBadge } from "@/components/EvidenceBadge";
@@ -111,7 +111,7 @@ function Stepper({
   return (
     <nav
       aria-label="Interview workflow"
-      className="flex items-center gap-1 rounded-full border border-white/[0.08] bg-black/20 p-1"
+      className="flex items-center gap-1 rounded-full border border-ink/[0.08] bg-background/20 p-1"
     >
       {items.map((item, index) => {
         const done = index + 1 < active;
@@ -124,15 +124,15 @@ function Stepper({
             onClick={() => onChange(item.phase)}
             className={`flex items-center gap-2 rounded-full px-3 py-2 text-[11px] transition sm:px-4 ${
               current
-                ? "bg-white/[0.08] text-white"
+                ? "bg-ink/[0.08] text-ink"
                 : done
-                  ? "text-white/55 hover:bg-white/[0.04]"
-                  : "text-white/25"
+                  ? "text-ink/55 hover:bg-ink/[0.04]"
+                  : "text-ink/25"
             } disabled:cursor-not-allowed`}
           >
             <span
               className={`font-mono text-[9px] ${
-                current ? "text-accent" : done ? "text-emerald-300/60" : "text-white/20"
+                current ? "text-accent" : done ? "text-emerald-300/60" : "text-ink/20"
               }`}
             >
               {item.step}
@@ -259,7 +259,7 @@ function QuestionCard({
 
   return (
     <article
-      className="animate-pop rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5 transition hover:border-white/[0.14] hover:bg-white/[0.035] sm:p-6"
+      className="animate-pop rounded-2xl border border-ink/[0.08] bg-ink/[0.025] p-5 transition hover:border-ink/[0.14] hover:bg-ink/[0.035] sm:p-6"
       style={{ animationDelay: `${Math.min(index * 0.05, 0.3)}s` }}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -268,7 +268,7 @@ function QuestionCard({
             {String(question.order).padStart(2, "0")}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-white/30">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-ink/30">
               {competencyLabel(question.competency)}
             </p>
             {editing ? (
@@ -278,10 +278,10 @@ function QuestionCard({
                 onChange={(event) => setDraftText(event.target.value)}
                 rows={3}
                 maxLength={1200}
-                className="mt-2 w-full min-h-[88px] resize-none overflow-hidden rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm leading-relaxed text-white/90 outline-none focus:border-accent/40"
+                className="mt-2 w-full min-h-[88px] resize-none overflow-hidden rounded-xl border border-ink/10 bg-background/25 px-3 py-2 text-sm leading-relaxed text-ink/90 outline-none focus:border-accent/40"
               />
             ) : (
-              <h3 className="mt-2 text-base font-medium leading-relaxed text-white/90 sm:text-lg">
+              <h3 className="mt-2 text-base font-medium leading-relaxed text-ink/90 sm:text-lg">
                 {question.text}
               </h3>
             )}
@@ -300,13 +300,13 @@ function QuestionCard({
             className={`rounded-full border px-3 py-1.5 text-[10px] transition disabled:cursor-not-allowed disabled:opacity-45 ${
               question.approved
                 ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-200"
-                : "border-white/12 bg-white/[0.03] text-white/45 hover:border-emerald-300/30 hover:text-emerald-200"
+                : "border-ink/12 bg-ink/[0.03] text-ink/45 hover:border-emerald-300/30 hover:text-emerald-200"
             }`}
           >
             {question.approved ? "✓ Approved" : "Approve"}
           </button>
           {editing ? (
-            <label className="flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] text-white/45">
+            <label className="flex items-center gap-2 rounded-full border border-ink/10 bg-background/20 px-2.5 py-1 text-[10px] text-ink/45">
               <input
                 type="text"
                 inputMode="numeric"
@@ -319,12 +319,12 @@ function QuestionCard({
                 }
                 placeholder={String(question.answer_seconds)}
                 aria-label="Answer time in seconds"
-                className="w-12 bg-transparent text-right text-[10px] tabular-nums text-white/70 outline-none placeholder:text-white/25"
+                className="w-12 bg-transparent text-right text-[10px] tabular-nums text-ink/70 outline-none placeholder:text-ink/25"
               />
               s
             </label>
           ) : (
-            <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] text-white/40">
+            <span className="rounded-full border border-ink/10 bg-background/20 px-2.5 py-1 text-[10px] text-ink/40">
               ~{question.answer_seconds}s
             </span>
           )}
@@ -334,7 +334,7 @@ function QuestionCard({
                 type="button"
                 onClick={startEditing}
                 disabled={busy}
-                className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[10px] text-white/45 transition hover:border-accent/30 hover:text-accent-soft disabled:cursor-wait disabled:opacity-50"
+                className="rounded-full border border-ink/10 bg-ink/[0.03] px-3 py-1.5 text-[10px] text-ink/45 transition hover:border-accent/30 hover:text-accent-soft disabled:cursor-wait disabled:opacity-50"
               >
                 Edit
               </button>
@@ -345,7 +345,7 @@ function QuestionCard({
                 className={`rounded-full border px-3 py-1.5 text-[10px] transition disabled:cursor-wait disabled:opacity-50 ${
                   confirmingDelete
                     ? "border-rose-300/40 bg-rose-400/10 text-rose-200"
-                    : "border-white/10 bg-white/[0.03] text-white/45 hover:border-rose-300/35 hover:text-rose-200"
+                    : "border-ink/10 bg-ink/[0.03] text-ink/45 hover:border-rose-300/35 hover:text-rose-200"
                 }`}
               >
                 {confirmingDelete ? "Confirm delete?" : "Delete"}
@@ -358,7 +358,7 @@ function QuestionCard({
       {editing ? (
         <div className="mt-4 space-y-3">
           <label className="block">
-            <span className="text-[10px] uppercase tracking-[0.18em] text-white/30">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-ink/30">
               Why it matters
             </span>
             <textarea
@@ -367,14 +367,14 @@ function QuestionCard({
               onChange={(event) => setDraftWhy(event.target.value)}
               rows={2}
               maxLength={500}
-              className="mt-1.5 w-full min-h-[56px] resize-none overflow-hidden rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs leading-relaxed text-white/60 outline-none focus:border-accent/40"
+              className="mt-1.5 w-full min-h-[56px] resize-none overflow-hidden rounded-xl border border-ink/10 bg-background/25 px-3 py-2 text-xs leading-relaxed text-ink/60 outline-none focus:border-accent/40"
             />
           </label>
           <div className="flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={cancelEditing}
-              className="rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-1.5 text-[10px] text-white/45 transition hover:text-white/75"
+              className="rounded-full border border-ink/10 bg-ink/[0.03] px-3.5 py-1.5 text-[10px] text-ink/45 transition hover:text-ink/75"
             >
               Cancel
             </button>
@@ -382,7 +382,7 @@ function QuestionCard({
               type="button"
               onClick={() => void save()}
               disabled={busy || !draftText.trim()}
-              className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-1.5 text-[10px] font-medium text-black transition hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-1.5 text-[10px] font-medium text-ink transition hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? "Saving" : "Save changes"}
             </button>
@@ -390,11 +390,11 @@ function QuestionCard({
         </div>
       ) : (
         <>
-          <p className="mt-4 border-l border-accent/30 pl-3 text-xs leading-relaxed text-white/45">
+          <p className="mt-4 border-l border-accent/30 pl-3 text-xs leading-relaxed text-ink/45">
             {question.why_it_matters}
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-[10px] uppercase tracking-[0.16em] text-white/30">
+            <span className="mr-1 text-[10px] uppercase tracking-[0.16em] text-ink/30">
               Committee check
             </span>
             {COMMITTEE_CHECK_ITEMS.map((item) => {
@@ -413,7 +413,7 @@ function QuestionCard({
                   className={`rounded-full border px-2.5 py-1 text-[10px] transition ${
                     checked
                       ? "border-accent/40 bg-accent/10 text-accent-soft"
-                      : "border-white/10 bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white/60"
+                      : "border-ink/10 bg-ink/[0.03] text-ink/40 hover:border-ink/20 hover:text-ink/60"
                   }`}
                 >
                   {checked ? "✓ " : ""}
@@ -421,15 +421,15 @@ function QuestionCard({
                 </button>
               );
             })}
-            <span className="text-[10px] text-white/25">
+            <span className="text-[10px] text-ink/25">
               · local notes, not saved
             </span>
           </div>
         </>
       )}
 
-      <details className="mt-4 border-t border-white/[0.07] pt-3">
-        <summary className="cursor-pointer text-[11px] text-white/35 transition hover:text-white/65">
+      <details className="mt-4 border-t border-ink/[0.07] pt-3">
+        <summary className="cursor-pointer text-[11px] text-ink/35 transition hover:text-ink/65">
           Evidence behind this question · {question.source_claims.length} claim
           {question.source_claims.length === 1 ? "" : "s"}
         </summary>
@@ -437,7 +437,7 @@ function QuestionCard({
           {question.source_claims.map((claim) => (
             <div
               key={claim.claim_id}
-              className="rounded-xl border border-white/[0.06] bg-black/10 p-3"
+              className="rounded-xl border border-ink/[0.06] bg-background/10 p-3"
             >
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-[10px] text-accent/60">{claim.claim_id}</span>
@@ -445,15 +445,15 @@ function QuestionCard({
                   <EvidenceBadge key={status} status={status} />
                 ))}
               </div>
-              <p className="mt-2 text-xs leading-relaxed text-white/55">{claim.claim}</p>
+              <p className="mt-2 text-xs leading-relaxed text-ink/55">{claim.claim}</p>
               {claim.evidence.length > 0 && (
                 <div className="mt-2 space-y-1.5">
                   {claim.evidence.slice(0, 2).map((item, evidenceIndex) => (
                     <p
                       key={`${claim.claim_id}-${evidenceIndex}`}
-                      className="text-[11px] leading-relaxed text-white/30"
+                      className="text-[11px] leading-relaxed text-ink/30"
                     >
-                      <span className="text-white/45">{item.source}:</span> {item.excerpt}
+                      <span className="text-ink/45">{item.source}:</span> {item.excerpt}
                     </p>
                   ))}
                 </div>
@@ -507,7 +507,7 @@ function AddQuestionPanel({
           <p className="text-[11px] uppercase tracking-[0.2em] text-accent/65">
             New question · committee-authored
           </p>
-          <p className="mt-1 text-[10px] text-white/28">
+          <p className="mt-1 text-[10px] text-ink/28">
             Handwritten questions carry no profile evidence until a reviewer
             links claims later.
           </p>
@@ -516,7 +516,7 @@ function AddQuestionPanel({
           type="button"
           onClick={onCancel}
           disabled={busy}
-          className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[10px] text-white/45 transition hover:text-white/75 disabled:cursor-wait disabled:opacity-50"
+          className="rounded-full border border-ink/10 bg-ink/[0.03] px-3 py-1.5 text-[10px] text-ink/45 transition hover:text-ink/75 disabled:cursor-wait disabled:opacity-50"
         >
           Cancel
         </button>
@@ -529,12 +529,12 @@ function AddQuestionPanel({
         maxLength={1200}
         autoFocus
         placeholder="Write the question the candidate must answer…"
-        className="mt-4 w-full min-h-[88px] resize-y rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm leading-relaxed text-white/90 outline-none placeholder:text-white/25 focus:border-accent/45"
+        className="mt-4 w-full min-h-[88px] resize-y rounded-xl border border-ink/10 bg-background/25 px-4 py-3 text-sm leading-relaxed text-ink/90 outline-none placeholder:text-ink/25 focus:border-accent/45"
       />
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_140px_140px]">
         <label className="block">
-          <span className="text-[10px] uppercase tracking-[0.18em] text-white/30">
+          <span className="text-[10px] uppercase tracking-[0.18em] text-ink/30">
             Competency
           </span>
           <select
@@ -542,17 +542,17 @@ function AddQuestionPanel({
             onChange={(event) =>
               setCompetency(event.target.value as InterviewCompetency)
             }
-            className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs text-white/75 outline-none focus:border-accent/40"
+            className="mt-1.5 w-full rounded-xl border border-ink/10 bg-background/25 px-3 py-2 text-xs text-ink/75 outline-none focus:border-accent/40"
           >
             {COMPETENCY_OPTIONS.map((option) => (
-              <option key={option} value={option} className="bg-black text-white/75">
+              <option key={option} value={option} className="bg-background text-ink/75">
                 {competencyLabel(option)}
               </option>
             ))}
           </select>
         </label>
         <label className="block">
-          <span className="text-[10px] uppercase tracking-[0.18em] text-white/30">
+          <span className="text-[10px] uppercase tracking-[0.18em] text-ink/30">
             Answer time (s)
           </span>
           <input
@@ -563,7 +563,7 @@ function AddQuestionPanel({
             onChange={(event) =>
               setSeconds(event.target.value.replace(/\D/g, "").slice(0, 3))
             }
-            className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs tabular-nums text-white/75 outline-none focus:border-accent/40"
+            className="mt-1.5 w-full rounded-xl border border-ink/10 bg-background/25 px-3 py-2 text-xs tabular-nums text-ink/75 outline-none focus:border-accent/40"
           />
         </label>
         <div className="flex items-end">
@@ -571,7 +571,7 @@ function AddQuestionPanel({
             type="button"
             onClick={() => void submit()}
             disabled={busy || !text.trim()}
-            className="w-full rounded-full bg-accent px-4 py-2 text-xs font-medium text-black transition hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-full bg-accent px-4 py-2 text-xs font-medium text-ink transition hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy ? "Adding…" : "Add question"}
           </button>
@@ -579,7 +579,7 @@ function AddQuestionPanel({
       </div>
 
       <label className="mt-3 block">
-        <span className="text-[10px] uppercase tracking-[0.18em] text-white/30">
+        <span className="text-[10px] uppercase tracking-[0.18em] text-ink/30">
           Why it matters
         </span>
         <textarea
@@ -588,7 +588,7 @@ function AddQuestionPanel({
           rows={2}
           maxLength={500}
           placeholder="Optional rationale shown to reviewers."
-          className="mt-1.5 w-full min-h-[52px] resize-y rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs leading-relaxed text-white/60 outline-none placeholder:text-white/22 focus:border-accent/40"
+          className="mt-1.5 w-full min-h-[52px] resize-y rounded-xl border border-ink/10 bg-background/25 px-3 py-2 text-xs leading-relaxed text-ink/60 outline-none placeholder:text-ink/22 focus:border-accent/40"
         />
       </label>
     </article>
@@ -641,18 +641,18 @@ function PublishPanel({
             className={`rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] ${
               published
                 ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-200"
-                : "border-white/12 bg-black/20 text-white/50"
+                : "border-ink/12 bg-background/20 text-ink/50"
             }`}
           >
             {published ? "Published" : "Draft"}
           </span>
           <div className="min-w-0">
-            <p className="text-xs text-white/60">
+            <p className="text-xs text-ink/60">
               {approvedCount}/{questionSet.questions.length} question
               {questionSet.questions.length === 1 ? "" : "s"} approved for the
               candidate
             </p>
-            <p className="mt-0.5 text-[10px] leading-relaxed text-white/28">
+            <p className="mt-0.5 text-[10px] leading-relaxed text-ink/28">
               {published
                 ? "The candidate sees only approved questions and never the AI analysis."
                 : "Approve questions, then publish the candidate link."}
@@ -666,7 +666,7 @@ function PublishPanel({
                 href={candidateUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="max-w-[320px] truncate rounded-full border border-emerald-300/25 bg-black/25 px-3.5 py-2 font-mono text-[10px] text-emerald-100/75 transition hover:bg-black/40"
+                className="max-w-[320px] truncate rounded-full border border-emerald-300/25 bg-background/25 px-3.5 py-2 font-mono text-[10px] text-emerald-100/75 transition hover:bg-background/40"
                 title={candidateUrl}
               >
                 {candidateUrl}
@@ -675,7 +675,7 @@ function PublishPanel({
                 type="button"
                 onClick={() => void copyLink()}
                 disabled={busy}
-                className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] text-white/50 transition hover:text-white/80 disabled:cursor-wait disabled:opacity-50"
+                className="rounded-full border border-ink/10 bg-ink/[0.03] px-3 py-2 text-[10px] text-ink/50 transition hover:text-ink/80 disabled:cursor-wait disabled:opacity-50"
               >
                 {copiedLink ? "Copied" : "Copy"}
               </button>
@@ -700,7 +700,7 @@ function PublishPanel({
                   ? "Approve at least one question first."
                   : "Publish the approved questions for the candidate."
               }
-              className="rounded-full bg-emerald-300 px-4 py-2 text-xs font-medium text-black transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-full bg-emerald-300 px-4 py-2 text-xs font-medium text-ink transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {busy ? "Working…" : "Publish candidate link"}
             </button>
@@ -720,13 +720,13 @@ function AnalysisStage({ interview }: { interview: InterviewSession }) {
 
   return (
     <section className="glass relative overflow-hidden rounded-2xl px-5 py-8 sm:px-8 sm:py-10">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(245,165,36,0.08),transparent_45%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(63, 127, 158,0.08),transparent_45%)]" />
       <div className="relative grid gap-8 lg:grid-cols-[180px_minmax(0,1fr)] lg:items-center">
         <div className="flex justify-center">
           <div className="relative grid h-36 w-36 place-items-center">
             <span className="absolute inset-2 animate-ring-spin rounded-full border border-accent/20 border-t-accent/80" />
             <span className="absolute inset-8 animate-ring-spin-rev rounded-full border border-sky-300/15 border-b-sky-300/70" />
-            <span className="absolute inset-[42%] rounded-full bg-accent/80 shadow-[0_0_34px_rgba(245,165,36,0.8)]" />
+            <span className="absolute inset-[42%] rounded-full bg-accent/80 shadow-[0_0_34px_rgba(63, 127, 158,0.8)]" />
             <span className="animate-sparkle absolute left-1 top-4 text-sm text-accent">✦</span>
             <span
               className="animate-sparkle absolute bottom-3 right-1 text-xs text-sky-200"
@@ -740,11 +740,11 @@ function AnalysisStage({ interview }: { interview: InterviewSession }) {
           <p className="text-[11px] uppercase tracking-[0.28em] text-accent/65">
             Interview analysis
           </p>
-          <h2 className="mt-3 font-display text-3xl text-white sm:text-4xl">
+          <h2 className="mt-3 font-display text-3xl text-ink sm:text-4xl">
             Reading the recording
             <span className="block italic text-accent">against the evidence.</span>
           </h2>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/40">
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/40">
             The video stays local. English transcription and question alignment run
             asynchronously, so you can leave this page and return later.
           </p>
@@ -761,14 +761,14 @@ function AnalysisStage({ interview }: { interview: InterviewSession }) {
                         ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-200"
                         : active
                           ? "border-accent/40 bg-accent/10 text-accent"
-                          : "border-white/10 text-white/20"
+                          : "border-ink/10 text-ink/20"
                     }`}
                   >
                     {done ? "✓" : active ? "✦" : index + 1}
                   </span>
                   <span
                     className={`text-sm ${
-                      active ? "text-white/75" : done ? "text-white/45" : "text-white/25"
+                      active ? "text-ink/75" : done ? "text-ink/45" : "text-ink/25"
                     }`}
                   >
                     {stage.label}
@@ -1029,8 +1029,8 @@ export default function InterviewPage() {
     const confirmed = window.confirm(
       "Discard this interview session? The uploaded video and analysis report " +
         "will be permanently deleted, while the question set is kept and becomes " +
-        "editable again. / 确认丢弃本次面试会话？已上传的视频和分析报告将被永久删除，" +
-        "题目本身保留并恢复可编辑。",
+        "editable again. / Discard this interview session? Uploaded video and analysis report will be permanently deleted, " +
+        "while the questions remain editable.",
     );
     if (!confirmed) return;
     setError(null);
@@ -1343,25 +1343,18 @@ export default function InterviewPage() {
       interview.question_set_id === questionSet.question_set_id &&
       (interview.video !== null || interview.has_report),
   );
-  const unconfirmedCoverage = useMemo(
-    () =>
-      questionSet?.questions.filter(
-        (question) => !coverageChecks[question.question_id],
-      ) ?? [],
-    [coverageChecks, questionSet],
-  );
-  const confirmedCoverageCount = useMemo(
-    () =>
-      questionSet
-        ? questionSet.questions.length - unconfirmedCoverage.length
-        : 0,
-    [questionSet, unconfirmedCoverage.length],
-  );
+  const unconfirmedCoverage =
+    questionSet?.questions.filter(
+      (question) => !coverageChecks[question.question_id],
+    ) ?? [];
+  const confirmedCoverageCount = questionSet
+    ? questionSet.questions.length - unconfirmedCoverage.length
+    : 0;
 
   if (!profileId) {
     return (
       <div className="relative min-h-screen">
-        <Starfield />
+        <Starfield image={HERO_IMAGE} />
         <main className="relative mx-auto max-w-3xl px-6 py-20 text-center">
           <p className="text-sm text-rose-300">Missing profile identifier.</p>
           <Link href="/" className="mt-4 inline-block text-accent-soft hover:underline">
@@ -1375,13 +1368,13 @@ export default function InterviewPage() {
   if (restoring) {
     return (
       <div className="relative min-h-screen">
-        <Starfield />
+        <Starfield image={HERO_IMAGE} />
         <main className="relative mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6">
           <div className="glass flex items-center gap-4 rounded-2xl px-6 py-5">
             <OrbitLoader small />
             <div>
-              <p className="text-sm text-white/65">Restoring interview workspace</p>
-              <p className="mt-1 text-xs text-white/30">{profileId}</p>
+              <p className="text-sm text-ink/65">Restoring interview workspace</p>
+              <p className="mt-1 text-xs text-ink/30">{profileId}</p>
             </div>
           </div>
         </main>
@@ -1390,20 +1383,20 @@ export default function InterviewPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden text-white/90">
-      <Starfield />
+    <div className="relative min-h-screen overflow-hidden text-ink/90">
+      <Starfield image={HERO_IMAGE} />
       <main className="relative mx-auto max-w-[1320px] px-5 py-6 sm:px-8 lg:px-10 lg:py-9">
         <header className="animate-fade-in-up flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs text-white/50 transition hover:border-accent/30 hover:text-white"
+              className="group inline-flex items-center gap-2 rounded-full border border-ink/10 bg-ink/[0.03] px-4 py-2 text-xs text-ink/50 transition hover:border-accent/30 hover:text-ink"
             >
               <span className="transition-transform group-hover:-translate-x-0.5">←</span>
               Profile
             </Link>
-            <span className="hidden h-4 w-px bg-white/10 sm:block" />
-            <span className="hidden text-[11px] uppercase tracking-[0.2em] text-white/30 sm:block">
+            <span className="hidden h-4 w-px bg-ink/10 sm:block" />
+            <span className="hidden text-[11px] uppercase tracking-[0.2em] text-ink/30 sm:block">
               Interview studio
             </span>
           </div>
@@ -1422,14 +1415,14 @@ export default function InterviewPage() {
               <p className="text-[11px] uppercase tracking-[0.36em] text-accent/70">
                 Candidate interview · {candidateName}
               </p>
-              <h1 className="mt-4 max-w-4xl font-display text-4xl leading-[1.04] text-white sm:text-5xl lg:text-6xl">
+              <h1 className="mt-4 max-w-4xl font-display text-4xl leading-[1.04] text-ink sm:text-5xl lg:text-6xl">
                 {phase === "video" ? "One recording," : "Questions that earn"}
                 <br />
                 <span className="italic text-accent">
                   {phase === "video" ? "every answer traceable." : "their place."}
                 </span>
               </h1>
-              <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/42">
+              <p className="mt-5 max-w-2xl text-sm leading-relaxed text-ink/42">
                 {phase === "video"
                   ? "Upload the completed English interview. Every answer will be mapped back to a timestamp and the profile evidence that prompted it."
                   : "Build a compact English interview from the profile record, then map every answer back to a timestamp and its supporting evidence."}
@@ -1440,8 +1433,8 @@ export default function InterviewPage() {
                 ✦
               </span>
               <div>
-                <p className="text-xs text-white/55">{candidateDetail}</p>
-                <p className="mt-0.5 font-mono text-[10px] text-white/25">{profileId}</p>
+                <p className="text-xs text-ink/55">{candidateDetail}</p>
+                <p className="mt-0.5 font-mono text-[10px] text-ink/25">{profileId}</p>
               </div>
             </div>
           </section>
@@ -1471,7 +1464,7 @@ export default function InterviewPage() {
               <section className="glass rounded-2xl p-5 sm:p-6">
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-white/35">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-ink/35">
                       Optional role context
                     </p>
                     <textarea
@@ -1480,15 +1473,15 @@ export default function InterviewPage() {
                       rows={4}
                       maxLength={4000}
                       placeholder="Paste the role requirements, research priorities, or teaching expectations that should shape the questions."
-                      className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-black/20 px-4 py-3 text-sm leading-relaxed text-white/75 outline-none placeholder:text-white/22 focus:border-accent/35"
+                      className="mt-2 w-full resize-none rounded-xl border border-ink/[0.08] bg-background/20 px-4 py-3 text-sm leading-relaxed text-ink/75 outline-none placeholder:text-ink/22 focus:border-accent/35"
                     />
                   </div>
                   <div className="flex flex-col justify-between gap-5">
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.2em] text-white/35">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-ink/35">
                         Question count
                       </p>
-                      <div className="mt-2 flex rounded-xl border border-white/[0.08] bg-black/20 p-1">
+                      <div className="mt-2 flex rounded-xl border border-ink/[0.08] bg-background/20 p-1">
                         {QUESTION_COUNTS.map((count) => (
                           <button
                             key={count}
@@ -1497,7 +1490,7 @@ export default function InterviewPage() {
                             className={`flex-1 rounded-lg px-3 py-2 text-sm tabular-nums transition ${
                               questionCount === count
                                 ? "bg-accent/[0.12] text-accent-soft"
-                                : "text-white/35 hover:text-white/65"
+                                : "text-ink/35 hover:text-ink/65"
                             }`}
                           >
                             {count}
@@ -1516,18 +1509,18 @@ export default function InterviewPage() {
                     </button>
                   </div>
                 </div>
-                <p className="mt-4 text-[11px] leading-relaxed text-white/25">
+                <p className="mt-4 text-[11px] leading-relaxed text-ink/25">
                   Questions use only the candidate profile and its evidence. Role context
                   is optional and never overrides the record.
                 </p>
               </section>
 
               {generating && (
-                <div className="flex items-center justify-center gap-4 py-12 text-sm text-white/40">
+                <div className="flex items-center justify-center gap-4 py-12 text-sm text-ink/40">
                   <OrbitLoader />
                   <div>
-                    <p className="text-white/60">Selecting high-value claims</p>
-                    <p className="mt-1 text-xs text-white/28">
+                    <p className="text-ink/60">Selecting high-value claims</p>
+                    <p className="mt-1 text-xs text-ink/28">
                       Balancing impact, uncertainty, and interview progression.
                     </p>
                   </div>
@@ -1541,7 +1534,7 @@ export default function InterviewPage() {
                       <p className="text-[11px] uppercase tracking-[0.22em] text-accent/60">
                         Question set ready
                       </p>
-                      <h2 className="mt-2 font-display text-3xl text-white/90">
+                      <h2 className="mt-2 font-display text-3xl text-ink/90">
                         A focused path through the record.
                       </h2>
                     </div>
@@ -1558,21 +1551,21 @@ export default function InterviewPage() {
                       <button
                         type="button"
                         onClick={() => void handleCopy()}
-                        className="rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs text-white/50 transition hover:border-white/20 hover:text-white/80"
+                        className="rounded-full border border-ink/10 bg-ink/[0.03] px-3.5 py-2 text-xs text-ink/50 transition hover:border-ink/20 hover:text-ink/80"
                       >
                         {copied ? "Copied" : "Copy all"}
                       </button>
                       <button
                         type="button"
                         onClick={() => void handleDownload("md")}
-                        className="rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs text-white/50 transition hover:border-white/20 hover:text-white/80"
+                        className="rounded-full border border-ink/10 bg-ink/[0.03] px-3.5 py-2 text-xs text-ink/50 transition hover:border-ink/20 hover:text-ink/80"
                       >
                         Download .md
                       </button>
                       <button
                         type="button"
                         onClick={() => void handleDownload("txt")}
-                        className="rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs text-white/50 transition hover:border-white/20 hover:text-white/80"
+                        className="rounded-full border border-ink/10 bg-ink/[0.03] px-3.5 py-2 text-xs text-ink/50 transition hover:border-ink/20 hover:text-ink/80"
                       >
                         .txt
                       </button>
@@ -1636,8 +1629,8 @@ export default function InterviewPage() {
                     ))}
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.08] pt-5">
-                    <p className="max-w-2xl text-xs leading-relaxed text-white/30">
+                  <div className="flex flex-wrap items-center justify-between gap-4 border-t border-ink/[0.08] pt-5">
+                    <p className="max-w-2xl text-xs leading-relaxed text-ink/30">
                       The recording should contain one continuous English response,
                       answering the questions in order.
                     </p>
@@ -1652,13 +1645,13 @@ export default function InterviewPage() {
                           >
                             {discarding
                               ? "Discarding…"
-                              : "Discard session / 重新开始"}
+                              : "Discard session"}
                           </button>
                         )}
                       <button
                         type="button"
                         onClick={() => void handleContinueToVideo()}
-                        className="inline-flex items-center gap-3 rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:bg-white/90"
+                        className="inline-flex items-center gap-3 rounded-full bg-ink px-6 py-3 text-sm font-medium text-white transition hover:bg-ink/90"
                       >
                         Continue to video
                         <span aria-hidden="true">→</span>
@@ -1677,14 +1670,14 @@ export default function InterviewPage() {
                   <p className="text-[11px] uppercase tracking-[0.22em] text-accent/60">
                     Video evidence
                   </p>
-                  <h2 className="mt-2 font-display text-3xl text-white/90">
+                  <h2 className="mt-2 font-display text-3xl text-ink/90">
                     Upload the completed interview.
                   </h2>
-                  <p className="mt-2 text-sm leading-relaxed text-white/38">
+                  <p className="mt-2 text-sm leading-relaxed text-ink/70">
                     One continuous video, in English, with the questions answered in order.
                   </p>
 
-                  <label className="mt-6 block cursor-pointer rounded-2xl border border-dashed border-white/15 bg-black/15 p-8 text-center transition hover:border-accent/35 hover:bg-accent/[0.03]">
+                  <label className="mt-6 block cursor-pointer rounded-2xl border border-dashed border-ink/15 bg-background/15 p-8 text-center transition hover:border-accent/35 hover:bg-accent/[0.03]">
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -1692,13 +1685,13 @@ export default function InterviewPage() {
                       className="sr-only"
                       onChange={chooseFile}
                     />
-                    <span className="mx-auto grid h-14 w-14 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-xl text-accent">
+                    <span className="mx-auto grid h-14 w-14 place-items-center rounded-full border border-ink/10 bg-ink/[0.04] text-xl text-accent">
                       ↑
                     </span>
-                    <span className="mt-4 block text-sm text-white/65">
+                    <span className="mt-4 block text-sm text-ink/65">
                       {selectedFile ? selectedFile.name : "Choose a video file"}
                     </span>
-                    <span className="mt-1 block text-[11px] text-white/28">
+                    <span className="mt-1 block text-[11px] text-ink/28">
                       MP4, MOV, WebM, M4V, or MKV · up to 500 MB · 20 minutes
                     </span>
                   </label>
@@ -1724,17 +1717,17 @@ export default function InterviewPage() {
                   </div>
 
                   {selectedFile && (
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-3">
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/[0.07] bg-ink/[0.025] px-4 py-3">
                       <div>
-                        <p className="text-xs text-white/60">{selectedFile.name}</p>
-                        <p className="mt-0.5 text-[10px] text-white/28">
+                        <p className="text-xs text-ink/60">{selectedFile.name}</p>
+                        <p className="mt-0.5 text-[10px] text-ink/28">
                           {formatFileSize(selectedFile.size)}
                         </p>
                       </div>
                       <button
                         type="button"
                         onClick={removeSelectedFile}
-                        className="text-xs text-white/35 transition hover:text-rose-200"
+                        className="text-xs text-ink/35 transition hover:text-rose-200"
                       >
                         Remove
                       </button>
@@ -1744,13 +1737,13 @@ export default function InterviewPage() {
                   {uploading && uploadProgress && (
                     <div className="mt-5">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-white/45">
+                        <span className="text-ink/45">
                           Uploading chunk {uploadProgress.uploadedChunks}/
                           {uploadProgress.totalChunks}
                         </span>
                         <span className="tabular-nums text-accent-soft">{progressPercent}%</span>
                       </div>
-                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.07]">
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-ink/[0.07]">
                         <div
                           className="progress-fill h-full rounded-full"
                           style={{ width: `${progressPercent}%` }}
@@ -1764,7 +1757,7 @@ export default function InterviewPage() {
                       type="button"
                       onClick={() => void handleUpload()}
                       disabled={!selectedFile || uploading}
-                      className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-35"
+                      className="inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-sm font-medium text-white transition hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-35"
                     >
                       {uploading ? "Uploading and preparing" : "Upload and analyse"}
                       {!uploading && <span aria-hidden="true">→</span>}
@@ -1785,7 +1778,7 @@ export default function InterviewPage() {
                         disabled={discarding}
                         className="rounded-full border border-rose-300/25 bg-rose-400/[0.05] px-5 py-3 text-xs text-rose-200/80 transition hover:bg-rose-400/[0.12] disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        {discarding ? "Discarding…" : "Discard session / 重新开始"}
+                        {discarding ? "Discarding…" : "Discard session"}
                       </button>
                     )}
                   </div>
@@ -1798,9 +1791,9 @@ export default function InterviewPage() {
                         src={previewUrl}
                         controls
                         playsInline
-                        className="aspect-video w-full bg-black"
+                        className="aspect-video w-full bg-background"
                       />
-                      <p className="px-4 py-3 text-[10px] text-white/28">
+                      <p className="px-4 py-3 text-[10px] text-ink/28">
                         Local preview. The video is uploaded only when you start the analysis.
                       </p>
                     </div>
@@ -1809,8 +1802,8 @@ export default function InterviewPage() {
                       <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-200/55">
                         Video on file
                       </p>
-                      <p className="mt-2 text-sm text-white/65">{interview.video.filename}</p>
-                      <p className="mt-1 text-xs text-white/30">
+                      <p className="mt-2 text-sm text-ink/65">{interview.video.filename}</p>
+                      <p className="mt-1 text-xs text-ink/30">
                         {formatFileSize(interview.video.size_bytes)} ·{" "}
                         {Math.round(interview.video.duration_ms / 1000)} seconds
                       </p>
@@ -1822,10 +1815,10 @@ export default function InterviewPage() {
                     </div>
                   ) : (
                     <div className="glass rounded-2xl p-5">
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-white/30">
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-ink/30">
                         Recording checklist
                       </p>
-                      <ul className="mt-3 space-y-2.5 text-xs leading-relaxed text-white/40">
+                      <ul className="mt-3 space-y-2.5 text-xs leading-relaxed text-ink/40">
                         <li>Answer each question in the listed order.</li>
                         <li>Use clear English audio and keep the candidate visible.</li>
                         <li>Do not splice separate takes into the submitted file.</li>
@@ -1836,10 +1829,10 @@ export default function InterviewPage() {
                   <div className="glass rounded-2xl p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-[11px] uppercase tracking-[0.18em] text-white/30">
+                        <p className="text-[11px] uppercase tracking-[0.18em] text-ink/30">
                           Coverage confirmation
                         </p>
-                        <p className="mt-1 text-[10px] leading-relaxed text-white/28">
+                        <p className="mt-1 text-[10px] leading-relaxed text-ink/28">
                           Tick every question answered in this recording. Analysis
                           is blocked until all questions are confirmed.
                         </p>
@@ -1848,7 +1841,7 @@ export default function InterviewPage() {
                         className={`rounded-full border px-2.5 py-1 font-mono text-[10px] tabular-nums ${
                           unconfirmedCoverage.length === 0
                             ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-200"
-                            : "border-white/10 bg-black/20 text-white/40"
+                            : "border-ink/10 bg-background/20 text-ink/40"
                         }`}
                       >
                         {confirmedCoverageCount}/{questionSet.questions.length}
@@ -1865,7 +1858,7 @@ export default function InterviewPage() {
                             className={`flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2 transition ${
                               checked
                                 ? "border-emerald-300/20 bg-emerald-400/[0.06]"
-                                : "border-white/[0.07] bg-white/[0.02] hover:border-white/[0.14]"
+                                : "border-ink/[0.07] bg-ink/[0.02] hover:border-ink/[0.14]"
                             }`}
                           >
                             <input
@@ -1880,12 +1873,12 @@ export default function InterviewPage() {
                               className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-amber-400"
                             />
                             <span className="flex min-w-0 gap-2">
-                              <span className="font-mono text-[9px] text-white/25">
+                              <span className="font-mono text-[9px] text-ink/25">
                                 {String(question.order).padStart(2, "0")}
                               </span>
                               <span
                                 className={`line-clamp-2 text-xs leading-relaxed ${
-                                  checked ? "text-white/65" : "text-white/40"
+                                  checked ? "text-ink/65" : "text-ink/40"
                                 }`}
                               >
                                 {question.text}
@@ -1905,7 +1898,7 @@ export default function InterviewPage() {
 
                   <div className="glass rounded-2xl p-5">
                     <div className="flex items-start justify-between gap-3">
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-white/30">
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-ink/30">
                         Question set
                       </p>
                       <button
@@ -1918,8 +1911,8 @@ export default function InterviewPage() {
                     </div>
                     <ol className="mt-3 space-y-2">
                       {questionSet.questions.map((question) => (
-                        <li key={question.question_id} className="flex gap-2.5 text-xs text-white/45">
-                          <span className="font-mono text-[9px] text-white/20">
+                        <li key={question.question_id} className="flex gap-2.5 text-xs text-ink/45">
+                          <span className="font-mono text-[9px] text-ink/20">
                             {String(question.order).padStart(2, "0")}
                           </span>
                           <span className="line-clamp-2">{question.text}</span>

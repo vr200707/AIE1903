@@ -21,21 +21,21 @@ export function EvidenceList({
           <button
             type="button"
             onClick={() => onEvidenceClick?.(e)}
-            className="group w-full rounded-xl border border-white/10 bg-white/[0.03] p-3 text-left text-sm transition-all duration-300 hover:border-white/25 hover:bg-white/[0.08]"
+            className="group w-full rounded-xl border border-ink/10 bg-ink/[0.03] p-3 text-left text-sm transition-all duration-300 hover:border-ink/25 hover:bg-ink/[0.08]"
           >
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium text-white/85">{e.source}</span>
+              <span className="font-medium text-ink/85">{e.source}</span>
               <EvidenceBadge
                 status={getStatus ? getStatus(e) : e.evidence_status}
               />
               {e.page != null && (
-                <span className="text-xs text-white/40">Page {e.page}</span>
+                <span className="text-xs text-ink/70">Page {e.page}</span>
               )}
             </div>
-            <p className="mt-1.5 text-white/60">{e.evidence}</p>
-            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-white/40">
+            <p className="mt-1.5 text-ink/60">{e.evidence}</p>
+            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-ink/70">
               <span>Queried: {e.query_date}</span>
-              <span className="text-teal-300 opacity-0 transition-opacity group-hover:opacity-100">
+              <span className="text-accent-soft opacity-0 transition-opacity group-hover:opacity-100">
                 View details ↗
               </span>
             </div>

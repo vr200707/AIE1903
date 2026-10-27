@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useIdentity } from "./IdentityProvider";
 import { useArchive } from "./ArchiveProvider";
 import { ArchiveFolder } from "./ArchiveFolder";
+import { useQaHistory } from "./QaHistoryProvider";
 import {
   clearAllInterviewSessions,
   clearInterviewSession,
@@ -39,7 +40,9 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { identity } = useIdentity();
   const { archives, openArchive, removeArchive, clearArchives } = useArchive();
+  const { history: qaHistory, clearHistory: clearQaHistory } = useQaHistory();
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [expandedQa, setExpandedQa] = useState<string | null>(null);
   const initials = (identity?.name ?? "AIE")
     .split(/\s+/)
     .slice(0, 2)
@@ -58,17 +61,17 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="sticky top-0 z-20 hidden h-screen w-[220px] shrink-0 flex-col border-r border-white/[0.07] bg-white/[0.03] px-4 py-6 backdrop-blur-2xl lg:flex">
+    <aside className="sticky top-0 z-20 hidden h-screen w-[220px] shrink-0 flex-col border-r border-ink/[0.07] bg-ink/[0.03] px-4 py-6 backdrop-blur-2xl lg:flex">
       {/* 品牌区 */}
       <Link href="/" className="mb-9 flex items-center gap-2.5 px-2">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent/15 text-sm text-accent ring-1 ring-accent/25">
           ✦
         </span>
         <span className="min-w-0">
-          <span className="block truncate text-sm font-medium text-white">
+          <span className="block truncate text-sm font-medium text-ink">
             Candidate Profile
           </span>
-          <span className="block truncate text-xs text-white/35">AIE1903 · v2.0</span>
+          <span className="block truncate text-xs text-ink/65">AIE1903 · v2.0</span>
         </span>
       </Link>
 
@@ -85,11 +88,11 @@ export default function Sidebar() {
               href={item.href}
               className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors duration-200 ${
                 active
-                  ? "bg-white/[0.08] text-white"
-                  : "text-white/45 hover:bg-white/[0.05] hover:text-white/80"
+                  ? "bg-ink/[0.08] text-ink"
+                  : "text-ink/75 hover:bg-ink/[0.05] hover:text-ink/80"
               }`}
             >
-              <span className={active ? "text-accent" : "text-white/35"}>
+              <span className={active ? "text-accent" : "text-ink/65"}>
                 {item.icon}
               </span>
               {item.label}
@@ -104,30 +107,30 @@ export default function Sidebar() {
       {/* 档案库：所有分析完成的 CV */}
       <div className="mt-6 flex min-h-0 flex-1 flex-col">
         <div className="mb-2 flex shrink-0 items-center justify-between px-2">
-          <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/35">
-            档案库 Archive
+          <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink/65">
+            Archive
           </span>
           <span className="flex items-center gap-2">
             {archives.length > 0 && (
               <button
                 type="button"
                 onClick={() => setClearConfirmOpen(true)}
-                className="text-[10px] text-white/25 transition hover:text-rose-200"
+                className="rounded-md px-2 py-1 text-sm text-ink/65 transition hover:bg-rose-400/10 hover:text-rose-200"
               >
                 Clear
               </button>
             )}
-            <span className="text-[11px] tabular-nums text-white/25">
+            <span className="text-[11px] tabular-nums text-ink/55">
               {archives.length}
             </span>
           </span>
         </div>
         <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-0.5">
           {archives.length === 0 ? (
-            <p className="px-2 py-6 text-center text-xs leading-relaxed text-white/30">
-              暂无档案
+            <p className="px-2 py-6 text-center text-xs leading-relaxed text-ink/60">
+              No archives yet
               <br />
-              分析完成后自动存档
+              Saved automatically after analysis
             </p>
           ) : (
             archives.map((entry) => (
@@ -142,23 +145,67 @@ export default function Sidebar() {
         </div>
       </div>
 
+      {/* AI Q&A 历史 */}
+      <div className="mt-4 shrink-0">
+        <div className="mb-2 flex items-center justify-between px-2">
+          <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink/65">
+            AI Q&A
+          </span>
+          {qaHistory.length > 0 && (
+            <button
+              type="button"
+              onClick={clearQaHistory}
+              className="rounded-md px-2 py-1 text-sm text-ink/65 transition hover:bg-rose-400/10 hover:text-rose-200"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        {qaHistory.length === 0 ? (
+          <p className="px-2 py-2 text-center text-xs text-ink/55">
+            No questions yet
+          </p>
+        ) : (
+          <div className="max-h-40 overflow-y-auto pr-0.5">
+            {qaHistory.map((item) => (
+              <div key={item.id} className="mb-1.5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedQa(expandedQa === item.id ? null : item.id)
+                  }
+                  className="w-full rounded-lg border border-ink/10 bg-ink/[0.03] px-2.5 py-2 text-left text-xs text-ink/80 transition hover:bg-ink/[0.06]"
+                >
+                  {item.question}
+                </button>
+                {expandedQa === item.id && (
+                  <div className="mt-1 rounded-lg border-l-2 border-accent/40 bg-ink/[0.03] px-2.5 py-2 text-xs leading-relaxed text-ink/70">
+                    {item.answer}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* 说明位 */}
-      <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3">
-        <p className="text-xs leading-relaxed text-white/40">
+      <div className="mt-4 rounded-xl border border-ink/[0.06] bg-ink/[0.02] px-3 py-3">
+        <p className="text-xs leading-relaxed text-ink/70">
           Every field in this profile links back to a verifiable source.
         </p>
       </div>
 
       {/* 底部身份位 */}
-      <div className="mt-auto flex items-center gap-3 border-t border-white/[0.07] px-2 pt-4">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-accent/70 to-accent-deep text-sm font-medium text-black">
+      <div className="mt-auto flex items-center gap-3 border-t border-ink/[0.07] px-2 pt-4">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-accent/70 to-accent-deep text-sm font-medium text-ink">
           {initials}
         </span>
         <span className="min-w-0">
-          <span className="block truncate text-sm text-white/85">
+          <span className="block truncate text-sm text-ink/85">
             {identity?.name ?? "No candidate"}
           </span>
-          <span className="block truncate text-xs text-white/35">
+          <span className="block truncate text-xs text-ink/65">
             {identity?.detail ?? "Upload to analyse"}
           </span>
         </span>
@@ -166,7 +213,7 @@ export default function Sidebar() {
 
       {clearConfirmOpen && (
         <div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 grid place-items-center bg-background/60 p-4"
           role="presentation"
           onClick={() => setClearConfirmOpen(false)}
         >
@@ -174,16 +221,16 @@ export default function Sidebar() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="clear-history-title"
-            className="w-full max-w-sm rounded-2xl border border-white/12 bg-[#090d20] p-5 shadow-2xl"
+            className="w-full max-w-sm rounded-2xl border border-ink/12 bg-[#eaf1f6] p-5 shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <p className="text-[10px] uppercase tracking-[0.2em] text-rose-200/55">
               Archive history
             </p>
-            <h2 id="clear-history-title" className="mt-2 font-display text-2xl text-white/90">
+            <h2 id="clear-history-title" className="mt-2 font-display text-2xl text-ink/90">
               Clear all profile history?
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-white/45">
+            <p className="mt-2 text-sm leading-relaxed text-ink/75">
               This removes all locally saved candidate profiles and their interview
               workspace links from this browser. Server-side data is not changed.
             </p>
@@ -191,7 +238,7 @@ export default function Sidebar() {
               <button
                 type="button"
                 onClick={() => setClearConfirmOpen(false)}
-                className="rounded-full border border-white/10 px-4 py-2 text-xs text-white/55 transition hover:text-white"
+                className="rounded-full border border-ink/10 px-4 py-2 text-xs text-ink/55 transition hover:text-ink"
               >
                 Cancel
               </button>

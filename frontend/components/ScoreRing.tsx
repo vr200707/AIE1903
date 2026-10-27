@@ -8,7 +8,7 @@ export function ScoreRing({
   score,
   size = 108,
   stroke = 8,
-  label = "综合评分",
+  label = "Overall Score",
   showMax = true,
   variant = "score",
 }: {
@@ -37,7 +37,7 @@ export function ScoreRing({
       : (
           <>
             <stop offset="0%" stopColor="#4fd1c5" />
-            <stop offset="58%" stopColor="#f5a524" />
+            <stop offset="58%" stopColor="#3f7f9e" />
             <stop offset="100%" stopColor="#ff7a5c" />
           </>
         );
@@ -60,7 +60,7 @@ export function ScoreRing({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.09)"
+          stroke="rgba(22, 50, 74,0.1)"
           strokeWidth={stroke}
         />
         <circle
@@ -79,18 +79,18 @@ export function ScoreRing({
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
         <span
-          className="font-semibold tabular-nums text-white"
+          className="font-semibold tabular-nums text-ink"
           style={{ fontSize: Math.round(size * 0.3) }}
         >
           {typeof score === "number" ? score.toFixed(1) : "—"}
         </span>
         {showMax && (
-          <span className="text-white/45" style={{ fontSize: Math.max(10, size * 0.11) }}>
+          <span className="text-ink/45" style={{ fontSize: Math.max(10, size * 0.11) }}>
             / 10
           </span>
         )}
         <span
-          className="mt-0.5 uppercase tracking-[0.16em] text-white/40"
+          className="mt-0.5 uppercase tracking-[0.16em] text-ink/40"
           style={{ fontSize: Math.max(9, size * 0.095) }}
         >
           {label}

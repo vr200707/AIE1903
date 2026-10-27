@@ -19,6 +19,7 @@ export function Section({
   art,
   collapsible = true,
   className = "",
+  id,
   children,
 }: {
   title: string;
@@ -27,6 +28,7 @@ export function Section({
   art?: string;
   collapsible?: boolean;
   className?: string;
+  id?: string;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(true);
@@ -35,9 +37,10 @@ export function Section({
 
   return (
     <section
-      className={`glass rounded-2xl transition-colors duration-300 hover:bg-white/[0.09] ${className}`}
+      id={id}
+      className={`glass rounded-2xl transition-all duration-300 hover:bg-ink/[0.08] hover:shadow-[0_22px_44px_-26px_rgba(22, 50, 74,0.42)] ${className}`}
     >
-      {art && (
+      {art && open && (
         <img
           src={art}
           alt=""
@@ -57,17 +60,17 @@ export function Section({
           onClick={() => collapsible && setOpen((v) => !v)}
           aria-expanded={!collapsible ? true : open}
           aria-controls={`section-${title.replace(/\W+/g, "-").toLowerCase()}`}
-          className={`flex w-full items-center gap-3 px-7 pt-6 pr-28 text-left ${
-            open ? "pb-0" : "pb-6"
+          className={`flex w-full items-center gap-3 px-7 pt-6 text-left ${
+            open ? "pr-28 pb-0" : "pr-7 pb-6"
           }`}
         >
           <span className="h-6 w-1 shrink-0 rounded-full bg-accent" />
-          <h2 className="flex-1 text-xl font-medium tracking-tight text-white">
+          <h2 className="flex-1 text-2xl font-medium tracking-tight text-ink">
             {title}
           </h2>
           {collapsible && (
             <span
-              className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-white/60 transition-transform duration-300 ${
+              className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border border-ink/10 bg-ink/5 text-ink/60 transition-transform duration-300 ${
                 open ? "rotate-0" : "-rotate-90"
               }`}
             >

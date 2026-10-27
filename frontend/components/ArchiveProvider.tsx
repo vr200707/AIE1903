@@ -4,7 +4,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -47,12 +46,8 @@ const ArchiveContext = createContext<ArchiveContextValue>({
 /** 档案库数据源：localStorage 持久化 + 跨页打开已存档简历。 */
 export function ArchiveProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const [archives, setArchives] = useState<ArchiveEntry[]>([]);
+  const [archives, setArchives] = useState<ArchiveEntry[]>(() => listArchives());
   const [pendingId, setPendingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setArchives(listArchives());
-  }, []);
 
   const saveArchive = useCallback(
     (

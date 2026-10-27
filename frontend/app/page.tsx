@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { mockProfile } from "@/lib/mock";
 import {
@@ -10,8 +10,8 @@ import {
   fetchScore,
   askQuestion,
 } from "@/lib/api";
-import { Section, sectionArt } from "@/components/Section";
-import Starfield from "@/components/Starfield";
+import { Section } from "@/components/Section";
+import Starfield, { HERO_IMAGE } from "@/components/Starfield";
 import AnalyzingStage from "@/components/AnalyzingStage";
 import CountUp from "@/components/CountUp";
 import { PlanetOverview } from "@/components/PlanetOverview";
@@ -21,6 +21,7 @@ import { EvidenceBadge } from "@/components/EvidenceBadge";
 import { EvidenceModal } from "@/components/EvidenceModal";
 import { TagFilter, type FilterState } from "@/components/TagFilter";
 import { useArchive } from "@/components/ArchiveProvider";
+import { useQaHistory } from "@/components/QaHistoryProvider";
 import { getArchive } from "@/lib/archive";
 import { computeAssessment } from "@/lib/scoring";
 import {
@@ -57,17 +58,31 @@ function nonEmpty(xs: (string | null | undefined)[]): string[] {
   return xs.filter((x): x is string => Boolean(x));
 }
 
+// 搜索/标签过滤：把多个字段拼成一段可检索文本，命中搜索词与任一标签才算匹配
+function matchesFilter(
+  q: string,
+  tags: string[],
+  ...fields: (string | null | undefined)[]
+): boolean {
+  const query = q.trim().toLowerCase();
+  const lowerTags = tags.map((t) => t.toLowerCase());
+  const hay = fields.filter((f): f is string => Boolean(f)).join(" ").toLowerCase();
+  const bySearch = !query || hay.includes(query);
+  const byTag = lowerTags.length === 0 || lowerTags.some((t) => hay.includes(t));
+  return bySearch && byTag;
+}
+
 // 标签行（研究方向 / 技能 / 优势等）
 function TagRow({ label, items }: { label: string; items: string[] }) {
   if (items.length === 0) return null;
   return (
     <div className="mt-4">
-      <p className="text-xs font-medium text-white/40">{label}</p>
+      <p className="text-xs font-medium text-ink/70">{label}</p>
       <div className="mt-1.5 flex flex-wrap gap-2">
         {items.map((x) => (
           <span
             key={x}
-            className="rounded-full bg-white/10 px-3 py-1 text-sm text-white/70"
+            className="rounded-full bg-ink/10 px-3 py-1 text-sm text-ink/70"
           >
             {x}
           </span>
@@ -91,14 +106,14 @@ function BulletList({
   const dot = tone === "warn" ? "bg-amber-400/70" : "bg-accent/70";
   return (
     <div className="mt-5">
-      <p className="text-xs font-medium uppercase tracking-[0.18em] text-white/35">
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink/65">
         {label}
       </p>
       <ul className="mt-2.5 space-y-0">
         {items.map((x, i) => (
           <li
             key={i}
-            className="flex items-baseline gap-3 border-t border-white/[0.07] py-2.5 text-base leading-relaxed text-white/80 first:border-t-0 first:pt-0"
+            className="flex items-baseline gap-3 border-t border-ink/[0.07] py-2.5 text-base leading-relaxed text-ink/80 first:border-t-0 first:pt-0"
           >
             <span className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
             <span>{x}</span>
@@ -113,7 +128,7 @@ function BackButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="group inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-4 py-2 text-sm text-white/65 backdrop-blur-xl transition hover:border-accent/30 hover:text-white"
+      className="group inline-flex items-center gap-2 rounded-full border border-ink/12 bg-ink/[0.04] px-4 py-2 text-sm text-ink/65 backdrop-blur-xl transition hover:border-accent/30 hover:text-ink"
     >
       <span className="transition-transform group-hover:-translate-x-0.5">←</span>
       Back to home
@@ -146,7 +161,7 @@ function OverviewButton({
         <span
           key={i}
           aria-hidden="true"
-          className="sf-star pointer-events-none absolute rounded-full bg-white"
+          className="sf-star pointer-events-none absolute rounded-full bg-ink"
           style={{
             left: s.left,
             top: s.top,
@@ -159,10 +174,10 @@ function OverviewButton({
       ))}
       <span
         aria-hidden="true"
-        className="sf-shoot pointer-events-none absolute inset-y-0 left-0 w-14 bg-gradient-to-r from-transparent via-white/50 to-transparent"
+        className="sf-shoot pointer-events-none absolute inset-y-0 left-0 w-14 bg-gradient-to-r from-transparent via-accent/45 to-transparent"
       />
       <span className="relative z-10" aria-hidden="true">✦</span>
-      <span className="relative z-10">评分总览</span>
+      <span className="relative z-10">Overview</span>
       <span className="relative z-10 inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold tabular-nums text-accent-soft">
         {score != null ? score.toFixed(1) : "—"}
         <span className="text-[10px] font-normal text-accent-soft/70">/10</span>
@@ -176,7 +191,7 @@ function InterviewButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="group inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-4 py-2 text-sm text-white/65 transition hover:border-accent/35 hover:bg-accent/[0.06] hover:text-accent-soft"
+      className="group inline-flex items-center gap-2 rounded-full border border-ink/12 bg-ink/[0.04] px-4 py-2 text-sm text-ink/65 transition hover:border-accent/35 hover:bg-accent/[0.06] hover:text-accent-soft"
     >
       <svg
         viewBox="0 0 16 16"
@@ -196,6 +211,123 @@ function InterviewButton({ onClick }: { onClick: () => void }) {
     </button>
   );
 }
+
+function HeroIntro() {
+  return (
+    <div className="hero-intro-overlay" aria-hidden="true">
+      <img src={HERO_IMAGE} alt="" className="hero-intro-glacier" />
+      <span className="hero-intro-sweep" />
+    </div>
+  );
+}
+
+function ScrollHint() {
+  return (
+    <div className="animate-scroll-hint mt-14 flex flex-col items-center gap-2 text-ink/50">
+      <span className="text-[11px] uppercase tracking-[0.35em]">Scroll</span>
+      <svg
+        viewBox="0 0 16 16"
+        className="h-4 w-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        aria-hidden="true"
+      >
+        <path d="M3 6l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
+}
+
+function StepImage({ src, alt }: { src: string; alt: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <div className="step-float relative aspect-[16/10] w-full overflow-hidden rounded-3xl border border-ink/10 bg-ink/[0.05] shadow-[0_30px_60px_-32px_rgba(22,50,74,0.5)]">
+      {!loaded && (
+        <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-accent/15 via-accent/5 to-background" />
+      )}
+      <img
+        src={src}
+        alt={alt}
+        onLoad={() => setLoaded(true)}
+        className={`h-full w-full object-cover transition-opacity duration-700 ${
+          loaded ? "opacity-100" : "opacity-0"
+        }`}
+      />
+    </div>
+  );
+}
+
+const STEPS = [
+  {
+    num: "01",
+    title: "Upload",
+    text: "Drop in a CV, cover letter, research statement and teaching statement. We parse the documents and prepare them for analysis.",
+    img: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=1200&q=80&auto=format&fit=crop",
+  },
+  {
+    num: "02",
+    title: "Analyze",
+    text: "AI extracts a structured profile and verifies every claim against public sources, linking each field back to its evidence.",
+    img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&q=80&auto=format&fit=crop",
+  },
+  {
+    num: "03",
+    title: "Review",
+    text: "Review a six-dimension evaluation with evidence-grounded scoring, credibility, and an AI assistant for Q&A and interview prep.",
+    img: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&q=80&auto=format&fit=crop",
+  },
+];
+
+function StepSection({ step }: { step: (typeof STEPS)[number] }) {
+  const ref = useRef<HTMLElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisible(true);
+          io.disconnect();
+        }
+      },
+      { threshold: 0.3 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  return (
+    <section
+      ref={ref}
+      className="snap-align flex min-h-screen items-center px-8 py-16"
+    >
+      <div className="mx-auto grid w-full max-w-6xl items-center gap-10 lg:grid-cols-2">
+        <div className={visible ? "animate-reveal" : "opacity-0"}>
+          <p className="font-display text-7xl font-light leading-none text-accent/30">
+            {step.num}
+          </p>
+          <h2 className="mt-4 font-display text-5xl font-light tracking-tight sm:text-6xl">
+            {step.title}
+          </h2>
+          <p className="mt-5 max-w-xl text-3xl leading-relaxed text-ink/80">
+            {step.text}
+          </p>
+        </div>
+        <div
+          className={`${visible ? "animate-reveal" : "opacity-0"} relative`}
+          style={{ animationDelay: "0.15s" }}
+        >
+          <StepImage src={step.img} alt={step.title} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+let introPlayed = false;
 
 export default function Home() {
   const router = useRouter();
@@ -221,6 +353,18 @@ export default function Home() {
   const [llmAssessment, setLlmAssessment] = useState<LlmAssessment | null>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
   const { saveArchive, pendingId, clearPending } = useArchive();
+  const { addAnswer, history: qaHistory } = useQaHistory();
+  const [loadedArchiveId, setLoadedArchiveId] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<string>("basic");
+
+  // 开场动画只在整页首次加载时播放一次，之后「返回首页」直接显示内容
+  const [introDone] = useState(() => {
+    const done = introPlayed;
+    introPlayed = true;
+    return done;
+  });
+  const playIntro = !introDone;
+  const delay = (base: string) => (playIntro ? base : "0s");
 
   const getStatus = (e: Evidence): EvidenceStatus =>
     corrections.get(e) ?? e.evidence_status;
@@ -291,7 +435,6 @@ export default function Home() {
           }
         }
         setAnalysisWarnings(first.warnings ?? []);
-        setOverviewOpen(true);
       } else {
         await pollAnalyze(upload_id);
       }
@@ -323,7 +466,6 @@ export default function Home() {
           }
         }
         setAnalysisWarnings(res.warnings ?? []);
-        setOverviewOpen(true);
         return;
       }
       if (res.status === "failed") {
@@ -342,7 +484,9 @@ export default function Home() {
     setQaResult(null);
     setQaError(null);
     try {
-      setQaResult(await askQuestion(profileId, question.trim()));
+      const res = await askQuestion(profileId, question.trim());
+      setQaResult(res);
+      addAnswer(question.trim(), res);
     } catch (e) {
       setQaError(e instanceof Error ? e.message : "Q&A failed. Please try again.");
     } finally {
@@ -365,20 +509,32 @@ export default function Home() {
   };
 
   // 从侧栏档案库点击文件夹后，加载对应的已存档简历。
-  useEffect(() => {
-    if (!pendingId) return;
+  // render 期间只更新本组件 state；clearPending 更新的是 ArchiveProvider 的 state，只能在 effect 里做。
+  if (pendingId && pendingId !== loadedArchiveId) {
     const entry = getArchive(pendingId);
+    setLoadedArchiveId(pendingId);
     if (entry) {
-      resetToHome();
       setCandidate(entry.candidate);
       setProfileId(entry.profileId);
       setLlmAssessment(entry.llm ?? null);
+      setFilter({ tags: [], search: "" });
+      setSelectedEvidence(null);
+      setCorrections(new Map());
+      setAnalysisWarnings([]);
+      setQaResult(null);
+      setQaError(null);
+      setQuestion("");
+      setOverviewOpen(false);
       if (!entry.llm) {
         void refreshLlmScore(entry.profileId, entry.candidate);
       }
     }
-    clearPending();
-  }, [pendingId, clearPending, refreshLlmScore]);
+  }
+
+  // 消费完 pendingId 信号后清空它
+  useEffect(() => {
+    if (pendingId) clearPending();
+  }, [pendingId, clearPending]);
 
   const c = candidate;
 
@@ -395,35 +551,13 @@ export default function Home() {
     [c, corrections, llmAssessment],
   );
 
-  // 每个模块的装饰图提示词（暗色线稿，融入星空玻璃）
-  const ART = {
-    basic: sectionArt(
-      "minimal luminous line-art portrait silhouette of an academic in profile, blueprint contour style, deep navy blue background, thin cyan and amber glowing outlines, no text, elegant, high contrast",
-    ),
-    edu: sectionArt(
-      "minimal luminous line-art of a graduation cap floating above an open book and a winding timeline path, blueprint contour style, deep navy blue background, thin cyan and amber glowing outlines, no text, elegant",
-    ),
-    awards: sectionArt(
-      "minimal luminous line-art of a trophy beside a rising bar chart with an arrow, blueprint contour style, deep navy blue background, thin cyan and amber glowing outlines, no text, elegant",
-    ),
-    pubs: sectionArt(
-      "minimal luminous line-art of a stack of academic papers with a citation network graph of connected nodes above it, blueprint contour style, deep navy blue background, thin cyan and amber glowing outlines, no text, elegant",
-    ),
-    service: sectionArt(
-      "minimal luminous line-art of a conference review panel table with name badges and a row of chairs, blueprint contour style, deep navy blue background, thin cyan and amber glowing outlines, no text, elegant",
-    ),
-    eval: sectionArt(
-      "minimal luminous line-art of a radar gauge with concentric rings, polygon web and a needle, blueprint contour style, deep navy blue background, thin cyan and amber glowing outlines, no text, elegant",
-    ),
-  };
-
   if (!c) {
     return (
-      <div className="relative flex min-h-screen flex-col overflow-hidden text-white">
-        <Starfield />
+      <div className="relative h-screen snap-scroll overflow-y-auto text-ink">
+        <Starfield image={HERO_IMAGE} />
 
         {loading ? (
-          <main className="relative flex flex-1 flex-col justify-center px-6 py-14">
+          <main className="relative flex min-h-screen flex-col justify-center px-6 py-14">
             <div
               className="animate-reveal mx-auto mb-9 max-w-3xl text-center"
               style={{ animationDelay: "0.08s" }}
@@ -431,20 +565,23 @@ export default function Home() {
               <p className="text-xs font-medium uppercase tracking-[0.45em] text-accent/70">
                 Analyzing
               </p>
-              <h2 className="mt-5 font-display text-4xl italic leading-tight sm:text-5xl">
+              <h2 className="mt-5 font-display text-4xl font-light leading-tight sm:text-5xl">
                 Building the profile
               </h2>
-              <p className="mt-3 text-sm text-white/45">{loadingMessage}</p>
+              <p className="mt-3 text-sm text-ink/75">{loadingMessage}</p>
             </div>
             <AnalyzingStage phase={loadingMessage} progress={analysisProgress} />
           </main>
         ) : (
-        <main className="relative flex flex-1 items-center justify-center px-6 py-16">
-          <div className="w-full max-w-3xl text-center">
+          <>
+            {playIntro && <HeroIntro />}
+
+            <section className="snap-align relative flex min-h-screen flex-col items-center justify-center px-6 py-16">
+              <div className="w-full max-w-3xl text-center">
             {/* 小标：宽字距 + 星芒 */}
             <p
-              className="animate-reveal flex items-center justify-center gap-3 text-xs font-medium uppercase tracking-[0.45em] text-white/45"
-              style={{ animationDelay: "0.1s" }}
+              className="animate-reveal flex items-center justify-center gap-3 text-xs font-medium uppercase tracking-[0.45em] text-ink/75"
+              style={{ animationDelay: delay("2.1s") }}
             >
               <span className="animate-sparkle inline-block text-accent">✦</span>
               AIE1903 · AI-assisted faculty hiring
@@ -453,10 +590,10 @@ export default function Home() {
               </span>
             </p>
 
-            {/* 主标题：衬线斜体 */}
+            {/* 主标题：几何轻体 */}
             <h2
-              className="animate-reveal mt-9 font-display text-5xl leading-[1.06] tracking-tight sm:text-6xl lg:text-[5.2rem]"
-              style={{ animationDelay: "0.24s" }}
+              className="animate-reveal mt-9 font-display text-5xl font-light leading-[1.06] tracking-tight sm:text-6xl lg:text-[5.2rem]"
+              style={{ animationDelay: delay("2.35s") }}
             >
               Every claim,
               <br />
@@ -464,8 +601,8 @@ export default function Home() {
             </h2>
 
             <p
-              className="animate-reveal mx-auto mt-8 max-w-xl text-base leading-relaxed text-white/45"
-              style={{ animationDelay: "0.4s" }}
+              className="animate-reveal mx-auto mt-8 max-w-xl text-base leading-relaxed text-ink/75"
+              style={{ animationDelay: delay("2.55s") }}
             >
               Upload a CV, cover letter, research statement and teaching statement.
               Get a structured candidate profile where every field links back to its source.
@@ -473,9 +610,9 @@ export default function Home() {
 
             <div
               className="animate-reveal mt-11 flex flex-wrap items-center justify-center gap-4"
-              style={{ animationDelay: "0.56s" }}
+              style={{ animationDelay: delay("2.7s") }}
             >
-              <label className="animate-halo group relative cursor-pointer overflow-hidden rounded-full bg-white px-9 py-3.5 text-sm font-medium text-black transition hover:bg-white/90">
+              <label className="animate-halo group relative cursor-pointer overflow-hidden rounded-full bg-ink px-9 py-3.5 text-sm font-medium text-white transition hover:bg-ink/90">
                 <span className="relative z-10">Choose files</span>
                 <input
                   aria-label="Choose files"
@@ -494,31 +631,30 @@ export default function Home() {
                 onClick={() => {
                   setAnalysisWarnings([]);
                   setCandidate(mockProfile.candidate);
+                  setProfileId("demo");
                   setLlmAssessment(null);
                   saveArchive("demo", mockProfile.candidate, null);
                   void refreshLlmScore("demo", mockProfile.candidate);
-                  setOverviewOpen(true);
                 }}
                 disabled={loading}
-                className="animate-sweep relative overflow-hidden rounded-full border border-white/20 px-9 py-3.5 text-sm text-white/70 transition hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="animate-sweep relative overflow-hidden rounded-full border border-ink/20 px-9 py-3.5 text-sm text-ink/70 transition hover:border-ink/40 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span className="relative z-10">Load example data</span>
               </button>
             </div>
 
-            {/* 数字步骤：宽字距 */}
-            <p
-              className="animate-reveal mt-16 text-xs uppercase tracking-[0.5em] text-white/30"
-              style={{ animationDelay: "0.72s" }}
-            >
-              01 Upload&ensp;·&ensp;02 Analyze&ensp;·&ensp;03 Review
-            </p>
+            <ScrollHint />
 
             {error && (
               <p className="animate-reveal mt-6 text-sm text-rose-400">{error}</p>
             )}
-          </div>
-        </main>
+              </div>
+            </section>
+
+            {STEPS.map((step) => (
+              <StepSection key={step.num} step={step} />
+            ))}
+          </>
         )}
       </div>
     );
@@ -536,59 +672,6 @@ export default function Home() {
     ),
   );
 
-  const basicKw = nonEmpty([
-    c.basic_info.name,
-    c.basic_info.institution,
-    c.basic_info.position,
-    c.basic_info.highest_degree,
-    ...c.basic_info.research_interests,
-    ...c.basic_info.skills,
-    ...c.basic_info.strengths,
-  ]);
-  const eduKw = nonEmpty([
-    ...c.education_employment.education.flatMap((e) => [
-      e.degree,
-      e.field,
-      e.institution,
-      e.advisor,
-    ]),
-    ...c.education_employment.employment.flatMap((e) => [e.position, e.institution]),
-  ]);
-  const awardsKw = nonEmpty([
-    ...c.awards_funding.awards.flatMap((a) => [a.name, a.awarding_body]),
-    ...c.awards_funding.funding.flatMap((f) => [f.project_name, f.funder, f.role]),
-  ]);
-  const pubKw = nonEmpty(
-    c.publications_impact.publications.flatMap((p) => [
-      p.title,
-      p.venue,
-      p.venue_type,
-      p.ranking,
-      p.author_role,
-    ]),
-  );
-  const svcKw = nonEmpty(
-    c.academic_service.services.flatMap((s) => [
-      s.organization_or_venue,
-      s.role,
-      s.service_type,
-      ...s.research_areas,
-    ]),
-  );
-  const evalKw = nonEmpty([
-    c.overall_evaluation.summary,
-    ...c.overall_evaluation.strengths,
-    ...c.overall_evaluation.risks,
-    ...c.overall_evaluation.dimensions.flatMap((d) => [d.dimension, d.assessment]),
-  ]);
-
-  const terms = [...filter.tags, filter.search]
-    .filter(Boolean)
-    .map((t) => t.toLowerCase());
-  const matches = (kw: string[]) =>
-    terms.length === 0 ||
-    kw.some((k) => terms.some((t) => k.toLowerCase().includes(t)));
-
   const evidenceCount =
     c.basic_info.evidence.length +
     c.education_employment.education.reduce((s, e) => s + e.evidence.length, 0) +
@@ -605,9 +688,66 @@ export default function Home() {
     { label: "Evaluation dimensions", value: c.overall_evaluation.dimensions.length },
   ];
 
+  // 搜索 + 标签过滤：对每个列表条目按可检索字段过滤，让搜索真正有用途
+  const q = filter.search;
+  const activeTags = filter.tags;
+  const hasFilter = q.trim() !== "" || activeTags.length > 0;
+  const match = (...fields: (string | null | undefined)[]) =>
+    matchesFilter(q, activeTags, ...fields);
+
+  const interests = c.basic_info.research_interests.filter((x) => match(x));
+  const skills = c.basic_info.skills.filter((x) => match(x));
+  const strengths = c.basic_info.strengths.filter((x) => match(x));
+  const toVerify = c.basic_info.to_verify.filter((v) => match(v.claim, v.reason));
+  const education = c.education_employment.education.filter((e) =>
+    match(e.degree, e.field, e.institution, e.advisor, ...e.projects, ...e.outcomes),
+  );
+  const employment = c.education_employment.employment.filter((e) =>
+    match(e.position, e.institution, ...e.responsibilities, ...e.projects, ...e.outcomes),
+  );
+  const awards = c.awards_funding.awards.filter((a) =>
+    match(a.name, a.awarding_body, a.year != null ? String(a.year) : null),
+  );
+  const funding = c.awards_funding.funding.filter((f) =>
+    match(f.project_name, f.funder, f.role),
+  );
+  const publications = c.publications_impact.publications.filter((p) =>
+    match(
+      p.title,
+      p.venue,
+      p.ranking,
+      p.year != null ? String(p.year) : null,
+      venueTypeLabel[p.venue_type],
+    ),
+  );
+  const services = c.academic_service.services.filter((s) =>
+    match(s.organization_or_venue, s.role, ...s.research_areas),
+  );
+  const evalStrengths = c.overall_evaluation.strengths.filter((x) => match(x));
+  const evalRisks = c.overall_evaluation.risks.filter((x) => match(x));
+  const dimensions = c.overall_evaluation.dimensions.filter((d) =>
+    match(d.dimension, d.assessment),
+  );
+
+  const resultCount =
+    interests.length +
+    skills.length +
+    strengths.length +
+    toVerify.length +
+    education.length +
+    employment.length +
+    awards.length +
+    funding.length +
+    publications.length +
+    services.length +
+    evalStrengths.length +
+    evalRisks.length +
+    dimensions.length;
+  const emptyText = hasFilter ? "No matching items" : "None";
+
   return (
-    <div className="relative min-h-screen text-white/90">
-      <Starfield />
+    <div className="relative min-h-screen text-ink/90">
+      <Starfield image={HERO_IMAGE} />
       <main className="mx-auto max-w-6xl space-y-5 px-8 py-10">
         <div
           className="animate-pop flex items-center justify-between gap-4"
@@ -648,7 +788,12 @@ export default function Home() {
           </div>
         )}
         <div className="animate-pop" style={{ animationDelay: "0.05s" }}>
-          <TagFilter tags={tags} filter={filter} onChange={setFilter} />
+          <TagFilter
+            tags={tags}
+            filter={filter}
+            onChange={setFilter}
+            resultCount={resultCount}
+          />
         </div>
 
         {/* KPI 概览条 */}
@@ -656,51 +801,89 @@ export default function Home() {
           {kpis.map((k) => (
             <div
               key={k.label}
-              className="glass rounded-2xl transition-colors duration-300 hover:bg-white/[0.09]"
+              className="glass rounded-2xl transition-all duration-300 hover:bg-ink/[0.08] hover:shadow-[0_22px_44px_-26px_rgba(22, 50, 74,0.42)]"
             >
               <div className="animate-pop px-5 py-4">
-                <p className="text-3xl font-semibold tracking-tight text-white">
+                <p className="font-display text-3xl font-light tabular-nums tracking-tight text-ink">
                   <CountUp value={k.value} />
                 </p>
-                <p className="mt-1 text-sm text-white/45">{k.label}</p>
+                <p className="mt-1 text-sm text-ink/75">{k.label}</p>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Bento 网格 */}
-        <div className="grid items-start gap-4 lg:grid-cols-12">
+        {/* 模块导航 */}
+        <div className="flex flex-wrap gap-2">
+          {[
+            { key: "basic", label: "Basic Info", icon: "01" },
+            { key: "edu", label: "Education", icon: "02" },
+            { key: "awards", label: "Awards", icon: "03" },
+            { key: "pubs", label: "Publications", icon: "04" },
+            { key: "service", label: "Service", icon: "05" },
+            { key: "eval", label: "Evaluation", icon: "06" },
+          ].map((t) => {
+            const active = activeSection === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setActiveSection(t.key)}
+                className={`group relative flex items-center gap-2 overflow-hidden rounded-full px-4 py-2.5 text-base transition-all duration-300 ${
+                  active
+                    ? "bg-accent text-white shadow-[0_12px_28px_-12px_rgba(63,127,158,0.85)]"
+                    : "bg-ink/[0.06] text-ink/75 hover:bg-ink/[0.12] hover:text-ink"
+                }`}
+              >
+                <span
+                  className={`font-mono text-xs tabular-nums transition-colors ${
+                    active ? "text-white/70" : "text-ink/40 group-hover:text-ink/60"
+                  }`}
+                >
+                  {t.icon}
+                </span>
+                {t.label}
+                {active && (
+                  <span className="absolute inset-x-3 bottom-1 h-0.5 rounded-full bg-white/60" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 模块内容（按 tab 切换显示） */}
+        <div>
         {/* 1. 基本信息 */}
-        <Section title="Basic Information" art={ART.basic} hidden={!matches(basicKw)} delay={0.1} className="lg:col-span-5">
+        <Section title="Basic Information" hidden={activeSection !== "basic"} delay={0.1} className="lg:col-span-5">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h3 className="text-2xl font-semibold tracking-tight">{n(c.basic_info.name)}</h3>
-            <span className="text-white/50">{n(c.basic_info.position)}</span>
+            <span className="text-ink/50">{n(c.basic_info.position)}</span>
           </div>
-          <p className="mt-1 text-sm text-white/50">
+          <p className="mt-1 text-sm text-ink/50">
             {n(c.basic_info.institution)}
             {c.basic_info.highest_degree ? ` · ${c.basic_info.highest_degree}` : ""}
           </p>
 
-          <TagRow label="Research interests" items={c.basic_info.research_interests} />
-          <TagRow label="Skills" items={c.basic_info.skills} />
-          <BulletList label="Strengths" items={c.basic_info.strengths} />
+          <TagRow label="Research interests" items={interests} />
+          <TagRow label="Skills" items={skills} />
+          <BulletList label="Strengths" items={strengths} />
 
-          {c.basic_info.to_verify.length > 0 && (
+          {toVerify.length > 0 && (
             <div className="mt-4">
-              <p className="text-xs font-medium text-white/40">Items to verify</p>
+              <p className="text-xs font-medium text-ink/70">Items to verify</p>
               <ul className="mt-2 space-y-4">
-                {c.basic_info.to_verify.map((v, i) => (
+                {toVerify.map((v, i) => (
                   <li
                     key={i}
-                    className="border-t border-white/[0.09] pt-4 first:border-t-0 first:pt-0"
+                    className="border-t border-ink/[0.09] pt-4 first:border-t-0 first:pt-0"
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-white/85">{v.claim}</span>
+                      <span className="font-medium text-ink/85">{v.claim}</span>
                       {v.evidence.map((e, j) => (
                         <EvidenceBadge key={j} status={e.evidence_status} />
                       ))}
                     </div>
-                    <p className="mt-1 text-white/50">{v.reason}</p>
+                    <p className="mt-1 text-ink/50">{v.reason}</p>
                     <EvidenceList
                       items={v.evidence}
                       onEvidenceClick={setSelectedEvidence}
@@ -713,7 +896,7 @@ export default function Home() {
           )}
 
           <div className="mt-4">
-            <p className="text-xs font-medium text-white/40">Evidence sources</p>
+            <p className="text-xs font-medium text-ink/70">Evidence sources</p>
             <EvidenceList
               items={c.basic_info.evidence}
               onEvidenceClick={setSelectedEvidence}
@@ -723,31 +906,31 @@ export default function Home() {
         </Section>
 
         {/* 2. 教育与工作 */}
-        <Section title="Education & Work" art={ART.edu} hidden={!matches(eduKw)} delay={0.15} className="lg:col-span-7">
-          <h4 className="text-sm font-semibold text-white/70">Education</h4>
-          {c.education_employment.education.length === 0 ? (
-            <p className="mt-2 text-sm text-white/40">None</p>
+        <Section title="Education & Work" hidden={activeSection !== "edu"} delay={0.15} className="lg:col-span-7">
+          <h4 className="text-lg font-semibold text-ink/80">Education</h4>
+          {education.length === 0 ? (
+            <p className="mt-2 text-sm text-ink/70">{emptyText}</p>
           ) : (
             <div className="mt-2">
-              {c.education_employment.education.map((ed, i) => (
-                <div key={i} className="mt-4 border-t border-white/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
+              {education.map((ed, i) => (
+                <div key={i} className="mt-4 border-t border-ink/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     <span className="font-semibold">{n(ed.degree)}</span>
-                    <span className="text-white/70">{n(ed.field)}</span>
+                    <span className="text-ink/70">{n(ed.field)}</span>
                   </div>
-                  <p className="mt-1 text-sm text-white/50">
+                  <p className="mt-1 text-sm text-ink/50">
                     {n(ed.institution)} · Advisor: {n(ed.advisor)}
                   </p>
-                  <p className="text-sm text-white/50">
+                  <p className="text-sm text-ink/50">
                     {dateRange(ed.start_date, ed.end_date)}
                   </p>
                   {ed.projects.length > 0 && (
-                    <p className="mt-1 text-sm text-white/70">
+                    <p className="mt-1 text-sm text-ink/70">
                       Projects: {ed.projects.join(", ")}
                     </p>
                   )}
                   {ed.outcomes.length > 0 && (
-                    <p className="mt-1 text-sm text-white/70">
+                    <p className="mt-1 text-sm text-ink/70">
                       Outcomes: {ed.outcomes.join(", ")}
                     </p>
                   )}
@@ -757,32 +940,32 @@ export default function Home() {
             </div>
           )}
 
-          <h4 className="mt-6 text-sm font-semibold text-white/70">Work experience</h4>
-          {c.education_employment.employment.length === 0 ? (
-            <p className="mt-2 text-sm text-white/40">None</p>
+          <h4 className="mt-6 text-lg font-semibold text-ink/80">Work experience</h4>
+          {employment.length === 0 ? (
+            <p className="mt-2 text-sm text-ink/70">{emptyText}</p>
           ) : (
             <div className="mt-2">
-              {c.education_employment.employment.map((em, i) => (
-                <div key={i} className="mt-4 border-t border-white/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
+              {employment.map((em, i) => (
+                <div key={i} className="mt-4 border-t border-ink/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     <span className="font-semibold">{n(em.position)}</span>
-                    <span className="text-white/70">{n(em.institution)}</span>
+                    <span className="text-ink/70">{n(em.institution)}</span>
                   </div>
-                  <p className="mt-1 text-sm text-white/50">
+                  <p className="mt-1 text-sm text-ink/50">
                     {dateRange(em.start_date, em.end_date)}
                   </p>
                   {em.responsibilities.length > 0 && (
-                    <p className="mt-1 text-sm text-white/70">
+                    <p className="mt-1 text-sm text-ink/70">
                       Responsibilities: {em.responsibilities.join(", ")}
                     </p>
                   )}
                   {em.projects.length > 0 && (
-                    <p className="mt-1 text-sm text-white/70">
+                    <p className="mt-1 text-sm text-ink/70">
                       Projects: {em.projects.join(", ")}
                     </p>
                   )}
                   {em.outcomes.length > 0 && (
-                    <p className="mt-1 text-sm text-white/70">
+                    <p className="mt-1 text-sm text-ink/70">
                       Outcomes: {em.outcomes.join(", ")}
                     </p>
                   )}
@@ -794,21 +977,21 @@ export default function Home() {
         </Section>
 
         {/* 3. 奖项与经费 */}
-        <Section title="Awards & Funding" art={ART.awards} hidden={!matches(awardsKw)} delay={0.2} className="lg:col-span-5">
-          <h4 className="text-sm font-semibold text-white/70">Awards</h4>
-          {c.awards_funding.awards.length === 0 ? (
-            <p className="mt-2 text-sm text-white/40">None</p>
+        <Section title="Awards & Funding" hidden={activeSection !== "awards"} delay={0.2} className="lg:col-span-5">
+          <h4 className="text-lg font-semibold text-ink/80">Awards</h4>
+          {awards.length === 0 ? (
+            <p className="mt-2 text-sm text-ink/70">{emptyText}</p>
           ) : (
             <div className="mt-2">
-              {c.awards_funding.awards.map((a, i) => (
-                <div key={i} className="mt-4 border-t border-white/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
+              {awards.map((a, i) => (
+                <div key={i} className="mt-4 border-t border-ink/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">{a.name}</span>
                     {a.year != null && (
-                      <span className="text-sm text-white/50">{a.year}</span>
+                      <span className="text-sm text-ink/50">{a.year}</span>
                     )}
                   </div>
-                  <p className="mt-1 text-sm text-white/50">
+                  <p className="mt-1 text-sm text-ink/50">
                     Awarding body: {n(a.awarding_body)}
                   </p>
                   <EvidenceList items={a.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
@@ -817,24 +1000,24 @@ export default function Home() {
             </div>
           )}
 
-          <h4 className="mt-6 text-sm font-semibold text-white/70">Funding</h4>
-          {c.awards_funding.funding.length === 0 ? (
-            <p className="mt-2 text-sm text-white/40">None</p>
+          <h4 className="mt-6 text-lg font-semibold text-ink/80">Funding</h4>
+          {funding.length === 0 ? (
+            <p className="mt-2 text-sm text-ink/70">{emptyText}</p>
           ) : (
             <div className="mt-2">
-              {c.awards_funding.funding.map((f, i) => (
-                <div key={i} className="mt-4 border-t border-white/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
+              {funding.map((f, i) => (
+                <div key={i} className="mt-4 border-t border-ink/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">{f.project_name}</span>
-                    <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/70">
+                    <span className="rounded bg-ink/10 px-1.5 py-0.5 text-xs text-ink/70">
                       {fundingRoleLabel[f.role]}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm text-white/50">
+                  <p className="mt-1 text-sm text-ink/50">
                     Funder: {n(f.funder)} · {dateRange(f.start_date, f.end_date)}
                   </p>
                   {f.amount != null && (
-                    <p className="text-sm text-white/50">
+                    <p className="text-sm text-ink/50">
                       Amount: {f.amount.toLocaleString()} {f.currency ?? ""}
                     </p>
                   )}
@@ -846,47 +1029,47 @@ export default function Home() {
         </Section>
 
         {/* 4. 论文与影响 */}
-        <Section title="Publications & Impact" art={ART.pubs} hidden={!matches(pubKw)} delay={0.25} className="lg:col-span-7">
-          <p className="text-sm text-white/70">
+        <Section title="Publications & Impact" hidden={activeSection !== "pubs"} delay={0.25} className="lg:col-span-7">
+          <p className="text-sm text-ink/70">
             Total citations: {c.publications_impact.total_citations ?? "—"}
             {c.publications_impact.citation_query_date
               ? ` (queried: ${c.publications_impact.citation_query_date})`
               : ""}
           </p>
 
-          {c.publications_impact.publications.length === 0 ? (
-            <p className="mt-2 text-sm text-white/40">None</p>
+          {publications.length === 0 ? (
+            <p className="mt-2 text-sm text-ink/70">{emptyText}</p>
           ) : (
             <div className="mt-3">
-              {c.publications_impact.publications.map((p, i) => (
-                <div key={i} className="mt-4 border-t border-white/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
+              {publications.map((p, i) => (
+                <div key={i} className="mt-4 border-t border-ink/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                   <p className="font-semibold">{p.title}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-white/50">
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink/50">
                     {p.year != null && <span>{p.year}</span>}
                     <span>{authorRoleLabel[p.author_role]}</span>
                     <span>{n(p.venue)}</span>
-                    <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/70">
+                    <span className="rounded bg-ink/10 px-1.5 py-0.5 text-xs text-ink/70">
                       {venueTypeLabel[p.venue_type]}
                     </span>
                     {p.ranking && (
-                      <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/70">
+                      <span className="rounded bg-ink/10 px-1.5 py-0.5 text-xs text-ink/70">
                         {p.ranking}
                       </span>
                     )}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-white/50">
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-ink/50">
                     {p.citation_count != null && <span>Citations: {p.citation_count}</span>}
                     {p.code_repository && (
                       <a
                         href={p.code_repository}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-teal-300 hover:underline"
+                        className="text-accent-soft hover:underline"
                       >
                         Code repository ↗
                       </a>
                     )}
-                    {p.repository_stars != null && <span>Stars：{p.repository_stars}</span>}
+                    {p.repository_stars != null && <span>Stars: {p.repository_stars}</span>}
                   </div>
                   <EvidenceList items={p.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
                 </div>
@@ -896,25 +1079,25 @@ export default function Home() {
         </Section>
 
         {/* 5. 学术服务 */}
-        <Section title="Academic Service" art={ART.service} hidden={!matches(svcKw)} delay={0.3} className="lg:col-span-5">
-          {c.academic_service.services.length === 0 ? (
-            <p className="text-sm text-white/40">None</p>
+        <Section title="Academic Service" hidden={activeSection !== "service"} delay={0.3} className="lg:col-span-5">
+          {services.length === 0 ? (
+            <p className="text-sm text-ink/70">{emptyText}</p>
           ) : (
             <div>
-              {c.academic_service.services.map((s, i) => (
-                <div key={i} className="mt-4 border-t border-white/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
+              {services.map((s, i) => (
+                <div key={i} className="mt-4 border-t border-ink/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">{s.organization_or_venue}</span>
-                    <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/70">
+                    <span className="rounded bg-ink/10 px-1.5 py-0.5 text-xs text-ink/70">
                       {serviceTypeLabel[s.service_type]}
                     </span>
-                    {s.role && <span className="text-sm text-white/50">{s.role}</span>}
+                    {s.role && <span className="text-sm text-ink/50">{s.role}</span>}
                   </div>
-                  <p className="mt-1 text-sm text-white/50">
+                  <p className="mt-1 text-sm text-ink/50">
                     {s.start_year ?? "?"} ~ {s.end_year ?? "Present"}
                   </p>
                   {s.research_areas.length > 0 && (
-                    <p className="mt-1 text-sm text-white/70">
+                    <p className="mt-1 text-sm text-ink/70">
                       Areas: {s.research_areas.join(", ")}
                     </p>
                   )}
@@ -926,19 +1109,19 @@ export default function Home() {
         </Section>
 
         {/* 6. 综合评价 */}
-        <Section title="Overall Evaluation" art={ART.eval} hidden={!matches(evalKw)} delay={0.35} className="lg:col-span-7">
-          <p className="text-sm text-white/70">{n(c.overall_evaluation.summary)}</p>
-          <BulletList label="Strengths" items={c.overall_evaluation.strengths} />
-          <BulletList label="Risks" items={c.overall_evaluation.risks} tone="warn" />
+        <Section title="Overall Evaluation" hidden={activeSection !== "eval"} delay={0.35} className="lg:col-span-7">
+          <p className="text-sm text-ink/70">{n(c.overall_evaluation.summary)}</p>
+          <BulletList label="Strengths" items={evalStrengths} />
+          <BulletList label="Risks" items={evalRisks} tone="warn" />
 
-          {c.overall_evaluation.dimensions.length > 0 && (
+          {dimensions.length > 0 && (
             <div className="mt-4">
-              <p className="text-xs font-medium text-white/40">Dimension evaluations</p>
+              <p className="text-xs font-medium text-ink/70">Dimension evaluations</p>
               <div className="mt-2">
-                {c.overall_evaluation.dimensions.map((d, i) => (
-                  <div key={i} className="mt-4 border-t border-white/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
+                {dimensions.map((d, i) => (
+                  <div key={i} className="mt-4 border-t border-ink/[0.09] pt-4 first:mt-0 first:border-t-0 first:pt-0">
                     <p className="font-semibold">{d.dimension}</p>
-                    <p className="mt-1 text-sm text-white/70">{d.assessment}</p>
+                    <p className="mt-1 text-sm text-ink/70">{d.assessment}</p>
                     <EvidenceList items={d.evidence} onEvidenceClick={setSelectedEvidence} getStatus={getStatus} />
                   </div>
                 ))}
@@ -948,44 +1131,73 @@ export default function Home() {
         </Section>
         </div>
 
-        {/* 7. 基于证据的问答（加分项，需真实后端） */}
-        {profileId && (
-          <Section title="Evidence-based Q&A" delay={0.4} className="lg:col-span-12">
-            <div className="flex gap-2">
-              <input
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                placeholder="Ask a question, such as: What is the candidate's total citation count?"
-                className="flex-1 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-sm text-white/90 outline-none placeholder:text-white/40 focus:border-teal-400/50"
-              />
-              <button
-                onClick={handleAsk}
-                disabled={qaLoading || !question.trim()}
-                className="rounded-lg bg-gradient-to-r from-teal-400 to-cyan-400 px-4 py-1.5 text-sm text-white transition-opacity disabled:opacity-50"
-              >
-                {qaLoading ? "Thinking..." : "Ask"}
-              </button>
-            </div>
-            {qaResult && (
-              <div className="mt-3 border-l-2 border-accent/40 pl-4 text-base leading-relaxed text-white/80">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">Answer</span>
-                  <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/70">
-                    Confidence: {qaResult.confidence}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm text-white/70">{qaResult.answer}</p>
-                <p className="mt-3 text-xs font-medium text-white/40">Supporting evidence</p>
-                <EvidenceList
-                  items={qaResult.evidence}
-                  onEvidenceClick={setSelectedEvidence}
-                  getStatus={getStatus}
-                />
+        {/* AI Q&A（内联显示，随页面滚动） */}
+        <Section title="AI Q&A" id="section-qa" delay={0.4}>
+          <div className="flex gap-2">
+            <input
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handleAsk();
+              }}
+              placeholder="Ask a question about this candidate…"
+              className="flex-1 rounded-lg border border-ink/10 bg-ink/[0.05] px-3 py-2 text-sm text-ink/90 outline-none placeholder:text-ink/70 focus:border-accent/50"
+            />
+            <button
+              onClick={handleAsk}
+              disabled={qaLoading || !question.trim()}
+              className="rounded-lg bg-accent px-4 py-2 text-sm text-white transition-opacity disabled:opacity-50"
+            >
+              {qaLoading ? "Thinking…" : "Ask"}
+            </button>
+          </div>
+
+          {qaError && <p className="mt-3 text-sm text-rose-300">{qaError}</p>}
+
+          {qaResult && (
+            <div className="mt-4 border-l-2 border-accent/40 pl-4">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Answer</span>
+                <span className="rounded bg-ink/10 px-1.5 py-0.5 text-xs text-ink/70">
+                  Confidence: {qaResult.confidence}
+                </span>
               </div>
-            )}
-            {qaError && <p className="mt-2 text-sm text-rose-300">{qaError}</p>}
-          </Section>
-        )}
+              <p className="mt-2 text-sm leading-relaxed text-ink/80">{qaResult.answer}</p>
+              {qaResult.evidence.length > 0 && (
+                <>
+                  <p className="mt-3 text-xs font-medium text-ink/70">Supporting evidence</p>
+                  <EvidenceList
+                    items={qaResult.evidence}
+                    onEvidenceClick={setSelectedEvidence}
+                    getStatus={getStatus}
+                  />
+                </>
+              )}
+            </div>
+          )}
+
+          {qaHistory.length > 0 && (
+            <div className="mt-6">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink/65">
+                History
+              </p>
+              <div className="mt-2">
+                {qaHistory.map((item) => (
+                  <div
+                    key={item.id}
+                    className="mt-3 border-t border-ink/[0.08] pt-3 first:mt-0 first:border-t-0 first:pt-0"
+                  >
+                    <p className="font-medium text-ink/85">Q: {item.question}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-ink/70">
+                      A: {item.answer}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Section>
+
       </main>
 
       {overviewOpen && c && assessment && (
@@ -1005,6 +1217,7 @@ export default function Home() {
         onCorrect={correctEvidence}
         getStatus={getStatus}
       />
+
     </div>
   );
 }
