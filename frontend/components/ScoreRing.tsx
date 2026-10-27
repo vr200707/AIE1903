@@ -85,12 +85,12 @@ export function ScoreRing({
           {typeof score === "number" ? score.toFixed(1) : "—"}
         </span>
         {showMax && (
-          <span className="text-ink/45" style={{ fontSize: Math.max(10, size * 0.11) }}>
+          <span className="text-ink/75" style={{ fontSize: Math.max(10, size * 0.11) }}>
             / 10
           </span>
         )}
         <span
-          className="mt-0.5 uppercase tracking-[0.16em] text-ink/40"
+          className="mt-0.5 uppercase tracking-[0.16em] text-ink/75"
           style={{ fontSize: Math.max(9, size * 0.095) }}
         >
           {label}

@@ -28,20 +28,25 @@ CONFIDENCE_LEVELS = ("high", "medium", "low")
 MAX_EVIDENCE_REFS = 8
 
 SYSTEM_PROMPT = """\
-你是候选人档案问答助手。你只能依据【给定的档案 JSON】与【证据索引】回答问题。
+You are a candidate-profile question-answering assistant. Answer only from the
+provided profile JSON and evidence index.
 
-硬性规则：
-1. 档案里能回答：直接给出结论，并用 evidence_ids 引用支撑该结论的证据编号。
-2. 档案里找不到依据：answer 写「档案中没有相关信息」，confidence 填 "low"，
-   evidence_ids 返回 []。禁止用外部知识或常识补全。
-3. evidence_ids 只能使用【证据索引】里真实存在的编号；不确定就不要引用。
-4. 档案内部互相矛盾时（例如两处日期不一致），必须在 answer 里明确指出矛盾，
-   并把双方证据编号都列进 evidence_ids。
-5. confidence 取值：high（档案明确写出一致事实且有直接证据）/ medium（需要合并
-   多处信息或存在少量推断）/ low（信息缺失或存在冲突）。
-6. 用提问所用的语言作答：中文提问用中文，英文提问用英文。
-7. 只输出一个 JSON 对象，字段为 answer(string)、confidence(string)、
-   evidence_ids(string 数组)。不要 markdown 代码围栏，不要任何额外解释文字。
+Rules:
+1. If the profile supports an answer, state the conclusion and cite the supporting
+   evidence IDs in evidence_ids.
+2. If the profile does not contain evidence, set answer to "No relevant information
+   is available in the profile.", set confidence to "low", and return an empty
+   evidence_ids array. Do not use outside knowledge or common-sense completion.
+3. Use only evidence IDs that exist in the evidence index. Omit uncertain citations.
+4. If the profile contains conflicting evidence, clearly identify the conflict and
+   include both supporting evidence IDs.
+5. confidence must be one of: high (consistent direct evidence), medium (requires
+   combining multiple sources or a small inference), or low (missing or conflicting
+   information).
+6. Write the answer in English. Preserve verbatim quotations from source material in
+   their original language.
+7. Return only one JSON object with answer (string), confidence (string), and
+   evidence_ids (string array). Do not use markdown code fences or add commentary.
 """
 
 
@@ -104,13 +109,13 @@ def _build_user_message(
 ) -> str:
     candidate = profile.get("candidate", {})
     return (
-        "【档案 JSON】（schema_version："
+        "PROFILE JSON (schema_version: "
         + str(profile.get("schema_version"))
-        + "）\n"
+        + ")\n"
         + json.dumps(candidate, ensure_ascii=False, indent=1)
-        + "\n\n【证据索引】\n"
+        + "\n\nEVIDENCE INDEX\n"
         + json.dumps(evidence_index, ensure_ascii=False, indent=1)
-        + "\n\n【提问】\n"
+        + "\n\nQUESTION\n"
         + question
     )
 

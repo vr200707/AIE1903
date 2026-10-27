@@ -59,11 +59,11 @@ export function ArchiveFolder({
           <span className="line-clamp-1 w-full text-center text-[13px] font-semibold leading-tight text-ink/90">
             {entry.name}
           </span>
-          <span className="inline-flex items-baseline gap-1 text-accent-soft">
+          <span className="inline-flex items-baseline gap-1 text-accent">
             <b className="text-lg font-semibold leading-none tabular-nums">
               {(entry.score ?? entry.credibility).toFixed(1)}
             </b>
-            <span className="text-[10px] font-normal text-accent-soft/70">
+            <span className="text-[10px] font-normal text-accent">
               /10 · {entry.score != null ? "Score" : "Credibility"}
             </span>
           </span>
@@ -74,7 +74,7 @@ export function ArchiveFolder({
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="absolute right-2 top-3 z-20 grid h-8 w-8 place-items-center rounded-md text-ink/25 opacity-100 transition hover:bg-rose-400/10 hover:text-rose-200 focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+          className="absolute right-2 top-3 z-20 grid h-8 w-8 place-items-center rounded-md text-ink/75 opacity-100 transition hover:bg-rose-400/10 hover:text-rose-800 focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
           aria-label={`Remove ${entry.name} from history`}
           title="Remove from history"
         >
@@ -93,12 +93,12 @@ export function ArchiveFolder({
 
       {confirming && (
         <div className="absolute inset-x-1 bottom-1 top-[12px] z-30 flex flex-col justify-center rounded-md border border-rose-300/20 bg-[#eaf1f6]/95 px-3 py-2 shadow-xl">
-          <p className="text-center text-[11px] text-ink/70">Remove from history?</p>
+          <p className="text-center text-[11px] text-ink/75">Remove from history?</p>
           <div className="mt-2 flex justify-center gap-1.5">
             <button
               type="button"
               onClick={() => setConfirming(false)}
-              className="rounded-md border border-ink/10 px-3 py-1.5 text-xs text-ink/60 transition hover:text-ink/90"
+              className="rounded-md border border-ink/10 px-3 py-1.5 text-xs text-ink/75 transition hover:text-ink/90"
             >
               Cancel
             </button>
@@ -108,7 +108,7 @@ export function ArchiveFolder({
                 setConfirming(false);
                 onDelete?.();
               }}
-              className="rounded-md bg-rose-400/15 px-3 py-1.5 text-xs text-rose-200 transition hover:bg-rose-400/25"
+              className="rounded-md bg-rose-400/15 px-3 py-1.5 text-xs text-rose-800 transition hover:bg-rose-400/25"
             >
               Remove
             </button>

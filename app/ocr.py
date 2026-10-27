@@ -17,26 +17,38 @@ import os
 from pathlib import Path
 
 import pytesseract
+from dotenv import load_dotenv
 from pdf2image import convert_from_path
 from PIL import Image
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _load_dotenv() -> None:
+    load_dotenv(PROJECT_ROOT / ".env")
+
+
 def _tesseract_cmd() -> str:
+    _load_dotenv()
     return os.getenv("TESSERACT_CMD", "tesseract")
 
 
 def ocr_languages() -> list[str]:
     """返回 Tesseract 语言列表，例如 ['chi_sim', 'eng']。"""
+    _load_dotenv()
     raw = os.getenv("OCR_LANGUAGES", "chi_sim+eng")
     return [part.strip() for part in raw.split("+") if part.strip()]
 
 
 def ocr_dpi() -> int:
+    _load_dotenv()
     return int(os.getenv("OCR_DPI", "300"))
 
 
 def _ensure_tesseract() -> str:
     cmd = _tesseract_cmd()
+    pytesseract.pytesseract.tesseract_cmd = cmd
     try:
         pytesseract.get_tesseract_version()
     except Exception as exc:  # pytesseract.TesseractNotFoundError 等

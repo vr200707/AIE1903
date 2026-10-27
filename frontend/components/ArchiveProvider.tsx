@@ -2,8 +2,10 @@
 
 import {
   createContext,
+  startTransition,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -46,8 +48,17 @@ const ArchiveContext = createContext<ArchiveContextValue>({
 /** 档案库数据源：localStorage 持久化 + 跨页打开已存档简历。 */
 export function ArchiveProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const [archives, setArchives] = useState<ArchiveEntry[]>(() => listArchives());
+  const [archives, setArchives] = useState<ArchiveEntry[]>([]);
   const [pendingId, setPendingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const syncArchives = () => {
+      startTransition(() => setArchives(listArchives()));
+    };
+    syncArchives();
+    window.addEventListener("storage", syncArchives);
+    return () => window.removeEventListener("storage", syncArchives);
+  }, []);
 
   const saveArchive = useCallback(
     (
@@ -89,7 +100,15 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
       pendingId,
       clearPending,
     }),
-    [archives, saveArchive, openArchive, handleRemove, handleClear, pendingId, clearPending],
+    [
+      archives,
+      saveArchive,
+      openArchive,
+      handleRemove,
+      handleClear,
+      pendingId,
+      clearPending,
+    ],
   );
 
   return (

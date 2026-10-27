@@ -232,6 +232,54 @@ class ExtractorSplitTests(unittest.TestCase):
         pubs = profile["candidate"]["publications_impact"]["publications"]
         self.assertEqual([p["title"] for p in pubs], ["Paper A", "Paper B"])
 
+    def test_extract_meta_falls_back_to_smaller_sections_on_bad_json(self):
+        full_candidate = _meta_candidate()
+        section_payloads = [
+            {
+                "schema_version": "1.0.0",
+                "candidate": {
+                    name: full_candidate[name]
+                    for name in ("basic_info", "education_employment")
+                },
+            },
+            {
+                "schema_version": "1.0.0",
+                "candidate": {"awards_funding": full_candidate["awards_funding"]},
+            },
+            {
+                "schema_version": "1.0.0",
+                "candidate": {
+                    "publications_impact": full_candidate["publications_impact"]
+                },
+            },
+            {
+                "schema_version": "1.0.0",
+                "candidate": {"academic_service": full_candidate["academic_service"]},
+            },
+            {
+                "schema_version": "1.0.0",
+                "candidate": {"overall_evaluation": full_candidate["overall_evaluation"]},
+            },
+        ]
+        responses = ['{"schema_version":"1.0.0","candidate":{'] + [
+            json.dumps(payload) for payload in section_payloads
+        ]
+        with mock.patch.object(extractor, "_chat", side_effect=responses) as chat:
+            candidate = extractor._extract_meta("cv text", max_retries=0)
+
+        self.assertEqual(chat.call_count, 6)
+        self.assertEqual(
+            set(candidate),
+            {
+                "basic_info",
+                "education_employment",
+                "awards_funding",
+                "publications_impact",
+                "academic_service",
+                "overall_evaluation",
+            },
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

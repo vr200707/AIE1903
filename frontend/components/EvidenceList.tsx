@@ -29,13 +29,13 @@ export function EvidenceList({
                 status={getStatus ? getStatus(e) : e.evidence_status}
               />
               {e.page != null && (
-                <span className="text-xs text-ink/70">Page {e.page}</span>
+                <span className="text-xs text-ink/75">Page {e.page}</span>
               )}
             </div>
-            <p className="mt-1.5 text-ink/60">{e.evidence}</p>
-            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-ink/70">
+            <p className="mt-1.5 text-ink/75">{e.evidence}</p>
+            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-ink/75">
               <span>Queried: {e.query_date}</span>
-              <span className="text-accent-soft opacity-0 transition-opacity group-hover:opacity-100">
+              <span className="text-accent opacity-0 transition-opacity group-hover:opacity-100">
                 View details ↗
               </span>
             </div>

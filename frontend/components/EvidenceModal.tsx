@@ -32,7 +32,7 @@ export function EvidenceModal({
           <h3 className="text-lg font-semibold text-ink/90">Evidence details</h3>
           <button
             onClick={onClose}
-            className="text-xl leading-none text-ink/50 transition-colors hover:text-ink/90"
+            className="text-xl leading-none text-ink/75 transition-colors hover:text-ink/90"
             aria-label="Close"
           >
             ×
@@ -45,9 +45,9 @@ export function EvidenceModal({
             <EvidenceBadge status={status} />
           </div>
 
-          <p className="text-ink/60">{e.evidence}</p>
+          <p className="text-ink/75">{e.evidence}</p>
 
-          <dl className="space-y-1 text-xs text-ink/70">
+          <dl className="space-y-1 text-xs text-ink/75">
             <div className="flex gap-2">
               <dt className="w-20 shrink-0">Queried</dt>
               <dd>{e.query_date}</dd>
@@ -77,7 +77,7 @@ export function EvidenceModal({
               href={e.source_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block rounded-lg bg-gradient-to-r from-accent to-accent-soft px-3 py-1.5 text-ink transition-opacity hover:opacity-90"
+              className="inline-block rounded-lg bg-gradient-to-r from-accent to-accent-deep px-3 py-1.5 text-white transition-opacity hover:opacity-90"
             >
               View source ↗
             </a>
@@ -85,7 +85,7 @@ export function EvidenceModal({
 
           {onCorrect && (
             <div className="border-t border-ink/10 pt-3">
-              <p className="text-xs font-medium text-ink/70">
+              <p className="text-xs font-medium text-ink/75">
                 Correct evidence status
               </p>
               <select

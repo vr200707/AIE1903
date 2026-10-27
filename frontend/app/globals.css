@@ -9,9 +9,9 @@
   --font-geist-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo,
     monospace;
   /* 强调色：冰蓝（冰川透出的蓝） */
-  --accent: #3f7f9e;
+  --accent: #28657f;
   --accent-soft: #6ba3bf;
-  --accent-deep: #2c5c78;
+  --accent-deep: #1f5871;
   --cool: #3d5a70;
 }
 

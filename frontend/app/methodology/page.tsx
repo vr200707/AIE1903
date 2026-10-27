@@ -22,18 +22,18 @@ export default function MethodologyPage() {
       <main className="mx-auto max-w-4xl space-y-5 px-8 py-10">
         {/* 1. 证据字段定义 */}
         <Section title="Evidence Field Definitions">
-          <p className="text-sm text-ink/70">
+          <p className="text-sm text-ink/75">
             Every conclusion must include the following evidence fields for provenance and verification:
           </p>
           <table className="mt-3 w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-ink/10 text-xs text-ink/70">
+              <tr className="border-b border-ink/10 text-xs text-ink/75">
                 <th className="py-2 pr-4 font-medium">Field</th>
                 <th className="py-2 pr-4 font-medium">Meaning</th>
                 <th className="py-2 font-medium">Required</th>
               </tr>
             </thead>
-            <tbody className="text-ink/60">
+            <tbody className="text-ink/75">
               <tr className="border-b border-ink/10">
                 <td className="py-2 pr-4 font-mono text-xs">source</td>
                 <td className="py-2 pr-4">Source name, such as a file, institution website, or database.</td>
@@ -70,10 +70,10 @@ export default function MethodologyPage() {
 
         {/* 2. 证据状态规则 */}
         <Section title="Evidence Status Rules">
-          <ul className="space-y-2 text-sm text-ink/60">
+          <ul className="space-y-2 text-sm text-ink/75">
             {statusOrder.map((s) => (
               <li key={s} className="flex items-start gap-2">
-                <span className="mt-0.5 shrink-0 rounded bg-ink/10 px-2 py-0.5 text-xs text-ink/70">
+                <span className="mt-0.5 shrink-0 rounded bg-ink/10 px-2 py-0.5 text-xs text-ink/75">
                   {evidenceStatusLabel[s]}
                 </span>
                 <span>{statusDesc[s]}</span>
@@ -84,7 +84,7 @@ export default function MethodologyPage() {
 
         {/* 3. 缺失与冲突处理 */}
         <Section title="Missing and Conflicting Information">
-          <ul className="list-inside list-disc space-y-2 text-sm text-ink/60">
+          <ul className="list-inside list-disc space-y-2 text-sm text-ink/75">
             <li>Unknown information is represented as null or displayed as &quot;—&quot;. Do not infer missing values.</li>
             <li>Empty arrays are displayed as &quot;None&quot;.</li>
             <li>Conflicting evidence is marked in red and must be reviewed before use.</li>
@@ -95,10 +95,10 @@ export default function MethodologyPage() {
 
         {/* 4. 档案模块 */}
         <Section title="Profile Modules">
-          <p className="text-sm text-ink/70">
+          <p className="text-sm text-ink/75">
             The profile consists of six modules:
           </p>
-          <ol className="mt-2 list-inside list-decimal space-y-1 text-sm text-ink/60">
+          <ol className="mt-2 list-inside list-decimal space-y-1 text-sm text-ink/75">
             <li>Basic Information: name, institution, position, research interests, highest degree, skills, strengths, and items to verify</li>
             <li>Education and Work: degrees, advisors, institutions, timeline, responsibilities, projects, and outcomes</li>
             <li>Awards and Funding: awards, funded projects, amounts, and PI/Co-PI/participant roles</li>
