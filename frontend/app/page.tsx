@@ -14,7 +14,10 @@ import { Section } from "@/components/Section";
 import Starfield, { HERO_IMAGE } from "@/components/Starfield";
 import AnalyzingStage from "@/components/AnalyzingStage";
 import CountUp from "@/components/CountUp";
-import { PlanetOverview } from "@/components/PlanetOverview";
+import {
+  PlanetOverview,
+  type OverviewSection,
+} from "@/components/PlanetOverview";
 import { useIdentity } from "@/components/IdentityProvider";
 import { EvidenceList } from "@/components/EvidenceList";
 import { EvidenceBadge } from "@/components/EvidenceBadge";
@@ -362,9 +365,18 @@ export default function Home() {
   const [qaError, setQaError] = useState<string | null>(null);
   const [qaLoading, setQaLoading] = useState(false);
   const [overviewOpen, setOverviewOpen] = useState(false);
+  const [overviewSelect, setOverviewSelect] =
+    useState<OverviewSection | null>(null);
   const [llmAssessment, setLlmAssessment] = useState<LlmAssessment | null>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
-  const { saveArchive, pendingId, clearPending } = useArchive();
+  const {
+    saveArchive,
+    pendingId,
+    clearPending,
+    pendingInterviewId,
+    clearPendingInterview,
+    archives,
+  } = useArchive();
   const { addAnswer, history: qaHistory } = useQaHistory();
   const [loadedArchiveId, setLoadedArchiveId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string>("basic");
@@ -521,6 +533,7 @@ export default function Home() {
     setQuestion("");
     setLlmAssessment(null);
     setOverviewOpen(false);
+    setOverviewSelect(null);
   };
 
   // 从侧栏档案库点击文件夹后，加载对应的已存档简历。
@@ -540,6 +553,7 @@ export default function Home() {
       setQaError(null);
       setQuestion("");
       setOverviewOpen(false);
+      setOverviewSelect(null);
       if (!entry.llm) {
         void refreshLlmScore(entry.profileId, entry.candidate);
       }
@@ -551,7 +565,44 @@ export default function Home() {
     if (pendingId) clearPending();
   }, [pendingId, clearPending]);
 
+  // 从侧栏档案库点击「Interview」分数后，加载对应档案并直接打开
+  // 整体评分弹窗、选中面试板块（而非单独的小弹窗）。
+  if (pendingInterviewId && pendingInterviewId !== loadedArchiveId) {
+    const entry = getArchive(pendingInterviewId);
+    setLoadedArchiveId(pendingInterviewId);
+    if (entry) {
+      setCandidate(entry.candidate);
+      setProfileId(entry.profileId);
+      setLlmAssessment(entry.llm ?? null);
+      setFilter({ tags: [], search: "" });
+      setSelectedEvidence(null);
+      setCorrections(new Map());
+      setAnalysisWarnings([]);
+      setQaResult(null);
+      setQaError(null);
+      setQuestion("");
+      setOverviewSelect("interview");
+      setOverviewOpen(true);
+      if (!entry.llm) {
+        void refreshLlmScore(entry.profileId, entry.candidate);
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (pendingInterviewId) clearPendingInterview();
+  }, [pendingInterviewId, clearPendingInterview]);
+
   const c = candidate;
+
+  // 当前档案的面试评分（来自档案库，上传视频分析完成后写入）
+  const currentArchiveEntry = useMemo(
+    () =>
+      profileId
+        ? archives.find((entry) => entry.profileId === profileId) ?? null
+        : null,
+    [archives, profileId],
+  );
 
   // 评分随 candidate 与人工修正（corrections）实时重算
   const assessment = useMemo(
@@ -778,7 +829,10 @@ export default function Home() {
               />
             )}
             <OverviewButton
-              onClick={() => setOverviewOpen(true)}
+              onClick={() => {
+                setOverviewSelect(null);
+                setOverviewOpen(true);
+              }}
               score={assessment?.overall ?? null}
             />
           </div>
@@ -1222,6 +1276,9 @@ export default function Home() {
         <PlanetOverview
           candidate={c}
           assessment={assessment}
+          interviewScore={currentArchiveEntry?.interviewScore ?? null}
+          interviewProfileId={profileId}
+          initialSelected={overviewSelect}
           onClose={() => setOverviewOpen(false)}
           onEvidenceClick={setSelectedEvidence}
           getStatus={getStatus}

@@ -6,9 +6,7 @@ import { usePathname } from "next/navigation";
 import { useIdentity } from "./IdentityProvider";
 import { useArchive } from "./ArchiveProvider";
 import { ArchiveFolder } from "./ArchiveFolder";
-import { InterviewScoreModal } from "./InterviewScoreModal";
 import { useQaHistory } from "./QaHistoryProvider";
-import type { ArchiveEntry } from "@/lib/archive";
 import {
   clearAllInterviewSessions,
   clearInterviewSession,
@@ -41,13 +39,17 @@ const NAV = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { identity } = useIdentity();
-  const { archives, openArchive, removeArchive, clearArchives } = useArchive();
+  const {
+    archives,
+    openArchive,
+    openInterviewOverview,
+    removeArchive,
+    clearArchives,
+  } = useArchive();
   const { history: qaHistory, clearHistory: clearQaHistory } = useQaHistory();
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [expandedQa, setExpandedQa] = useState<string | null>(null);
   const [mobileArchiveOpen, setMobileArchiveOpen] = useState(false);
-  const [interviewScoreEntry, setInterviewScoreEntry] =
-    useState<ArchiveEntry | null>(null);
   const initials = (identity?.name ?? "AIE")
     .split(/\s+/)
     .slice(0, 2)
@@ -68,7 +70,7 @@ export default function Sidebar() {
 
   const archiveItems = (
     onOpen: (id: string) => void,
-    onInterview: (entry: ArchiveEntry) => void,
+    onInterview: (id: string) => void,
   ) =>
     archives.length === 0 ? (
       <p className="px-2 py-6 text-center text-xs leading-relaxed text-ink/75">
@@ -83,16 +85,16 @@ export default function Sidebar() {
           entry={entry}
           onClick={() => onOpen(entry.id)}
           onOpenInterview={
-            entry.interviewScore ? () => onInterview(entry) : undefined
+            entry.interviewScore ? () => onInterview(entry.id) : undefined
           }
           onDelete={() => removeFromHistory(entry.id, entry.profileId)}
         />
       ))
     );
 
-  const showInterviewScore = (entry: ArchiveEntry) => {
+  const showInterviewScore = (id: string) => {
     setMobileArchiveOpen(false);
-    setInterviewScoreEntry(entry);
+    openInterviewOverview(id);
   };
 
   return (
@@ -342,10 +344,6 @@ export default function Sidebar() {
         </div>
       )}
 
-      <InterviewScoreModal
-        entry={interviewScoreEntry}
-        onClose={() => setInterviewScoreEntry(null)}
-      />
     </aside>
     </>
   );
