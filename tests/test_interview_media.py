@@ -66,6 +66,42 @@ class InterviewMediaTests(unittest.TestCase):
         self.assertEqual(result["width"], 160)
         self.assertEqual(result["height"], 120)
 
+    def test_probe_without_duration_falls_back_to_packet_timestamps(self):
+        class FakePacket:
+            def __init__(self, pts, duration, time_base):
+                self.pts = pts
+                self.duration = duration
+                self.time_base = time_base
+
+        class FakeStream:
+            type = "video"
+            codec_context = SimpleNamespace(width=160, height=120)
+            duration = None
+            time_base = None
+
+        class FakeContainer:
+            duration = None
+            time_base = None
+            streams = [FakeStream()]
+
+            def demux(self):
+                tb = Fraction(1, 1000)
+                yield FakePacket(0, 500, tb)
+                yield FakePacket(500, 500, tb)
+                yield FakePacket(1000, 500, tb)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        with mock.patch.object(av, "open", return_value=FakeContainer()):
+            result = probe_video(Path("/tmp/missing-duration.webm"))
+        self.assertAlmostEqual(result["duration_ms"], 1500, delta=5)
+        self.assertEqual(result["width"], 160)
+        self.assertEqual(result["height"], 120)
+
     def test_unsupported_suffix_is_rejected(self):
         with self.assertRaises(InterviewMediaError):
             validate_video_suffix("answer.txt")
