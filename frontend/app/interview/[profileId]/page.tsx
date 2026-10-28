@@ -16,7 +16,7 @@ import { EvidenceBadge } from "@/components/EvidenceBadge";
 import { InterviewReportView } from "@/components/interview/InterviewReportView";
 import { VideoRecorder } from "@/components/interview/VideoRecorder";
 import { getProfile } from "@/lib/api";
-import { getArchive } from "@/lib/archive";
+import { buildInterviewScoreRecord, getArchive } from "@/lib/archive";
 import {
   addQuestion,
   clearInterviewSession,
@@ -790,7 +790,7 @@ export default function InterviewPage() {
     ? routeParams.profileId[0]
     : routeParams.profileId;
   const { setIdentity } = useIdentity();
-  const { saveArchive } = useArchive();
+  const { saveArchive, saveInterviewScore } = useArchive();
 
   const [phase, setPhase] = useState<Phase>("questions");
   const [restoring, setRestoring] = useState(true);
@@ -894,6 +894,10 @@ export default function InterviewPage() {
             if (!active) return;
             setReport(savedReport);
             setPhase("report");
+            saveInterviewScore(
+              profileId,
+              buildInterviewScoreRecord(savedReport),
+            );
           } else {
             setPhase("video");
             if (session.status === "failed" && session.error) {
@@ -918,7 +922,7 @@ export default function InterviewPage() {
     return () => {
       active = false;
     };
-  }, [profileId, saveArchive]);
+  }, [profileId, saveArchive, saveInterviewScore]);
 
   useEffect(() => {
     if (phase !== "analyzing" || !interview?.interview_id) return;
@@ -941,6 +945,7 @@ export default function InterviewPage() {
           if (!active) return;
           setReport(nextReport);
           setPhase("report");
+          saveInterviewScore(profileId, buildInterviewScoreRecord(nextReport));
           return;
         }
         if (session.status === "failed") {
@@ -966,7 +971,7 @@ export default function InterviewPage() {
       active = false;
       if (timer) window.clearTimeout(timer);
     };
-  }, [interview?.interview_id, phase]);
+  }, [interview?.interview_id, phase, profileId, saveInterviewScore]);
 
   const handleGenerate = async () => {
     if (!profileId || generating) return;

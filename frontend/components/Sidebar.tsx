@@ -6,7 +6,9 @@ import { usePathname } from "next/navigation";
 import { useIdentity } from "./IdentityProvider";
 import { useArchive } from "./ArchiveProvider";
 import { ArchiveFolder } from "./ArchiveFolder";
+import { InterviewScoreModal } from "./InterviewScoreModal";
 import { useQaHistory } from "./QaHistoryProvider";
+import type { ArchiveEntry } from "@/lib/archive";
 import {
   clearAllInterviewSessions,
   clearInterviewSession,
@@ -44,6 +46,8 @@ export default function Sidebar() {
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [expandedQa, setExpandedQa] = useState<string | null>(null);
   const [mobileArchiveOpen, setMobileArchiveOpen] = useState(false);
+  const [interviewScoreEntry, setInterviewScoreEntry] =
+    useState<ArchiveEntry | null>(null);
   const initials = (identity?.name ?? "AIE")
     .split(/\s+/)
     .slice(0, 2)
@@ -62,7 +66,10 @@ export default function Sidebar() {
     setMobileArchiveOpen(false);
   };
 
-  const archiveItems = (onOpen: (id: string) => void) =>
+  const archiveItems = (
+    onOpen: (id: string) => void,
+    onInterview: (entry: ArchiveEntry) => void,
+  ) =>
     archives.length === 0 ? (
       <p className="px-2 py-6 text-center text-xs leading-relaxed text-ink/75">
         No archives yet
@@ -75,10 +82,18 @@ export default function Sidebar() {
           key={entry.id}
           entry={entry}
           onClick={() => onOpen(entry.id)}
+          onOpenInterview={
+            entry.interviewScore ? () => onInterview(entry) : undefined
+          }
           onDelete={() => removeFromHistory(entry.id, entry.profileId)}
         />
       ))
     );
+
+  const showInterviewScore = (entry: ArchiveEntry) => {
+    setMobileArchiveOpen(false);
+    setInterviewScoreEntry(entry);
+  };
 
   return (
     <>
@@ -144,10 +159,13 @@ export default function Sidebar() {
               </button>
             )}
             <div className="mt-3 flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto">
-              {archiveItems((id) => {
-                setMobileArchiveOpen(false);
-                openArchive(id);
-              })}
+              {archiveItems(
+                (id) => {
+                  setMobileArchiveOpen(false);
+                  openArchive(id);
+                },
+                showInterviewScore,
+              )}
             </div>
           </div>
         </div>
@@ -218,7 +236,7 @@ export default function Sidebar() {
           </span>
         </div>
         <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-0.5">
-          {archiveItems(openArchive)}
+          {archiveItems(openArchive, showInterviewScore)}
         </div>
       </div>
 
@@ -323,6 +341,11 @@ export default function Sidebar() {
           </div>
         </div>
       )}
+
+      <InterviewScoreModal
+        entry={interviewScoreEntry}
+        onClose={() => setInterviewScoreEntry(null)}
+      />
     </aside>
     </>
   );

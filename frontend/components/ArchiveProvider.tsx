@@ -16,8 +16,10 @@ import {
   clearArchives,
   listArchives,
   removeArchive,
+  updateArchiveInterviewScore,
   upsertArchive,
   type ArchiveEntry,
+  type InterviewScoreRecord,
 } from "@/lib/archive";
 import type { Candidate, LlmAssessment } from "@/lib/types";
 
@@ -28,6 +30,7 @@ type ArchiveContextValue = {
     candidate: Candidate,
     llm?: LlmAssessment | null,
   ) => void;
+  saveInterviewScore: (profileId: string, record: InterviewScoreRecord) => void;
   openArchive: (id: string) => void;
   removeArchive: (id: string) => void;
   clearArchives: () => void;
@@ -38,6 +41,7 @@ type ArchiveContextValue = {
 const ArchiveContext = createContext<ArchiveContextValue>({
   archives: [],
   saveArchive: () => {},
+  saveInterviewScore: () => {},
   openArchive: () => {},
   removeArchive: () => {},
   clearArchives: () => {},
@@ -71,6 +75,13 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const saveInterviewScore = useCallback(
+    (profileId: string, record: InterviewScoreRecord) => {
+      setArchives(updateArchiveInterviewScore(profileId, record));
+    },
+    [],
+  );
+
   const openArchive = useCallback(
     (id: string) => {
       setPendingId(id);
@@ -94,6 +105,7 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
     () => ({
       archives,
       saveArchive,
+      saveInterviewScore,
       openArchive,
       removeArchive: handleRemove,
       clearArchives: handleClear,
@@ -103,6 +115,7 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
     [
       archives,
       saveArchive,
+      saveInterviewScore,
       openArchive,
       handleRemove,
       handleClear,
