@@ -70,7 +70,7 @@ export function Section({
           </h2>
           {collapsible && (
             <span
-              className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border border-ink/10 bg-ink/5 text-ink/60 transition-transform duration-300 ${
+              className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border border-ink/10 bg-ink/5 text-ink/75 transition-transform duration-300 ${
                 open ? "rotate-0" : "-rotate-90"
               }`}
             >

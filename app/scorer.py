@@ -4,7 +4,7 @@
 - 与「可信度」解耦：可信度由前端规则（来源类型权重 × 证据状态系数）计算，
   本模块只评估经历与成果本身的质量，不把「是否已公开核验」混进评分。
 - 输入是结构化 candidate（去除 evidence 数组以压缩 prompt），输出每个模块
-  的 0–10 评分与一句话优劣点评（中文），外加综合分 overall。
+  的 0–10 评分与一句话英文优劣点评，外加综合分 overall。
 - 评分结果按「模型 + 候选档案内容」哈希落盘缓存，避免重复调用花费 token。
 - 失败不抛异常：返回 None，由调用方（app/api.py）追加可重试 warning，
   分析链路不会因为评分失败而整体失败。
@@ -40,32 +40,35 @@ MODULE_KEYS = (
 DEFAULT_MAX_OUTPUT_TOKENS = 2048
 
 SYSTEM_PROMPT = """\
-你是学术招聘预筛选的评估专家。输入是一位候选人的结构化档案（JSON），
-输出该候选人在 6 个模块上的 0–10 评分，以及每个模块的一句话优劣点评。
+You are an evaluation expert for academic hiring pre-screening. The input is a
+structured candidate profile in JSON. Score the candidate across six modules on
+a 0-10 scale and provide one concise strength and one concise weakness for each.
 
-评分口径：
-1. 只评估「经历与成果本身的质量」，不考虑证据是否已公开核验——证据可信度由
-   另一套规则单独计算，不归你管，不要因为证据待核实而压低评分。
-2. 综合分 overall 按学术职位竞争力加权：论文与影响力、奖项与资助的权重更高；
-   基本信息模块重点看学历、研究方向与技能的匹配广度。
-3. 缺失字段按中性处理，不要当作缺点惩罚；不要因为字段少就机械地压低分数，
-   有实质内容的部分按内容本身打分。
-4. score 是 0–10 的数字，最多一位小数；pros / cons 各是一句不超过 30 字的中文，
-   指出该模块最突出的优点与最明显的短板；没有短板时 cons 写「无明显短板」。
-5. 6 个模块必须齐全：basic_info / education_employment / awards_funding /
-   publications_impact / academic_service / overall_evaluation。
-6. 只输出一个 JSON 对象，不要 markdown 代码围栏，不要任何解释文字。
+Scoring criteria:
+1. Evaluate only the quality of the experience and outcomes. Evidence credibility
+   is calculated separately; do not lower a score because a claim still needs review.
+2. Weight the overall score for competitiveness in an academic role. Publications
+   and impact, awards, and funding carry more weight. For basic information, focus
+   on the breadth of fit across education, research direction, and skills.
+3. Treat missing fields neutrally. Do not penalize sparse fields mechanically, and
+   score substantive content on its own merits.
+4. Scores must be numbers from 0 to 10 with at most one decimal place. Write pros
+   and cons in English, each in one sentence of no more than 30 words. If there is
+   no notable weakness, set cons to "No notable weakness."
+5. Include all six modules: basic_info / education_employment / awards_funding /
+   publications_impact / academic_service / overall_evaluation.
+6. Return only one JSON object. Do not use markdown code fences or add commentary.
 
-输出结构：
+Output structure:
 {
   "overall": 7.8,
   "modules": {
-    "basic_info": {"score": 8.0, "pros": "……", "cons": "……"},
-    "education_employment": {"score": 7.2, "pros": "……", "cons": "……"},
-    "awards_funding": {"score": 8.5, "pros": "……", "cons": "……"},
-    "publications_impact": {"score": 7.0, "pros": "……", "cons": "……"},
-    "academic_service": {"score": 6.5, "pros": "……", "cons": "……"},
-    "overall_evaluation": {"score": 7.6, "pros": "……", "cons": "……"}
+    "basic_info": {"score": 8.0, "pros": "Brief strength.", "cons": "Brief weakness."},
+    "education_employment": {"score": 7.2, "pros": "Brief strength.", "cons": "Brief weakness."},
+    "awards_funding": {"score": 8.5, "pros": "Brief strength.", "cons": "Brief weakness."},
+    "publications_impact": {"score": 7.0, "pros": "Brief strength.", "cons": "Brief weakness."},
+    "academic_service": {"score": 6.5, "pros": "Brief strength.", "cons": "Brief weakness."},
+    "overall_evaluation": {"score": 7.6, "pros": "Brief strength.", "cons": "Brief weakness."}
   }
 }
 """
@@ -156,8 +159,8 @@ def _normalize(raw: Any) -> dict[str, Any]:
             raise ValueError(f"module {key} score invalid")
         modules[key] = {
             "score": _round1(score),
-            "pros": str(item.get("pros") or "").strip() or "暂无点评",
-            "cons": str(item.get("cons") or "").strip() or "无明显短板",
+            "pros": str(item.get("pros") or "").strip() or "No assessment available.",
+            "cons": str(item.get("cons") or "").strip() or "No notable weakness.",
         }
 
     return {"overall": _round1(overall), "modules": modules}
@@ -166,6 +169,7 @@ def _normalize(raw: Any) -> dict[str, Any]:
 def _cache_key(candidate: dict[str, Any]) -> str:
     payload = {
         "model": _model_name(),
+        "prompt_version": "en-v1",
         "candidate": _candidate_digest(candidate),
     }
     canonical = json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str)
@@ -216,9 +220,9 @@ def score_candidate(candidate: dict[str, Any]) -> dict[str, Any] | None:
 
     digest = _candidate_digest(candidate)
     user_prompt = (
-        "以下是候选人结构化档案（已去除证据字段）：\n\n"
+        "Structured candidate profile (evidence arrays removed):\n\n"
         + json.dumps(digest, ensure_ascii=False, default=str)
-        + "\n\n请按系统提示输出评分 JSON。"
+        + "\n\nReturn the scoring JSON according to the system instructions."
     )
     try:
         raw = _chat(

@@ -1,7 +1,14 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
 import Starfield from "@/components/Starfield";
 import {
   VideoRecorder,
@@ -38,7 +45,7 @@ function OrbitLoader({ small = false }: { small?: boolean }) {
     >
       <span className="absolute inset-0 animate-ring-spin rounded-full border border-accent/25 border-t-accent" />
       <span className="absolute inset-[18%] animate-ring-spin-rev rounded-full border border-sky-300/20 border-b-sky-300/80" />
-      <span className={`${small ? "text-[9px]" : "text-xl"} text-accent-soft`}>✦</span>
+      <span className={`${small ? "text-[9px]" : "text-xl"} text-accent`}>✦</span>
     </span>
   );
 }
@@ -65,10 +72,10 @@ export default function CandidatePage() {
 
   const questions = useMemo(() => candidateSet?.questions ?? [], [candidateSet]);
 
-  const readLocalSession = (): string | null => {
+  const readLocalSession = useCallback((): string | null => {
     if (typeof window === "undefined" || !token) return null;
     return window.localStorage.getItem(`${SESSION_PREFIX}${token}`);
-  };
+  }, [token]);
 
   const writeLocalSession = (interviewId: string) => {
     if (typeof window === "undefined" || !token) return;
@@ -121,7 +128,7 @@ export default function CandidatePage() {
     return () => {
       active = false;
     };
-  }, [token]);
+  }, [token, readLocalSession]);
 
   useEffect(() => {
     if (phase !== "analyzing" || !interview?.interview_id) return;
@@ -258,8 +265,8 @@ export default function CandidatePage() {
           <div className="glass flex items-center gap-4 rounded-2xl px-6 py-5">
             <OrbitLoader small />
             <div>
-              <p className="text-sm text-ink/65">Opening your interview</p>
-              <p className="mt-1 text-xs text-ink/30">{token}</p>
+              <p className="text-sm text-ink/75">Opening your interview</p>
+              <p className="mt-1 text-xs text-ink/75">{token}</p>
             </div>
           </div>
         </main>
@@ -276,7 +283,7 @@ export default function CandidatePage() {
           <h1 className="mt-5 font-display text-3xl text-ink/90">
             Interview link unavailable
           </h1>
-          <p className="mt-3 text-sm leading-relaxed text-ink/45">
+          <p className="mt-3 text-sm leading-relaxed text-ink/75">
             {error ?? "This link is not valid or the interview is no longer published."}
           </p>
         </main>
@@ -290,13 +297,13 @@ export default function CandidatePage() {
         <Starfield />
         <main className="relative mx-auto max-w-2xl px-6 py-24 text-center">
           <div className="glass animate-pop rounded-3xl px-8 py-12">
-            <span className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-emerald-300/30 bg-emerald-400/10 text-2xl text-emerald-200">
+            <span className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-emerald-300/30 bg-emerald-400/10 text-2xl text-emerald-800">
               ✓
             </span>
             <h1 className="mt-6 font-display text-3xl text-ink sm:text-4xl">
               Recording received
             </h1>
-            <p className="mt-4 text-sm leading-relaxed text-ink/45">
+            <p className="mt-4 text-sm leading-relaxed text-ink/75">
               Thank you, {candidateSet.candidate_name ?? "candidate"}. Your
               one-take interview has been submitted and is being reviewed. You
               can close this page now.
@@ -312,7 +319,7 @@ export default function CandidatePage() {
       <Starfield />
       <main className="relative mx-auto max-w-[1180px] px-5 py-8 sm:px-8 lg:py-12">
         <header className="animate-fade-in-up">
-          <p className="text-[11px] uppercase tracking-[0.36em] text-accent/70">
+          <p className="text-[11px] uppercase tracking-[0.36em] text-accent">
             Candidate interview
           </p>
           <h1 className="mt-3 max-w-3xl font-display text-4xl leading-[1.06] text-ink sm:text-5xl">
@@ -323,7 +330,7 @@ export default function CandidatePage() {
             </span>
           </h1>
           {candidateSet.role_context && (
-            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-ink/40">
+            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-ink/75">
               {candidateSet.role_context}
             </p>
           )}
@@ -333,8 +340,8 @@ export default function CandidatePage() {
           <div
             className={`mt-6 rounded-xl border px-4 py-3 text-sm ${
               error
-                ? "border-rose-400/25 bg-rose-400/[0.06] text-rose-200/80"
-                : "border-accent/25 bg-accent/[0.06] text-accent-soft"
+                ? "border-rose-400/25 bg-rose-400/[0.06] text-rose-800"
+                : "border-accent/25 bg-accent/[0.06] text-accent"
             }`}
             role="status"
           >
@@ -352,7 +359,7 @@ export default function CandidatePage() {
         {phase === "ready" && (
           <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]">
             <section className="glass rounded-2xl p-5 sm:p-7">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-accent/60">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-accent">
                 Your questions
               </p>
               <h2 className="mt-2 font-display text-3xl text-ink/90">
@@ -365,10 +372,10 @@ export default function CandidatePage() {
                     className="rounded-xl border border-ink/[0.07] bg-ink/[0.025] px-4 py-3.5"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <span className="font-mono text-[10px] text-accent/60">
+                      <span className="font-mono text-[10px] text-accent">
                         Question {index + 1}
                       </span>
-                      <span className="text-[10px] text-ink/30">
+                      <span className="text-[10px] text-ink/75">
                         ~{question.answer_seconds}s
                       </span>
                     </div>
@@ -394,7 +401,7 @@ export default function CandidatePage() {
               />
 
               <section className="glass rounded-2xl p-5">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-ink/30">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-ink/75">
                   Upload a file instead
                 </p>
                 <label className="mt-3 block cursor-pointer rounded-xl border border-dashed border-ink/15 bg-background/15 px-4 py-6 text-center transition hover:border-accent/35 hover:bg-accent/[0.03]">
@@ -405,15 +412,15 @@ export default function CandidatePage() {
                     className="sr-only"
                     onChange={chooseFile}
                   />
-                  <span className="block text-sm text-ink/55">
+                  <span className="block text-sm text-ink/75">
                     {selectedFile ? selectedFile.name : "Choose a video file"}
                   </span>
-                  <span className="mt-1 block text-[10px] text-ink/28">
+                  <span className="mt-1 block text-[10px] text-ink/75">
                     MP4, MOV, WebM, M4V, or MKV · up to 500 MB
                   </span>
                 </label>
                 {selectedFile && (
-                  <p className="mt-2 text-[10px] text-ink/35">
+                  <p className="mt-2 text-[10px] text-ink/75">
                     {formatFileSize(selectedFile.size)}
                   </p>
                 )}
@@ -421,14 +428,14 @@ export default function CandidatePage() {
 
               <section className="glass rounded-2xl p-5">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-ink/30">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-ink/75">
                     Answered questions
                   </p>
                   <span
                     className={`rounded-full border px-2.5 py-1 font-mono text-[10px] tabular-nums ${
                       unconfirmed.length === 0
-                        ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-200"
-                        : "border-ink/10 bg-background/20 text-ink/40"
+                        ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-800"
+                        : "border-ink/10 bg-background/20 text-ink/75"
                     }`}
                   >
                     {questions.length - unconfirmed.length}/{questions.length}
@@ -457,7 +464,7 @@ export default function CandidatePage() {
                           }
                           className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-amber-400"
                         />
-                        <span className="line-clamp-2 text-xs leading-relaxed text-ink/50">
+                        <span className="line-clamp-2 text-xs leading-relaxed text-ink/75">
                           {question.text}
                         </span>
                       </label>
@@ -465,7 +472,7 @@ export default function CandidatePage() {
                   })}
                 </div>
                 {unconfirmed.length === 0 && (
-                  <p className="mt-3 text-[10px] text-emerald-200/60">
+                  <p className="mt-3 text-[10px] text-emerald-800">
                     All questions confirmed — submit your recording.
                   </p>
                 )}
@@ -476,8 +483,8 @@ export default function CandidatePage() {
                   {uploading && uploadProgress ? (
                     <div>
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-ink/45">Uploading…</span>
-                        <span className="tabular-nums text-accent-soft">
+                        <span className="text-ink/75">Uploading…</span>
+                        <span className="tabular-nums text-accent">
                           {progressPercent}%
                         </span>
                       </div>
@@ -491,10 +498,10 @@ export default function CandidatePage() {
                   ) : (
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-xs text-ink/60">
+                        <p className="truncate text-xs text-ink/75">
                           {selectedFile.name}
                         </p>
-                        <p className="mt-0.5 text-[10px] text-ink/28">
+                        <p className="mt-0.5 text-[10px] text-ink/75">
                           {formatFileSize(selectedFile.size)}
                         </p>
                       </div>
@@ -504,7 +511,7 @@ export default function CandidatePage() {
                           setSelectedFile(null);
                           setRecordedMarks([]);
                         }}
-                        className="text-xs text-ink/35 transition hover:text-rose-200"
+                        className="text-xs text-ink/75 transition hover:text-rose-800"
                       >
                         Remove
                       </button>
@@ -514,7 +521,7 @@ export default function CandidatePage() {
                     type="button"
                     onClick={() => void submit()}
                     disabled={uploading || unconfirmed.length > 0}
-                    className="mt-4 w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-white transition hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-35"
+                    className="mt-4 w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-white transition hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-75"
                   >
                     {uploading
                       ? "Uploading and submitting"
