@@ -1833,8 +1833,9 @@ export default function InterviewPage() {
                           Coverage confirmation
                         </p>
                         <p className="mt-1 text-[10px] leading-relaxed text-ink/75">
-                          Tick every question answered in this recording. Analysis
-                          is blocked until all questions are confirmed.
+                          Checked automatically as each question is answered
+                          during recording. Analysis is blocked until all
+                          questions are confirmed.
                         </p>
                       </div>
                       <span
@@ -1855,22 +1856,19 @@ export default function InterviewPage() {
                         return (
                           <label
                             key={question.question_id}
-                            className={`flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2 transition ${
+                            className={`flex cursor-not-allowed select-none items-start gap-2.5 rounded-lg border px-3 py-2 ${
                               checked
                                 ? "border-emerald-300/20 bg-emerald-400/[0.06]"
-                                : "border-ink/[0.07] bg-ink/[0.02] hover:border-ink/[0.14]"
+                                : "border-ink/[0.07] bg-ink/[0.02]"
                             }`}
+                            title="Locked — checked automatically during recording"
                           >
                             <input
                               type="checkbox"
                               checked={checked}
-                              onChange={(event) =>
-                                setCoverageChecks((current) => ({
-                                  ...current,
-                                  [question.question_id]: event.target.checked,
-                                }))
-                              }
-                              className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-amber-400"
+                              readOnly
+                              disabled
+                              className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-not-allowed accent-amber-400 disabled:opacity-100"
                             />
                             <span className="flex min-w-0 gap-2">
                               <span className="font-mono text-[9px] text-ink/75">

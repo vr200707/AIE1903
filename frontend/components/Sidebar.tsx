@@ -266,13 +266,6 @@ export default function Sidebar() {
         )}
       </div>
 
-      {/* 说明位 */}
-      <div className="mt-4 rounded-xl border border-ink/[0.06] bg-ink/[0.02] px-3 py-3">
-        <p className="text-xs leading-relaxed text-ink/75">
-          Every field in this profile links back to a verifiable source.
-        </p>
-      </div>
-
       {/* 底部身份位 */}
       <div className="mt-auto flex items-center gap-3 border-t border-ink/[0.07] px-2 pt-4">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-accent to-accent-deep text-sm font-medium text-white">
