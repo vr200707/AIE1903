@@ -3,6 +3,33 @@
 
 import { computeCredibility } from "./scoring";
 import type { Candidate, LlmAssessment } from "./types";
+import type {
+  InterviewCompetency,
+  InterviewReport,
+  QuestionScores,
+} from "./interview";
+
+/** 单道题的面试评分细则（从面试报告压缩而来，存 localStorage 用）。 */
+export interface InterviewQuestionScoreRecord {
+  questionId: string;
+  order: number;
+  text: string;
+  answered: boolean;
+  overall: number | null;
+  competency: InterviewCompetency | null;
+  scores: QuestionScores | null;
+}
+
+/** 一次面试的总体评分：平均分 + 每道题的细则分。 */
+export interface InterviewScoreRecord {
+  interviewId: string;
+  /** 所有已作答题目 score_overall 的平均值（与报告页一致）。 */
+  overall: number | null;
+  answeredCount: number;
+  totalCount: number;
+  questions: InterviewQuestionScoreRecord[];
+  updatedAt: number;
+}
 
 export interface ArchiveEntry {
   id: string;
@@ -16,6 +43,8 @@ export interface ArchiveEntry {
   credibility: number;
   llm?: LlmAssessment | null;
   candidate: Candidate;
+  /** 面试评分：候选人上传作答视频并完成分析后写入，与总分/可信度相互独立。 */
+  interviewScore?: InterviewScoreRecord | null;
   createdAt: number;
 }
 
@@ -73,6 +102,38 @@ export function buildArchive(
   };
 }
 
+/** 把面试报告压缩成可存进档案的评分记录（总分 = 已答题平均分）。 */
+export function buildInterviewScoreRecord(
+  report: InterviewReport,
+): InterviewScoreRecord {
+  const questions: InterviewQuestionScoreRecord[] = report.question_results.map(
+    (item) => ({
+      questionId: item.question_id,
+      order: item.order,
+      text: item.question,
+      answered: item.answered,
+      overall: item.score_overall,
+      competency: item.competency ?? null,
+      scores: item.scores ?? null,
+    }),
+  );
+  const scored = questions
+    .map((item) => item.overall)
+    .filter((value): value is number => value != null);
+  return {
+    interviewId: report.interview_id,
+    overall:
+      scored.length > 0
+        ? scored.reduce((sum, value) => sum + value, 0) / scored.length
+        : null,
+    answeredCount: report.question_results.filter((item) => item.answered)
+      .length,
+    totalCount: report.question_results.length,
+    questions,
+    updatedAt: Date.now(),
+  };
+}
+
 /** 写入或更新（同一 profile 覆盖），返回按时间倒序的完整列表。 */
 export function upsertArchive(entry: ArchiveEntry): ArchiveEntry[] {
   const all = readAll();
@@ -80,11 +141,31 @@ export function upsertArchive(entry: ArchiveEntry): ArchiveEntry[] {
     (e) => e.id === entry.id || e.profileId === entry.profileId,
   );
   if (idx >= 0) {
-    all[idx] = entry;
+    // 重新分析 CV 时保留已保存的面试评分，避免被覆盖丢失。
+    all[idx] = {
+      ...entry,
+      interviewScore: entry.interviewScore ?? all[idx].interviewScore,
+    };
   } else {
     all.push(entry);
   }
   writeAll(all);
+  return all.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** 只更新某档案的面试评分，其他字段（DeepSeek 总分、可信度等）保持不变。 */
+export function updateArchiveInterviewScore(
+  profileId: string,
+  record: InterviewScoreRecord,
+): ArchiveEntry[] {
+  const all = readAll();
+  const idx = all.findIndex(
+    (e) => e.id === profileId || e.profileId === profileId,
+  );
+  if (idx >= 0) {
+    all[idx] = { ...all[idx], interviewScore: record };
+    writeAll(all);
+  }
   return all.sort((a, b) => b.createdAt - a.createdAt);
 }
 

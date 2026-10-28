@@ -39,7 +39,13 @@ const NAV = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { identity } = useIdentity();
-  const { archives, openArchive, removeArchive, clearArchives } = useArchive();
+  const {
+    archives,
+    openArchive,
+    openInterviewOverview,
+    removeArchive,
+    clearArchives,
+  } = useArchive();
   const { history: qaHistory, clearHistory: clearQaHistory } = useQaHistory();
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [expandedQa, setExpandedQa] = useState<string | null>(null);
@@ -62,7 +68,10 @@ export default function Sidebar() {
     setMobileArchiveOpen(false);
   };
 
-  const archiveItems = (onOpen: (id: string) => void) =>
+  const archiveItems = (
+    onOpen: (id: string) => void,
+    onInterview: (id: string) => void,
+  ) =>
     archives.length === 0 ? (
       <p className="px-2 py-6 text-center text-xs leading-relaxed text-ink/75">
         No archives yet
@@ -75,10 +84,18 @@ export default function Sidebar() {
           key={entry.id}
           entry={entry}
           onClick={() => onOpen(entry.id)}
+          onOpenInterview={
+            entry.interviewScore ? () => onInterview(entry.id) : undefined
+          }
           onDelete={() => removeFromHistory(entry.id, entry.profileId)}
         />
       ))
     );
+
+  const showInterviewScore = (id: string) => {
+    setMobileArchiveOpen(false);
+    openInterviewOverview(id);
+  };
 
   return (
     <>
@@ -144,10 +161,13 @@ export default function Sidebar() {
               </button>
             )}
             <div className="mt-3 flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto">
-              {archiveItems((id) => {
-                setMobileArchiveOpen(false);
-                openArchive(id);
-              })}
+              {archiveItems(
+                (id) => {
+                  setMobileArchiveOpen(false);
+                  openArchive(id);
+                },
+                showInterviewScore,
+              )}
             </div>
           </div>
         </div>
@@ -218,7 +238,7 @@ export default function Sidebar() {
           </span>
         </div>
         <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-0.5">
-          {archiveItems(openArchive)}
+          {archiveItems(openArchive, showInterviewScore)}
         </div>
       </div>
 
@@ -264,13 +284,6 @@ export default function Sidebar() {
             ))}
           </div>
         )}
-      </div>
-
-      {/* 说明位 */}
-      <div className="mt-4 rounded-xl border border-ink/[0.06] bg-ink/[0.02] px-3 py-3">
-        <p className="text-xs leading-relaxed text-ink/75">
-          Every field in this profile links back to a verifiable source.
-        </p>
       </div>
 
       {/* 底部身份位 */}
@@ -330,6 +343,7 @@ export default function Sidebar() {
           </div>
         </div>
       )}
+
     </aside>
     </>
   );

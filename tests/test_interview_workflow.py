@@ -408,6 +408,62 @@ class InterviewAnalysisTests(unittest.TestCase):
         )
         self.assertEqual(result["score_overall"], 7.4)
 
+    def test_alignment_without_answer_content_marks_questions_unanswered(self):
+        with mock.patch(
+            "app.interview_analysis.chat_json",
+            return_value={"ranges": []},
+        ):
+            alignment = align_answers(self.question_set, _segments(1))
+        self.assertEqual(len(alignment["items"]), 5)
+        self.assertTrue(all(not item["segments"] for item in alignment["items"]))
+        self.assertTrue(
+            any(
+                item["code"] == "no_answer_segments_aligned"
+                for item in alignment["warnings"]
+            )
+        )
+
+    def test_analysis_with_only_greeting_audio_completes_with_warnings(self):
+        segments = _segments(1)
+        overall_response = {
+            "summary": "No answer content was present in the recording.",
+            "strengths": [],
+            "risks": [],
+            "recommended_follow_up_questions": [],
+        }
+        transcript = {
+            "language": "en",
+            "duration_ms": 20_000,
+            "segments": segments,
+            "audio_features": {
+                "mean_volume_dbfs": -24.2,
+                "volume_variability_db": 3.5,
+            },
+        }
+        with mock.patch(
+            "app.interview_analysis.chat_json",
+            side_effect=[{"ranges": []}, overall_response],
+        ):
+            alignment = align_answers(self.question_set, segments)
+            report = analyze_interview(
+                self.question_set,
+                transcript,
+                alignment,
+            )
+        self.assertTrue(
+            all(not item["answered"] for item in report["question_results"])
+        )
+        self.assertTrue(
+            any(
+                item["code"] == "no_answer_segments_aligned"
+                for item in report["warnings"]
+            )
+        )
+        self.assertEqual(
+            report["communication_profile"]["metrics"]["answered_questions"],
+            0,
+        )
+
     def test_long_answer_is_map_reduced_within_deepseek_prompt_budget(self):
         question = self.question_set["questions"][0]
         long_segments = [

@@ -112,6 +112,11 @@ def probe_video(path: Path) -> dict[str, Any]:
                             duration_seconds,
                             float(stream.duration * stream.time_base),
                         )
+            if duration_seconds <= 0:
+                # MediaRecorder（网页录制）生成的 WebM 等文件头常缺失
+                # Duration 字段：退避为逐包 demux，取各流最大时间戳推算
+                # 时长。仅解封装不解码，开销可接受。
+                duration_seconds = _demux_duration(container)
             stream = video_streams[0]
             width = int(stream.codec_context.width or 0)
             height = int(stream.codec_context.height or 0)
@@ -139,6 +144,27 @@ def probe_video(path: Path) -> dict[str, Any]:
         "width": width or None,
         "height": height or None,
     }
+
+
+def _demux_duration(container: Any) -> float:
+    """容器与流均无时长信息时，用数据包时间戳推算时长（秒）。"""
+    max_end_seconds = 0.0
+    try:
+        for packet in container.demux():
+            if packet.time_base is None:
+                continue
+            time_base = float(packet.time_base)
+            start = float(packet.pts) * time_base if packet.pts is not None else 0.0
+            end = (
+                start + float(packet.duration) * time_base
+                if packet.duration is not None
+                else start
+            )
+            max_end_seconds = max(max_end_seconds, end)
+    except Exception:
+        # 逐包扫描失败时保持 0，随后统一按“无时长”报错。
+        return 0.0
+    return max_end_seconds
 
 
 def _model_config() -> tuple[str, str, str, str]:

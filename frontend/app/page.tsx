@@ -14,7 +14,10 @@ import { Section } from "@/components/Section";
 import Starfield, { HERO_IMAGE } from "@/components/Starfield";
 import AnalyzingStage from "@/components/AnalyzingStage";
 import CountUp from "@/components/CountUp";
-import { PlanetOverview } from "@/components/PlanetOverview";
+import {
+  PlanetOverview,
+  type OverviewSection,
+} from "@/components/PlanetOverview";
 import { useIdentity } from "@/components/IdentityProvider";
 import { EvidenceList } from "@/components/EvidenceList";
 import { EvidenceBadge } from "@/components/EvidenceBadge";
@@ -241,15 +244,27 @@ function ScrollHint() {
 
 function StepImage({ src, alt }: { src: string; alt: string }) {
   const [loaded, setLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+
+  // 图片可能在 React 水合完成之前就已加载完毕,onLoad 永远不会再触发,
+  // 此时直接读取 complete 标记,避免图片一直停在 opacity-0。
+  useEffect(() => {
+    if (imgRef.current?.complete) {
+      setLoaded(true);
+    }
+  }, []);
+
   return (
     <div className="step-float relative aspect-[16/10] w-full overflow-hidden rounded-3xl border border-ink/10 bg-ink/[0.05] shadow-[0_30px_60px_-32px_rgba(22,50,74,0.5)]">
       {!loaded && (
         <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-accent/15 via-accent/5 to-background" />
       )}
       <img
+        ref={imgRef}
         src={src}
         alt={alt}
         onLoad={() => setLoaded(true)}
+        onError={() => setLoaded(true)}
         className={`h-full w-full object-cover transition-opacity duration-700 ${
           loaded ? "opacity-100" : "opacity-0"
         }`}
@@ -263,19 +278,19 @@ const STEPS = [
     num: "01",
     title: "Upload",
     text: "Drop in a CV, cover letter, research statement and teaching statement. We parse the documents and prepare them for analysis.",
-    img: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=1200&q=80&auto=format&fit=crop",
+    img: "/screenshots/upload.png",
   },
   {
     num: "02",
     title: "Analyze",
     text: "AI extracts a structured profile and verifies every claim against public sources, linking each field back to its evidence.",
-    img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&q=80&auto=format&fit=crop",
+    img: "/screenshots/analyze.png",
   },
   {
     num: "03",
     title: "Review",
     text: "Review a six-dimension evaluation with evidence-grounded scoring, credibility, and an AI assistant for Q&A and interview prep.",
-    img: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&q=80&auto=format&fit=crop",
+    img: "/screenshots/review.png",
   },
 ];
 
@@ -350,15 +365,27 @@ export default function Home() {
   const [qaError, setQaError] = useState<string | null>(null);
   const [qaLoading, setQaLoading] = useState(false);
   const [overviewOpen, setOverviewOpen] = useState(false);
+  const [overviewSelect, setOverviewSelect] =
+    useState<OverviewSection | null>(null);
   const [llmAssessment, setLlmAssessment] = useState<LlmAssessment | null>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
-  const { saveArchive, pendingId, clearPending } = useArchive();
+  const {
+    saveArchive,
+    pendingId,
+    clearPending,
+    pendingInterviewId,
+    clearPendingInterview,
+    archives,
+  } = useArchive();
   const { addAnswer, history: qaHistory } = useQaHistory();
   const [loadedArchiveId, setLoadedArchiveId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string>("basic");
 
   // 开场动画只在整页首次加载时播放一次，之后「返回首页」直接显示内容
   const [introDone] = useState(() => {
+    // SSR 始终按“首次访问”渲染（与客户端首帧一致，避免 hydration 不一致）；
+    // 客户端首次渲染时读取模块级标志，只有真正的新会话才播开场。
+    if (typeof window === "undefined") return false;
     const done = introPlayed;
     introPlayed = true;
     return done;
@@ -506,6 +533,7 @@ export default function Home() {
     setQuestion("");
     setLlmAssessment(null);
     setOverviewOpen(false);
+    setOverviewSelect(null);
   };
 
   // 从侧栏档案库点击文件夹后，加载对应的已存档简历。
@@ -525,6 +553,7 @@ export default function Home() {
       setQaError(null);
       setQuestion("");
       setOverviewOpen(false);
+      setOverviewSelect(null);
       if (!entry.llm) {
         void refreshLlmScore(entry.profileId, entry.candidate);
       }
@@ -536,7 +565,44 @@ export default function Home() {
     if (pendingId) clearPending();
   }, [pendingId, clearPending]);
 
+  // 从侧栏档案库点击「Interview」分数后，加载对应档案并直接打开
+  // 整体评分弹窗、选中面试板块（而非单独的小弹窗）。
+  if (pendingInterviewId && pendingInterviewId !== loadedArchiveId) {
+    const entry = getArchive(pendingInterviewId);
+    setLoadedArchiveId(pendingInterviewId);
+    if (entry) {
+      setCandidate(entry.candidate);
+      setProfileId(entry.profileId);
+      setLlmAssessment(entry.llm ?? null);
+      setFilter({ tags: [], search: "" });
+      setSelectedEvidence(null);
+      setCorrections(new Map());
+      setAnalysisWarnings([]);
+      setQaResult(null);
+      setQaError(null);
+      setQuestion("");
+      setOverviewSelect("interview");
+      setOverviewOpen(true);
+      if (!entry.llm) {
+        void refreshLlmScore(entry.profileId, entry.candidate);
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (pendingInterviewId) clearPendingInterview();
+  }, [pendingInterviewId, clearPendingInterview]);
+
   const c = candidate;
+
+  // 当前档案的面试评分（来自档案库，上传视频分析完成后写入）
+  const currentArchiveEntry = useMemo(
+    () =>
+      profileId
+        ? archives.find((entry) => entry.profileId === profileId) ?? null
+        : null,
+    [archives, profileId],
+  );
 
   // 评分随 candidate 与人工修正（corrections）实时重算
   const assessment = useMemo(
@@ -763,7 +829,10 @@ export default function Home() {
               />
             )}
             <OverviewButton
-              onClick={() => setOverviewOpen(true)}
+              onClick={() => {
+                setOverviewSelect(null);
+                setOverviewOpen(true);
+              }}
               score={assessment?.overall ?? null}
             />
           </div>
@@ -1138,7 +1207,10 @@ export default function Home() {
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") void handleAsk();
+                // 输入法(IME)组合输入期间按 Enter 只是确认候选词/上屏,不应提交问题
+                const native = e.nativeEvent as KeyboardEvent;
+                const composing = native.isComposing || native.keyCode === 229;
+                if (e.key === "Enter" && !composing) void handleAsk();
               }}
               placeholder="Ask a question about this candidate…"
               className="min-w-0 flex-1 rounded-lg border border-ink/10 bg-ink/[0.05] px-3 py-2 text-sm text-ink/90 outline-none placeholder:text-ink/75 focus:border-accent/50"
@@ -1204,6 +1276,9 @@ export default function Home() {
         <PlanetOverview
           candidate={c}
           assessment={assessment}
+          interviewScore={currentArchiveEntry?.interviewScore ?? null}
+          interviewProfileId={profileId}
+          initialSelected={overviewSelect}
           onClose={() => setOverviewOpen(false)}
           onEvidenceClick={setSelectedEvidence}
           getStatus={getStatus}

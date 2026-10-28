@@ -15,22 +15,22 @@ const STARS = [
 export function ArchiveFolder({
   entry,
   onClick,
+  onOpenInterview,
   onDelete,
 }: {
   entry: ArchiveEntry;
   onClick: () => void;
+  onOpenInterview?: () => void;
   onDelete?: () => void;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const interviewScore = entry.interviewScore ?? null;
 
   return (
     <div className="archive-folder group relative">
       <span className="folder-tab" aria-hidden="true" />
-      <button
-        type="button"
-        onClick={onClick}
-        className="folder-body relative block w-full overflow-hidden text-left"
-        title={`${entry.name}${entry.institution ? ` · ${entry.institution}` : ""}`}
+      <div
+        className="folder-body relative w-full overflow-hidden text-left"
       >
         <span
           aria-hidden="true"
@@ -55,7 +55,12 @@ export function ArchiveFolder({
             }}
           />
         ))}
-        <span className="relative z-10 flex h-full flex-col items-center justify-center gap-1 px-9 py-4">
+        <button
+          type="button"
+          onClick={onClick}
+          className="relative z-10 flex w-full cursor-pointer flex-col items-center justify-center gap-1 px-9 pb-3 pt-4"
+          title={`${entry.name}${entry.institution ? ` · ${entry.institution}` : ""}`}
+        >
           <span className="line-clamp-1 w-full text-center text-[13px] font-semibold leading-tight text-ink/90">
             {entry.name}
           </span>
@@ -67,8 +72,38 @@ export function ArchiveFolder({
               /10 · {entry.score != null ? "Score" : "Credibility"}
             </span>
           </span>
-        </span>
-      </button>
+        </button>
+
+        {interviewScore && onOpenInterview && (
+          <button
+            type="button"
+            onClick={onOpenInterview}
+            title="View per-question interview score"
+            className="relative z-10 mx-2 mb-2 flex w-[calc(100%-16px)] cursor-pointer items-center justify-center gap-1.5 rounded-full border border-accent/20 bg-accent/[0.07] px-2 py-1 text-[10px] font-medium text-accent transition hover:border-accent/40 hover:bg-accent/[0.12]"
+          >
+            <svg
+              viewBox="0 0 16 16"
+              className="h-3 w-3"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              aria-hidden="true"
+            >
+              <rect x="5" y="2.2" width="6" height="8.3" rx="2.4" />
+              <path d="M3.6 7.2v3M12.4 7.2v3M8 13.3v.8" strokeLinecap="round" />
+            </svg>
+            Interview{" "}
+            <b className="tabular-nums">
+              {interviewScore.overall != null
+                ? interviewScore.overall.toFixed(1)
+                : "—"}
+            </b>
+            <span className="text-accent/70 tabular-nums">
+              · {interviewScore.answeredCount}/{interviewScore.totalCount}
+            </span>
+          </button>
+        )}
+      </div>
 
       {onDelete && !confirming && (
         <button

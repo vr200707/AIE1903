@@ -248,6 +248,21 @@ def align_answers(
         ranges = payload.get("ranges")
         if not isinstance(ranges, list):
             continue
+        if not ranges:
+            warnings.append(
+                warning(
+                    "no_answer_ranges_in_batch",
+                    "alignment",
+                    (
+                        f"Transcript batch {batch_index} contained speech, but "
+                        "no segment range could be aligned to an interview "
+                        "question."
+                    ),
+                    retryable=False,
+                    source=None,
+                ).as_dict()
+            )
+            continue
         for item in ranges:
             if not isinstance(item, dict):
                 continue
@@ -298,7 +313,20 @@ def align_answers(
         )
 
     if not any(item["segments"] for item in results):
-        raise ValueError("no answer segments could be aligned to the question set")
+        warnings.append(
+            warning(
+                "no_answer_segments_aligned",
+                "alignment",
+                (
+                    "No transcript segments could be aligned to any interview "
+                    "question. Every question is marked unanswered; this usually "
+                    "means the recording contained greetings or noise instead of "
+                    "audible answers."
+                ),
+                retryable=False,
+                source=None,
+            ).as_dict()
+        )
     return {"items": results, "warnings": warnings}
 
 
