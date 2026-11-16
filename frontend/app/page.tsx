@@ -828,6 +828,7 @@ export default function Home() {
                 }
               />
             )}
+            {profileId && <button className="rounded-full border border-ink/20 px-4 py-2 text-sm" onClick={() => router.push(`/seminar?profile_id=${encodeURIComponent(profileId)}`)}>Review seminar</button>}
             <OverviewButton
               onClick={() => {
                 setOverviewSelect(null);

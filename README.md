@@ -420,3 +420,16 @@ scripts/fixtures/generate_cv_fixtures.py
 4. 不提交缓存、环境文件、真实数据或生成目录。
 
 完整约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+## Project 3: Seminar Analysis
+
+The new `/seminar` page links a candidate to two recordings of the same research
+presentation or teaching demonstration. It supports chunked uploads, manual
+offset alignment, synchronized playback, sampled image analysis, timestamped
+evidence, three presentation dimensions, and persistent human review status.
+
+Configure `SEMINAR_VISION_MODEL` with an **image-capable** model before scanning.
+Optional `SEMINAR_VISION_API_KEY` and `SEMINAR_VISION_BASE_URL` override the
+existing DeepSeek credentials/endpoint. P1/P2 model settings are unchanged.
+The adapter sends actual JPEG image content, not video filenames or transcripts
+pretending to be visual evidence. See [Project 3 setup and acceptance](docs/seminar.md).

@@ -13,6 +13,7 @@ import {
 } from "@/lib/interview";
 
 const NAV = [
+  { href: "/seminar", label: "Seminar", icon: <span aria-hidden="true">▣</span> },
   {
     href: "/",
     label: "Profile",
