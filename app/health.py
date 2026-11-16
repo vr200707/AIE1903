@@ -15,6 +15,8 @@ from typing import Any
 
 from dotenv import load_dotenv
 
+from app import llm
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEPENDENCY_NAMES = (
@@ -25,6 +27,7 @@ DEPENDENCY_NAMES = (
     "openalex",
     "bing",
     "interview_asr",
+    "interview_visual",
 )
 
 _LOCK = Lock()
@@ -102,6 +105,7 @@ def dependency_snapshot(*, project_root: str | Path | None = None) -> dict[str, 
         "deepseek": {
             "configured": bool(os.getenv("DEEPSEEK_API_KEY")),
             "model": os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
+            "usage": llm.usage_snapshot(),
         },
         "ocr": {
             **_executable_status(os.getenv("TESSERACT_CMD", "tesseract")),
@@ -132,6 +136,14 @@ def dependency_snapshot(*, project_root: str | Path | None = None) -> dict[str, 
             "model": os.getenv("INTERVIEW_ASR_MODEL", "small.en"),
             "device": os.getenv("INTERVIEW_ASR_DEVICE", "cpu"),
             "compute_type": os.getenv("INTERVIEW_ASR_COMPUTE_TYPE", "int8"),
+        },
+        "interview_visual": {
+            "configured": importlib.util.find_spec("av") is not None,
+            "provider": "local-motion-v1",
+            "sample_interval_ms": os.getenv(
+                "INTERVIEW_VISUAL_SAMPLE_INTERVAL_MS",
+                "1000",
+            ),
         },
     }
 

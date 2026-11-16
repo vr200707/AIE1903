@@ -252,6 +252,27 @@ export interface CommunicationProfile {
   caveats: string[];
 }
 
+export interface VisualEvent {
+  event_id: string;
+  start_ms: number;
+  end_ms: number;
+  intensity: number;
+  description: string;
+}
+
+export interface VisualAnalysis {
+  analyzer: string;
+  sample_interval_ms: number;
+  metrics: {
+    sampled_frames: number;
+    active_frames: number;
+    mean_motion: number;
+    max_motion: number;
+  };
+  events: VisualEvent[];
+  caveats: string[];
+}
+
 export interface InterviewReport {
   schema_version: "1.0.0";
   interview_id: string;
@@ -264,6 +285,7 @@ export interface InterviewReport {
   question_results: QuestionResult[];
   timestamp_inventory: TimestampInventoryItem[];
   communication_profile: CommunicationProfile;
+  visual_analysis: VisualAnalysis | null;
   warnings: InterviewWarning[];
 }
 

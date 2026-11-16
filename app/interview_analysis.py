@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from app.interview_llm import chat_json, input_char_budget, model_name, trim_text
@@ -230,7 +232,12 @@ def align_answers(
             + "\n\nReturn the JSON object now."
         )
         try:
-            payload = chat_json(ALIGN_SYSTEM_PROMPT, user_prompt, temperature=0)
+            payload = chat_json(
+                ALIGN_SYSTEM_PROMPT,
+                user_prompt,
+                temperature=0,
+                stage="interview_alignment",
+            )
         except Exception as exc:
             warnings.append(
                 warning(
@@ -328,6 +335,87 @@ def align_answers(
             ).as_dict()
         )
     return {"items": results, "warnings": warnings}
+
+
+def align_answers_from_marks(
+    question_set: dict[str, Any],
+    transcript_segments: list[dict[str, Any]],
+    marks: list[dict[str, Any]],
+    *,
+    duration_ms: int | None,
+) -> dict[str, Any]:
+    """Build answer alignment from recorder timestamps without an LLM call.
+
+    Browser recordings already carry the exact moment each question was
+    displayed.  Those marks are more accurate than transcription-based
+    alignment, so this path keeps the same alignment envelope while spending
+    zero tokens.
+    """
+    cleaned: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for mark in marks:
+        question_id = mark.get("question_id")
+        start_ms = mark.get("start_ms")
+        if (
+            not isinstance(question_id, str)
+            or not question_id
+            or question_id in seen
+            or not isinstance(start_ms, int)
+            or start_ms < 0
+        ):
+            continue
+        seen.add(question_id)
+        cleaned.append({"question_id": question_id, "start_ms": start_ms})
+    cleaned.sort(key=lambda mark: mark["start_ms"])
+    starts = [mark["start_ms"] for mark in cleaned]
+    index_of = {mark["question_id"]: i for i, mark in enumerate(cleaned)}
+
+    results: list[dict[str, Any]] = []
+    for question in question_set["questions"]:
+        question_id = question["question_id"]
+        mark_index = index_of.get(question_id)
+        if mark_index is None:
+            results.append(
+                {
+                    "question": question,
+                    "segments": [],
+                    "answer_window": None,
+                    "alignment_confidence": "low",
+                }
+            )
+            continue
+
+        start_ms = starts[mark_index]
+        end_ms = (
+            starts[mark_index + 1]
+            if mark_index + 1 < len(starts)
+            else duration_ms
+        )
+        if duration_ms is not None:
+            start_ms = min(start_ms, duration_ms)
+            if end_ms is not None:
+                end_ms = min(end_ms, duration_ms)
+
+        segments = [
+            segment
+            for segment in transcript_segments
+            if segment["start_ms"] < (end_ms if end_ms is not None else start_ms + 1)
+            and segment["end_ms"] > start_ms
+        ]
+        results.append(
+            {
+                "question": question,
+                "segments": sorted(segments, key=lambda item: item["start_ms"]),
+                "answer_window": (
+                    {"start_ms": start_ms, "end_ms": end_ms}
+                    if end_ms is not None
+                    else None
+                ),
+                "alignment_confidence": "high" if segments else "low",
+            }
+        )
+
+    return {"items": results, "warnings": []}
 
 
 def _compact_question_evidence(question: dict[str, Any]) -> list[dict[str, Any]]:
@@ -436,7 +524,12 @@ def _chunk_answer_observations(
             + "\n".join(_format_segment(segment) for segment in batch)
             + f"\n\nThis is chunk {index} of {len(batches)}. Return JSON now."
         )
-        payload = chat_json(CHUNK_SYSTEM_PROMPT, user_prompt, temperature=0)
+        payload = chat_json(
+            CHUNK_SYSTEM_PROMPT,
+            user_prompt,
+            temperature=0,
+            stage="interview_chunk",
+        )
         batch_ids = {segment["segment_id"] for segment in batch}
         observations = []
         for item in payload.get("observations") or []:
@@ -571,7 +664,12 @@ def analyze_question(
         + "\n\nReturn the JSON object now."
     )
     try:
-        payload = chat_json(QUESTION_SYSTEM_PROMPT, user_prompt, temperature=0.1)
+        payload = chat_json(
+            QUESTION_SYSTEM_PROMPT,
+            user_prompt,
+            temperature=0.1,
+            stage="interview_question",
+        )
     except Exception as exc:
         warnings.append(
             warning(
@@ -765,7 +863,12 @@ def build_overall_report(
                 result["question_id"]
             )
     try:
-        payload = chat_json(OVERALL_SYSTEM_PROMPT, user_prompt, temperature=0.1)
+        payload = chat_json(
+            OVERALL_SYSTEM_PROMPT,
+            user_prompt,
+            temperature=0.1,
+            stage="interview_overall",
+        )
         overall = {
             "summary": trim_text(payload.get("summary"), 1_500),
             "strengths": _ground_overall_items(
@@ -891,7 +994,7 @@ def build_communication_profile(
         "caveats": [
             "Measurements reflect this recording only and are not personality or ability scores.",
             "Automatic transcription and answer-boundary detection can be imperfect.",
-            "Visual behavior was intentionally not analyzed in this release.",
+            "Visual cues are limited to local motion activity and do not infer emotion, personality, or ability.",
         ],
     }
 
@@ -901,9 +1004,10 @@ def analyze_interview(
     transcript: dict[str, Any],
     alignment: dict[str, Any],
 ) -> dict[str, Any]:
-    results: list[dict[str, Any]] = []
     warnings = list(alignment.get("warnings", []))
-    for item in alignment["items"]:
+    items = alignment["items"]
+
+    def analyze_item(item: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         question = item["question"]
         try:
             result, item_warnings = analyze_question(
@@ -933,7 +1037,32 @@ def analyze_interview(
                     source=question["question_id"],
                 ).as_dict()
             ]
-        results.append(result)
+        return result, item_warnings
+
+    workers_raw = os.getenv("INTERVIEW_ANALYSIS_WORKERS", "2")
+    try:
+        workers = max(1, min(8, int(workers_raw)))
+    except (TypeError, ValueError):
+        workers = 2
+
+    ordered_results: list[dict[str, Any] | None] = [None] * len(items)
+    ordered_warnings: list[list[dict[str, Any]]] = [[] for _ in items]
+    if len(items) == 1:
+        futures: dict[Any, int] = {}
+        for index, item in enumerate(items):
+            ordered_results[index], ordered_warnings[index] = analyze_item(item)
+    else:
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {
+                executor.submit(analyze_item, item): index
+                for index, item in enumerate(items)
+            }
+            for future in as_completed(futures):
+                index = futures[future]
+                ordered_results[index], ordered_warnings[index] = future.result()
+
+    results = [result for result in ordered_results if result is not None]
+    for item_warnings in ordered_warnings:
         warnings.extend(item_warnings)
 
     overall, overall_warnings = build_overall_report(

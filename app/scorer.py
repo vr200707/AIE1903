@@ -19,8 +19,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from dotenv import load_dotenv
-from openai import OpenAI
+from app import llm
 
 
 logger = logging.getLogger("app.scorer")
@@ -74,22 +73,15 @@ Output structure:
 """
 
 
-def _load_dotenv() -> None:
-    load_dotenv(PROJECT_ROOT / ".env")
-
-
 def _model_name() -> str:
-    _load_dotenv()
-    return os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+    return llm.model_name()
 
 
 def _base_url() -> str:
-    _load_dotenv()
-    return os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    return llm.base_url()
 
 
 def _max_output_tokens() -> int:
-    _load_dotenv()
     raw = os.getenv("SCORE_MAX_OUTPUT_TOKENS", str(DEFAULT_MAX_OUTPUT_TOKENS))
     try:
         return max(256, int(raw))
@@ -198,15 +190,13 @@ def _write_cache(key: str, assessment: dict[str, Any]) -> None:
 
 
 def _chat(messages: list[dict[str, str]]) -> str:
-    _load_dotenv()
-    client = OpenAI(api_key=os.getenv("DEEPSEEK_API_KEY"), base_url=_base_url())
-    response = client.chat.completions.create(
-        model=_model_name(),
-        messages=messages,
+    result = llm.call_chat(
+        messages,
+        stage="scoring",
         temperature=0.3,
         max_tokens=_max_output_tokens(),
     )
-    return response.choices[0].message.content or ""
+    return result.text
 
 
 def score_candidate(candidate: dict[str, Any]) -> dict[str, Any] | None:

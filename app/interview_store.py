@@ -115,6 +115,16 @@ class InterviewStore:
                 connection.execute(
                     "ALTER TABLE question_sets ADD COLUMN candidate_token TEXT"
                 )
+            interview_columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(interviews)"
+                ).fetchall()
+            }
+            if "visual_json" not in interview_columns:
+                connection.execute(
+                    "ALTER TABLE interviews ADD COLUMN visual_json TEXT"
+                )
 
     def create_question_set(
         self,
@@ -330,6 +340,9 @@ class InterviewStore:
         if row is None:
             return None
         video = json.loads(row["video_json"]) if row["video_json"] else None
+        visual_analysis = (
+            json.loads(row["visual_json"]) if row["visual_json"] else None
+        )
         return {
             "schema_version": "1.0.0",
             "interview_id": row["id"],
@@ -338,9 +351,11 @@ class InterviewStore:
             "stage": row["stage"],
             "progress": json.loads(row["progress_json"]),
             "video": video,
+            "visual_analysis": visual_analysis,
             "warnings": json.loads(row["warnings_json"]),
             "error": json.loads(row["error_json"]) if row["error_json"] else None,
             "has_report": bool(row["report_json"]),
+            "has_visual_analysis": bool(row["visual_json"]),
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],
         }
@@ -355,6 +370,7 @@ class InterviewStore:
         video: dict[str, Any] | None = None,
         video_path: str | None = None,
         transcript: dict[str, Any] | None = None,
+        visual: dict[str, Any] | None = None,
         report: dict[str, Any] | None = None,
         warnings: list[dict[str, Any]] | None = None,
         error: dict[str, Any] | None | object = _MISSING,
@@ -379,6 +395,9 @@ class InterviewStore:
         if transcript is not None:
             assignments.append("transcript_json = ?")
             values.append(json.dumps(transcript, ensure_ascii=False))
+        if visual is not None:
+            assignments.append("visual_json = ?")
+            values.append(json.dumps(visual, ensure_ascii=False))
         if report is not None:
             assignments.append("report_json = ?")
             values.append(json.dumps(report, ensure_ascii=False))
@@ -418,6 +437,16 @@ class InterviewStore:
         if row is None or not row["transcript_json"]:
             return None
         return json.loads(row["transcript_json"])
+
+    def get_visual_analysis(self, interview_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT visual_json FROM interviews WHERE id = ?",
+                (interview_id,),
+            ).fetchone()
+        if row is None or not row["visual_json"]:
+            return None
+        return json.loads(row["visual_json"])
 
     def get_report(self, interview_id: str) -> dict[str, Any] | None:
         with self._connect() as connection:

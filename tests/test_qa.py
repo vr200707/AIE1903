@@ -1,5 +1,7 @@
 import json
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from app import qa
@@ -55,6 +57,15 @@ PROFILE = {
 
 
 class EvidenceIndexTests(unittest.TestCase):
+    def setUp(self):
+        self.original_cache_dir = qa.CACHE_DIR
+        self.temp_dir = tempfile.TemporaryDirectory()
+        qa.CACHE_DIR = Path(self.temp_dir.name)
+
+    def tearDown(self):
+        qa.CACHE_DIR = self.original_cache_dir
+        self.temp_dir.cleanup()
+
     def test_index_covers_every_evidence_in_order(self):
         index, rendered = qa.build_evidence_index(PROFILE)
         self.assertEqual(list(index.keys()), ["E1", "E2"])
@@ -67,6 +78,15 @@ class EvidenceIndexTests(unittest.TestCase):
 
 
 class AnswerQuestionTests(unittest.TestCase):
+    def setUp(self):
+        self.original_cache_dir = qa.CACHE_DIR
+        self.temp_dir = tempfile.TemporaryDirectory()
+        qa.CACHE_DIR = Path(self.temp_dir.name)
+
+    def tearDown(self):
+        qa.CACHE_DIR = self.original_cache_dir
+        self.temp_dir.cleanup()
+
     def _answer_with(self, payload):
         with mock.patch.object(qa, "_call_model", return_value=json.dumps(payload)):
             return qa.answer_question(PROFILE, "他最高学历是什么？")
@@ -128,6 +148,22 @@ class AnswerQuestionTests(unittest.TestCase):
             }
         )
         self.assertLessEqual(len(result["evidence"]), qa.MAX_EVIDENCE_REFS)
+
+    def test_user_message_does_not_duplicate_evidence_arrays(self):
+        index, evidence_index = qa.build_evidence_index(PROFILE)
+        message = qa._build_user_message(PROFILE, evidence_index, "What is the degree?")
+        evidence_text = PROFILE["candidate"]["basic_info"]["evidence"][0]["evidence"]
+        self.assertEqual(message.count(evidence_text), 1)
+        self.assertEqual(list(index.keys()), ["E1", "E2"])
+
+    def test_identical_question_is_served_from_cache(self):
+        first = self._answer_with(
+            {"answer": "博士。", "confidence": "high", "evidence_ids": ["E1"]}
+        )
+        with mock.patch.object(qa, "_call_model") as call_model:
+            second = qa.answer_question(PROFILE, "他最高学历是什么？")
+        call_model.assert_not_called()
+        self.assertEqual(first, second)
 
 
 if __name__ == "__main__":
