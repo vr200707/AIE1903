@@ -108,7 +108,6 @@ class EvidenceTests(unittest.TestCase):
             self.assertTrue(any(b['type']=='image_url' and b['image_url']['url'].startswith('data:image/jpeg;base64,') for b in blocks))
 
 
-if __name__ == '__main__': unittest.main()
 
 class SeminarPipelineTests(unittest.TestCase):
     def setUp(self):
@@ -186,3 +185,21 @@ class SeminarPipelineTests(unittest.TestCase):
         from app.seminar_analysis import ground_observations
         result,count=ground_observations({'observations':[{'dimension':{},'frame_ids':[]}]},[])
         self.assertEqual((result,count),([],1))
+
+
+    def test_successful_rescan_removes_cross_batch_stale_observation(self):
+        from app import seminar_store as store
+        from app.seminar_service import run_scan
+        self.record['observations']=[{'id':'old','dimension':'gesture_usage','observed_action':'Old action',
+            'comment':'Old comment','frame_ids':[], 'start_ms':6000,'end_ms':10000,'review_status':'confirmed'}]
+        store.save(self.record)
+        # Isolate successful-coverage replacement from media decoding, which is
+        # exercised above. The old event spans the 8-second batch boundary.
+        def sample(path,folder,view,start,end,offset):
+            return [{'id':f'{view}_{start}', 'view':view,'time_ms':start,'source_ms':start,'filename':'a.jpg'},
+                    {'id':f'{view}_{start+1000}', 'view':view,'time_ms':start+1000,'source_ms':start+1000,'filename':'b.jpg'}]
+        with patch('app.seminar_service.sample_window',side_effect=sample),patch('app.seminar_service.analyze_window',return_value={'observations':[]}):
+            run_scan(self.record['id'],0,16000,'none')
+        self.assertEqual(store.read(self.record['id'])['observations'],[])
+
+if __name__ == '__main__': unittest.main()

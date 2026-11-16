@@ -9,6 +9,7 @@ export default function DualVideoPlayer({session, offset, seek}: {session: Semin
   const screen = useRef<HTMLVideoElement>(null);
   const wanted = useRef(false);
   const busy = useRef(false);
+  const requestedPosition = useRef<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0);
   const [message, setMessage] = useState("");
@@ -22,6 +23,7 @@ export default function DualVideoPlayer({session, offset, seek}: {session: Semin
     if (!a || !b || high<=low) return;
     a.pause(); b.pause(); wanted.current=false;
     const times=synchronizedTimes((seek?.ms ?? low*1000)/1000,offset,[low,high]);
+    requestedPosition.current=times[0];
     if(a.readyState>=1) a.currentTime=times[0];
     if(b.readyState>=1) b.currentTime=times[1];
   }, [seek, offset, low, high]);
@@ -62,7 +64,10 @@ export default function DualVideoPlayer({session, offset, seek}: {session: Semin
   function jump(t: number) {
     if(!bounds || !speaker.current || !screen.current) return;
     const times=synchronizedTimes(t,offset,bounds);
-    speaker.current.currentTime=times[0];screen.current.currentTime=times[1];setTime(times[0]);
+    requestedPosition.current=times[0];
+    if(speaker.current.readyState>=1) speaker.current.currentTime=times[0];
+    if(screen.current.readyState>=1) screen.current.currentTime=times[1];
+    setTime(times[0]);
   }
   return <section className="rounded-2xl border border-ink/15 bg-white/50 p-4" aria-label="Synchronized seminar recordings">
     <div className="grid gap-4 md:grid-cols-2">
@@ -72,7 +77,10 @@ export default function DualVideoPlayer({session, offset, seek}: {session: Semin
           src={`/api/seminars/${session.id}/videos/${view}?v=${session.videos[view]?.filename}`}
           muted={view!==audio} onLoadedMetadata={()=>{
             const player=view==="speaker"?speaker.current:screen.current;
-            if(player && bounds) player.currentTime=view==="speaker"?low:low+offset;
+            if(player && bounds) {
+              const times=synchronizedTimes(requestedPosition.current ?? (seek?.ms ?? low*1000)/1000,offset,bounds);
+              player.currentTime=times[view==="speaker"?0:1];
+            }
           }} onTimeUpdate={view==="speaker"?()=>setTime(speaker.current?.currentTime ?? 0):undefined}
           onPause={view==="speaker"?()=>setPlaying(false):undefined}
           onError={()=>setMessage("This video cannot be played in this browser. Convert it to MP4 (H.264/AAC) and upload again.")} />

@@ -7,11 +7,13 @@ import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from dotenv import load_dotenv
 
 lock = threading.RLock()
 
 
 def root() -> Path:
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env")
     return Path(os.getenv('SEMINAR_DATA_DIR', str(Path(__file__).resolve().parents[1] / '.cache' / 'seminars')))
 
 

@@ -70,6 +70,8 @@ def run_scan(session_id: str, start_ms: int, end_ms: int, audio_view: str) -> No
         run_id = uuid.uuid4().hex
         frames_dir = folder / 'frames' / run_id
         successful = 0
+        prior_ids = {o["id"] for o in record["observations"]}
+        successful_ranges: list[list[int]] = []
         for index, window_start in enumerate(range(start_ms, end_ms, WINDOW_MS)):
             window_end = min(window_start+WINDOW_MS, end_ms)
             record['stage'] = 'scanning'
@@ -98,10 +100,17 @@ def run_scan(session_id: str, start_ms: int, end_ms: int, audio_view: str) -> No
                 frame['filename'] = run_id + '/' + frame['filename']
             with store.lock:
                 latest = store.read(session_id)
-                # Replace only observations wholly inside a successful window.
+                # Merge consecutive successful coverage so events straddling a
+                # batch boundary are replaced, but failed gaps retain old reviews.
                 if observations is not None:
+                    if successful_ranges and successful_ranges[-1][1] == window_start:
+                        successful_ranges[-1][1] = window_end
+                    else:
+                        successful_ranges.append([window_start, window_end])
                     latest['observations'] = [o for o in latest['observations']
-                        if not (window_start <= o['start_ms'] and o['end_ms'] < window_end)] + observations
+                        if o['id'] not in prior_ids or not any(
+                            low <= o['start_ms'] and o['end_ms'] < high
+                            for low, high in successful_ranges)] + observations
                 latest['frames'].extend(frames)
                 latest['transcript'] = [s for s in latest['transcript']
                     if s['end_ms'] <= start_ms or s['start_ms'] >= end_ms] + transcript

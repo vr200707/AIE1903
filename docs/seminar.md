@@ -61,9 +61,9 @@ provider, not live account credentials.
   competency, or hiring verdict is requested. Image evidence can still be
   misinterpreted; human review remains necessary.
 - Failed model batches retain frames and report warnings. A failed retry preserves
-  existing reviewed observations. Successful batches replace observations wholly
-  contained in their window; overlapping scans may need manual review of similar
-  observations. Scans are sequential within each job, with at most two active jobs.
+  existing reviewed observations. Successful contiguous batches replace observations wholly
+  contained in their combined coverage, including events across batch boundaries.
+  A failed gap preserves prior observations crossing that gap. Scans are sequential within each job, with at most two active jobs.
 - Persistent metadata uses atomic JSON files in `.cache/seminars` (or
   `SEMINAR_DATA_DIR`), with local videos/frame JPEGs. Restarted incomplete jobs
   become failed/retryable. Use one backend process for this course demo.
@@ -92,9 +92,19 @@ provider, not live account credentials.
   provider image payload, missing audio, failure preservation and review persistence.
 - `python -m unittest discover -q`: full regression suite. Existing scanned-PDF
   test also requires Poppler (`pdfinfo`/`pdftoppm`), Tesseract and fonts.
-- `node --experimental-strip-types --test frontend/tests/seminar-timing.test.mjs`
-  (Node 22.6+ for this test runner; app runtime minimum remains Node 20).
+- `cd frontend && npm run test:seminar`: timing boundaries and real React player
+  behavior under delayed metadata (Node 22.6+ for this test runner).
 - `cd frontend && npm run lint && npm run build`.
 - Manual real-media acceptance: align +3 and -3 second pairs, scrub, play/pause,
   test buffering/end-of-overlap, open an observation and verify both views show
   the same action. Test with a real configured vision provider before course demo.
+
+### Validation in this implementation session
+
+11 seminar backend tests and 6 frontend tests pass. The production build passes;
+lint reports no errors and four pre-existing image warnings. The full backend
+suite passes 154/155 tests; `test_parse_pdf_falls_back_to_ocr_for_scanned_page`
+fails because this machine lacks Poppler (`pdfinfo`/`pdftoppm`). Existing OCR
+implementation was not modified. Browser checks with labeled synthetic H.264
+videos confirmed evidence seek, paired playback and stopping at the shared end.
+No real candidate footage or live paid vision API call was used.
