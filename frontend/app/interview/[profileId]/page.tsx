@@ -1838,9 +1838,10 @@ export default function InterviewPage() {
                           Coverage confirmation
                         </p>
                         <p className="mt-1 text-[10px] leading-relaxed text-ink/75">
-                          Checked automatically as each question is answered
-                          during recording. Analysis is blocked until all
-                          questions are confirmed.
+                          In-browser recordings check questions automatically as
+                          they are visited. For an uploaded video, confirm each
+                          answered question manually. Analysis is blocked until
+                          every question is confirmed.
                         </p>
                       </div>
                       <span
@@ -1861,19 +1862,22 @@ export default function InterviewPage() {
                         return (
                           <label
                             key={question.question_id}
-                            className={`flex cursor-not-allowed select-none items-start gap-2.5 rounded-lg border px-3 py-2 ${
+                            className={`flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2 transition ${
                               checked
                                 ? "border-emerald-300/20 bg-emerald-400/[0.06]"
-                                : "border-ink/[0.07] bg-ink/[0.02]"
+                                : "border-ink/[0.07] bg-ink/[0.02] hover:border-ink/[0.14]"
                             }`}
-                            title="Locked — checked automatically during recording"
                           >
                             <input
                               type="checkbox"
                               checked={checked}
-                              readOnly
-                              disabled
-                              className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-not-allowed accent-amber-400 disabled:opacity-100"
+                              onChange={(event) =>
+                                setCoverageChecks((current) => ({
+                                  ...current,
+                                  [question.question_id]: event.target.checked,
+                                }))
+                              }
+                              className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer accent-amber-400"
                             />
                             <span className="flex min-w-0 gap-2">
                               <span className="font-mono text-[9px] text-ink/75">

@@ -26,9 +26,9 @@ from typing import Any
 
 from dotenv import load_dotenv
 from jsonschema import Draft202012Validator
-from openai import OpenAI
 
 from app import health
+from app import llm
 from app.parser import ParsedDocument
 
 
@@ -51,13 +51,11 @@ def _load_schema() -> dict[str, Any]:
 
 
 def _model_name() -> str:
-    _load_dotenv()
-    return os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+    return llm.model_name()
 
 
 def _base_url() -> str:
-    _load_dotenv()
-    return os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    return llm.base_url()
 
 
 def _max_output_tokens() -> int:
@@ -265,6 +263,106 @@ def _compress_text(text: str, *, max_chars: int) -> str:
     )
 
 
+def _normalize_for_match(value: Any) -> str:
+    text = re.sub(r"[^\w\s]", " ", str(value or "").lower())
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _title_context(rendered: str, title: str, *, max_chars: int) -> str:
+    """Return the local text around one title instead of the whole document."""
+    target = _normalize_for_match(title)
+    if not target:
+        return ""
+    lines = rendered.splitlines()
+    matches: list[int] = []
+    for index, line in enumerate(lines):
+        if target in _normalize_for_match(line):
+            matches.append(index)
+    if not matches:
+        return ""
+
+    blocks: list[str] = []
+    seen_starts: set[int] = set()
+    for index in matches:
+        start = max(0, index - 10)
+        if start in seen_starts:
+            continue
+        seen_starts.add(start)
+        blocks.append("\n".join(lines[start : index + 11]))
+
+    context = "\n\n".join(blocks)
+    if len(context) <= max_chars:
+        return context
+    head_size = int(max_chars * 0.8)
+    tail_size = max_chars - head_size
+    return (
+        context[:head_size]
+        + "\n[… context compressed: middle truncated …]\n"
+        + context[-tail_size:]
+    )
+
+
+def _publication_batch_context(
+    rendered: str,
+    batch: list[dict[str, Any]],
+    *,
+    max_chars: int = 6_000,
+) -> str:
+    """Build one small context for a publication batch, falling back to all text."""
+    chunks: list[str] = []
+    for item in batch:
+        title = item.get("title")
+        if not isinstance(title, str) or not title.strip():
+            return rendered
+        context = _title_context(
+            rendered,
+            title,
+            max_chars=max(800, max_chars // max(1, len(batch))),
+        )
+        if not context:
+            return rendered
+        chunks.append(context)
+    combined = "\n\n".join(chunks)
+    if len(combined) <= max_chars:
+        return combined
+    return (
+        combined[: int(max_chars * 0.85)]
+        + "\n[… context compressed: tail truncated …]\n"
+        + combined[-int(max_chars * 0.15) :]
+    )
+
+
+def _publication_sections_text(rendered: str, *, max_chars: int = 40_000) -> str:
+    """Keep publication and reference sections when they can be identified."""
+    heading_pattern = re.compile(
+        r"\b(publications?|papers?|references?|发表论文|论文发表|论著|参考文献)\b",
+        re.IGNORECASE,
+    )
+    other_heading_pattern = re.compile(
+        r"\b(awards?|grants?|funding|service|teaching|education|employment|"
+        r"奖项|经费|服务|教学|教育|工作经历)\b",
+        re.IGNORECASE,
+    )
+    lines = rendered.splitlines()
+    blocks: list[str] = []
+    for index, line in enumerate(lines):
+        if not heading_pattern.search(line):
+            continue
+        end = min(len(lines), index + 250)
+        for candidate in range(index + 1, end):
+            if other_heading_pattern.search(lines[candidate]):
+                end = candidate
+                break
+        blocks.append("\n".join(lines[index:end]))
+
+    if not blocks:
+        return rendered
+    context = "\n\n".join(blocks)
+    if len(context) <= max_chars:
+        return context
+    return context[: max(0, max_chars)]
+
+
 def _validate_profile(profile: dict[str, Any]) -> list[str]:
     schema = _load_schema()
     validator = Draft202012Validator(schema)
@@ -313,14 +411,12 @@ def _write_cache(key: str, profile: dict[str, Any]) -> None:
     )
 
 
-def _chat(messages: list[dict[str, str]]) -> str:
+def _chat(messages: list[dict[str, str]], *, stage: str = "extraction") -> str:
     """调用 DeepSeek 并返回原始文本。测试里会替换掉这个函数。"""
-    _load_dotenv()
     try:
-        client = OpenAI(api_key=os.getenv("DEEPSEEK_API_KEY"), base_url=_base_url())
-        response = client.chat.completions.create(
-            model=_model_name(),
-            messages=messages,
+        result = llm.call_chat(
+            messages,
+            stage=stage,
             temperature=0,
             max_tokens=_max_output_tokens(),
             response_format={"type": "json_object"},
@@ -329,7 +425,7 @@ def _chat(messages: list[dict[str, str]]) -> str:
         health.record_dependency_failure("deepseek", exc)
         raise
     health.record_dependency_success("deepseek")
-    return response.choices[0].message.content or "{}"
+    return result.text
 
 
 def _parse_json(raw: str, context: str) -> Any:
@@ -423,7 +519,8 @@ def _extract_meta_section(
             [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_content},
-            ]
+            ],
+            stage="extraction_meta",
         )
         try:
             data = _parse_json(raw, f"basic modules fallback ({', '.join(fields)})")
@@ -487,7 +584,8 @@ def _extract_meta(rendered: str, max_retries: int) -> dict[str, Any]:
             [
                 {"role": "system", "content": META_SYSTEM_PROMPT},
                 {"role": "user", "content": user_content},
-            ]
+            ],
+            stage="extraction_meta",
         )
         try:
             data = _parse_json(raw, "basic modules")
@@ -521,7 +619,8 @@ def _enumerate_titles(rendered: str) -> list[dict[str, Any]]:
         [
             {"role": "system", "content": ENUMERATE_SYSTEM_PROMPT},
             {"role": "user", "content": rendered},
-        ]
+        ],
+        stage="extraction_enumeration",
     )
     data = _parse_json(raw, "publication enumeration")
     publications = data.get("publications") if isinstance(data, dict) else None
@@ -547,9 +646,10 @@ def _expand_publication_batch(
     max_retries: int,
 ) -> list[dict[str, Any]]:
     last_error = ""
+    context = _publication_batch_context(rendered, batch)
     for _ in range(max_retries + 1):
         user_content = (
-            rendered
+            context
             + "\n\n需要抽取的论文标题列表：\n"
             + json.dumps(batch, ensure_ascii=False)
         )
@@ -557,7 +657,8 @@ def _expand_publication_batch(
             [
                 {"role": "system", "content": EXPAND_SYSTEM_PROMPT},
                 {"role": "user", "content": user_content},
-            ]
+            ],
+            stage="extraction_publications",
         )
         try:
             data = _parse_json(raw, "publication expansion")
@@ -572,9 +673,13 @@ def _expand_publication_batch(
     if len(batch) > 1:
         midpoint = len(batch) // 2
         return _expand_publication_batch(
-            rendered, batch[:midpoint], max_retries=max_retries
+                    rendered,
+                    batch[:midpoint],
+                    max_retries=max_retries,
         ) + _expand_publication_batch(
-            rendered, batch[midpoint:], max_retries=max_retries
+                    rendered,
+                    batch[midpoint:],
+                    max_retries=max_retries,
         )
     raise ValueError(f"Publication expansion failed after retries: {last_error}")
 
@@ -646,7 +751,12 @@ def extract_profile(
         rendered = _compress_text(rendered, max_chars=context_max_chars)
     candidate = _extract_meta(rendered, max_retries)
 
-    titles = _enumerate_titles(rendered) if "publication" in rendered.lower() else []
+    publication_context = _publication_sections_text(rendered)
+    titles = (
+        _enumerate_titles(publication_context)
+        if "publication" in rendered.lower()
+        else []
+    )
     publications = _expand_publications(
         rendered,
         titles,

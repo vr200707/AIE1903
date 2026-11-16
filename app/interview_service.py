@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shutil
 import threading
@@ -13,7 +14,11 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from app.interview_analysis import align_answers, analyze_interview
+from app.interview_analysis import (
+    align_answers,
+    align_answers_from_marks,
+    analyze_interview,
+)
 from app.interview_clips import (
     apply_recorded_marks,
     clip_path,
@@ -35,8 +40,9 @@ from app.interview_questions import (
     build_question_set,
     render_question_document,
 )
-from app.interview_llm import trim_text
+from app.interview_llm import model_name, trim_text
 from app.interview_store import InterviewStore, _id
+from app.interview_visual import InterviewVisualError, analyze_video
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -52,6 +58,9 @@ MAX_COMMITTEE_QUESTIONS = 12
 
 _VIDEO_SESSIONS: dict[str, dict[str, Any]] = {}
 _VIDEO_LOCK = threading.RLock()
+_QUESTION_GENERATION_CACHE: dict[str, dict[str, Any]] = {}
+_QUESTION_GENERATION_LOCK = threading.RLock()
+_QUESTION_GENERATION_PROMPT_VERSION = "question-generation-v2"
 
 
 def _analysis_workers() -> int:
@@ -110,13 +119,45 @@ def generate_question_set(
             "invalid_question_count",
             f"question_count must be between {QUESTION_MIN} and {QUESTION_MAX}",
         )
+
+    cache_key_payload = {
+        "model": model_name(),
+        "prompt_version": _QUESTION_GENERATION_PROMPT_VERSION,
+        "profile_id": profile_id,
+        "profile_snapshot": profile_snapshot,
+        "role_context": role_context or "",
+        "question_count": question_count,
+    }
+    cache_key = hashlib.sha256(
+        json.dumps(
+            cache_key_payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            default=str,
+        ).encode("utf-8")
+    ).hexdigest()
+    with _QUESTION_GENERATION_LOCK:
+        cached = _QUESTION_GENERATION_CACHE.get(cache_key)
+        if cached is not None:
+            return STORE.create_question_set(
+                profile_id=profile_id,
+                profile_snapshot=profile_snapshot,
+                language="en",
+                role_context=role_context,
+                candidate_name=cached["candidate_name"],
+                questions=cached["questions"],
+                document_markdown=cached["document_markdown"],
+                generation=cached["generation"],
+                warnings=cached["warnings"],
+            )
+
     result = build_question_set(
         profile_id=profile_id,
         profile=profile_snapshot,
         role_context=role_context,
         question_count=question_count,
     )
-    return STORE.create_question_set(
+    created = STORE.create_question_set(
         profile_id=profile_id,
         profile_snapshot=profile_snapshot,
         language="en",
@@ -127,6 +168,15 @@ def generate_question_set(
         generation=result["generation"],
         warnings=result["warnings"],
     )
+    with _QUESTION_GENERATION_LOCK:
+        _QUESTION_GENERATION_CACHE[cache_key] = {
+            "candidate_name": result["candidate_name"],
+            "questions": result["questions"],
+            "document_markdown": result["document_markdown"],
+            "generation": result["generation"],
+            "warnings": result["warnings"],
+        }
+    return created
 
 
 def get_question_set(question_set_id: str) -> dict[str, Any] | None:
@@ -813,45 +863,95 @@ def _run_interview_analysis(interview_id: str) -> None:
                 ],
             }
 
-        STORE.update_interview(
-            interview_id,
-            stage="transcribing",
-            progress={"done": 0, "total": 1},
-        )
-        transcript = transcribe_video(video_path)
-        STORE.update_interview(
-            interview_id,
-            transcript=transcript,
-            stage="aligning_answers",
-            progress={"done": 1, "total": 5},
-        )
-
-        alignment = align_answers(question_set, transcript["segments"])
-        STORE.update_interview(
-            interview_id,
-            stage="analyzing_questions",
-            progress={"done": 2, "total": 5},
-        )
-
-        report = analyze_interview(question_set, transcript, alignment)
         video_meta = interview.get("video") or {}
-        report = apply_recorded_marks(
-            report,
-            video_meta.get("question_marks"),
-            video_meta.get("duration_ms"),
-        )
-        STORE.update_interview(
-            interview_id,
-            stage="clipping_answers",
-            progress={"done": 3, "total": 5},
-        )
-        clip_results = generate_interview_clips(
-            STORE,
-            interview_id,
-            report,
-            video_path,
-            (interview.get("video") or {}).get("duration_ms"),
-        )
+        recorded_marks = video_meta.get("question_marks") or []
+        visual_result = None
+
+        with ThreadPoolExecutor(max_workers=2) as parallel_executor:
+            visual_future = parallel_executor.submit(analyze_video, video_path)
+
+            STORE.update_interview(
+                interview_id,
+                stage="transcribing",
+                progress={"done": 0, "total": 5},
+            )
+            transcript = interview.get("transcript")
+            if not isinstance(transcript, dict):
+                transcript = transcribe_video(video_path)
+                STORE.update_interview(
+                    interview_id,
+                    transcript=transcript,
+                    stage="aligning_answers",
+                    progress={"done": 1, "total": 5},
+                )
+            else:
+                STORE.update_interview(
+                    interview_id,
+                    stage="aligning_answers",
+                    progress={"done": 1, "total": 5},
+                )
+
+            if recorded_marks:
+                alignment = align_answers_from_marks(
+                    question_set,
+                    transcript["segments"],
+                    recorded_marks,
+                    duration_ms=video_meta.get("duration_ms"),
+                )
+            else:
+                alignment = align_answers(question_set, transcript["segments"])
+            STORE.update_interview(
+                interview_id,
+                stage="analyzing_questions",
+                progress={"done": 2, "total": 5},
+            )
+
+            report = analyze_interview(question_set, transcript, alignment)
+            report = apply_recorded_marks(
+                report,
+                recorded_marks,
+                video_meta.get("duration_ms"),
+            )
+
+            try:
+                visual_result = visual_future.result()
+            except InterviewVisualError as exc:
+                report.setdefault("warnings", []).append(
+                    {
+                        "code": "visual_analysis_failed",
+                        "stage": "visual_analysis",
+                        "message": exc.detail,
+                        "retryable": True,
+                        "source": None,
+                    }
+                )
+            except Exception as exc:
+                report.setdefault("warnings", []).append(
+                    {
+                        "code": "visual_analysis_failed",
+                        "stage": "visual_analysis",
+                        "message": (
+                            "Local visual analysis failed "
+                            f"({type(exc).__name__})."
+                        ),
+                        "retryable": True,
+                        "source": None,
+                    }
+                )
+            report["visual_analysis"] = visual_result
+
+            STORE.update_interview(
+                interview_id,
+                stage="clipping_answers",
+                progress={"done": 3, "total": 5},
+            )
+            clip_results = generate_interview_clips(
+                STORE,
+                interview_id,
+                report,
+                video_path,
+                video_meta.get("duration_ms"),
+            )
         failed_clips = [
             item for item in clip_results if not item.get("clip_generated")
         ]
@@ -884,6 +984,7 @@ def _run_interview_analysis(interview_id: str) -> None:
             stage="completed",
             progress={"done": 5, "total": 5},
             report=report,
+            visual=visual_result,
             warnings=warnings,
             error=None,
         )

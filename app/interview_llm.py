@@ -12,10 +12,8 @@ import os
 from pathlib import Path
 from typing import Any
 
-from dotenv import load_dotenv
-from openai import OpenAI
-
 from app import health
+from app import llm
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -23,23 +21,16 @@ DEFAULT_INPUT_CHAR_BUDGET = 24_000
 DEFAULT_MAX_OUTPUT_TOKENS = 4_096
 
 
-def _load_dotenv() -> None:
-    load_dotenv(PROJECT_ROOT / ".env")
-
-
 def model_name() -> str:
-    _load_dotenv()
-    return os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+    return llm.model_name()
 
 
 def base_url() -> str:
-    _load_dotenv()
-    return os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    return llm.base_url()
 
 
 def input_char_budget() -> int:
     """Conservative prompt budget that leaves room for instructions/output."""
-    _load_dotenv()
     raw = os.getenv(
         "INTERVIEW_LLM_INPUT_CHAR_BUDGET",
         str(DEFAULT_INPUT_CHAR_BUDGET),
@@ -51,7 +42,6 @@ def input_char_budget() -> int:
 
 
 def max_output_tokens() -> int:
-    _load_dotenv()
     raw = os.getenv(
         "INTERVIEW_LLM_MAX_OUTPUT_TOKENS",
         str(DEFAULT_MAX_OUTPUT_TOKENS),
@@ -86,6 +76,7 @@ def chat_json(
     user_prompt: str,
     *,
     temperature: float = 0.1,
+    stage: str = "interview",
 ) -> dict[str, Any]:
     """Call DeepSeek and return one validated JSON object.
 
@@ -100,18 +91,13 @@ def chat_json(
             f"interview prompt exceeds input budget: {total_chars} > {budget}"
         )
 
-    _load_dotenv()
     try:
-        client = OpenAI(
-            api_key=os.getenv("DEEPSEEK_API_KEY"),
-            base_url=base_url(),
-        )
-        response = client.chat.completions.create(
-            model=model_name(),
-            messages=[
+        result = llm.call_chat(
+            [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
+            stage=stage,
             temperature=temperature,
             max_tokens=max_output_tokens(),
             response_format={"type": "json_object"},
@@ -121,8 +107,7 @@ def chat_json(
         raise
 
     health.record_dependency_success("deepseek")
-    raw = response.choices[0].message.content or "{}"
-    return parse_json_object(raw)
+    return parse_json_object(result.text)
 
 
 def trim_text(value: Any, limit: int) -> str:

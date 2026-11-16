@@ -138,8 +138,8 @@ video/mp4, video/webm, video/quicktime, video/x-m4v, video/x-matroska
 - Filler rate
 - Coverage
 
-必须同时显示 `caveats`。不要加“自信”“诚实”“抗压能力”等推断标签。第一版没有视觉
-分析字段，前端不要预留表情或眼神结论。
+必须同时显示 `caveats`。不要加“自信”“诚实”“抗压能力”等推断标签。视觉分析只提供
+本地运动线索，前端不要据此显示表情、眼神或人格结论。
 
 ## 6. API 到页面的最小状态机
 

@@ -47,6 +47,19 @@ class ExtractorUnitTests(unittest.TestCase):
         self.assertIn("line 0", compressed)
         self.assertIn("line 99", compressed)
 
+    def test_publication_batch_context_keeps_only_local_title_windows(self):
+        rendered = "\n".join(f"background line {i}" for i in range(120))
+        rendered += "\nPaper A\n" + "\n".join(
+            f"publication line {i}" for i in range(30)
+        )
+        context = extractor._publication_batch_context(
+            rendered,
+            [{"title": "Paper A"}],
+            max_chars=1_000,
+        )
+        self.assertLess(len(context), len(rendered))
+        self.assertIn("Paper A", context)
+
     def test_validate_profile_rejects_missing_modules(self):
         bad = {"schema_version": "1.0.0", "candidate": {}}
         errors = extractor._validate_profile(bad)

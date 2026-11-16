@@ -469,6 +469,64 @@
         }
       }
     },
+    "VisualEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "start_ms",
+        "end_ms",
+        "intensity",
+        "description"
+      ],
+      "properties": {
+        "event_id": { "type": "string", "pattern": "^v[0-9]{5}$" },
+        "start_ms": { "type": "integer", "minimum": 0 },
+        "end_ms": { "type": "integer", "minimum": 0 },
+        "intensity": { "type": "number", "minimum": 0, "maximum": 10 },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "VisualMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sampled_frames",
+        "active_frames",
+        "mean_motion",
+        "max_motion"
+      ],
+      "properties": {
+        "sampled_frames": { "type": "integer", "minimum": 1 },
+        "active_frames": { "type": "integer", "minimum": 0 },
+        "mean_motion": { "type": "number", "minimum": 0 },
+        "max_motion": { "type": "number", "minimum": 0 }
+      }
+    },
+    "VisualAnalysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "analyzer",
+        "sample_interval_ms",
+        "metrics",
+        "events",
+        "caveats"
+      ],
+      "properties": {
+        "analyzer": { "type": "string", "minLength": 1 },
+        "sample_interval_ms": { "type": "integer", "minimum": 250 },
+        "metrics": { "$ref": "#/$defs/VisualMetrics" },
+        "events": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/VisualEvent" }
+        },
+        "caveats": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
     "InterviewReport": {
       "type": "object",
       "additionalProperties": false,
@@ -508,6 +566,12 @@
           "items": { "$ref": "#/$defs/TimestampInventoryItem" }
         },
         "communication_profile": { "$ref": "#/$defs/CommunicationProfile" },
+        "visual_analysis": {
+          "anyOf": [
+            { "$ref": "#/$defs/VisualAnalysis" },
+            { "type": "null" }
+          ]
+        },
         "warnings": {
           "type": "array",
           "items": { "$ref": "#/$defs/AnalysisWarning" }

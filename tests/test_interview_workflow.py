@@ -16,6 +16,7 @@ from app.interview_analysis import (
     CHUNK_SYSTEM_PROMPT,
     QUESTION_SYSTEM_PROMPT,
     align_answers,
+    align_answers_from_marks,
     analyze_interview,
     analyze_question,
     pack_segments,
@@ -423,6 +424,29 @@ class InterviewAnalysisTests(unittest.TestCase):
             )
         )
 
+    def test_recorded_marks_align_answers_without_model_call(self):
+        segments = _segments(5)
+        marks = [
+            {"question_id": "q_01", "start_ms": 0},
+            {"question_id": "q_02", "start_ms": 20_000},
+        ]
+        with mock.patch(
+            "app.interview_analysis.chat_json"
+        ) as chat_json:
+            alignment = align_answers_from_marks(
+                self.question_set,
+                segments,
+                marks,
+                duration_ms=50_000,
+            )
+        chat_json.assert_not_called()
+        self.assertEqual(len(alignment["items"][0]["segments"]), 2)
+        self.assertEqual(len(alignment["items"][1]["segments"]), 3)
+        self.assertEqual(alignment["items"][0]["answer_window"]["end_ms"], 20_000)
+        self.assertTrue(
+            all(not item["segments"] for item in alignment["items"][2:])
+        )
+
     def test_analysis_with_only_greeting_audio_completes_with_warnings(self):
         segments = _segments(1)
         overall_response = {
@@ -645,6 +669,8 @@ class InterviewApiTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.old_store = interview_service.STORE
+        self.old_question_cache = interview_service._QUESTION_GENERATION_CACHE
+        interview_service._QUESTION_GENERATION_CACHE = {}
         interview_service.STORE = InterviewStore(Path(self.temp_dir.name))
         self.client = TestClient(api.app)
         api._UPLOADS.clear()
@@ -655,9 +681,27 @@ class InterviewApiTests(unittest.TestCase):
         }
 
     def tearDown(self):
+        interview_service._QUESTION_GENERATION_CACHE = self.old_question_cache
         interview_service.STORE = self.old_store
         api._UPLOADS.clear()
         self.temp_dir.cleanup()
+
+    def test_question_generation_cache_skips_second_model_call(self):
+        request = {
+            "profile_id": "prf_test",
+            "role_context": "Faculty role in trustworthy AI.",
+            "question_count": 5,
+            "language": "en",
+        }
+        with mock.patch(
+            "app.interview_questions.chat_json",
+            return_value=_question_payload(),
+        ) as chat_json:
+            first = self.client.post("/api/interview/question-sets", json=request)
+            second = self.client.post("/api/interview/question-sets", json=request)
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 201)
+        chat_json.assert_called_once()
 
     def test_question_upload_and_analysis_flow(self):
         with mock.patch(

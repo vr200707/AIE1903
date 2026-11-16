@@ -13,7 +13,7 @@ from app.resilience import warning
 QUESTION_MIN = 5
 QUESTION_MAX = 7
 DEFAULT_QUESTION_COUNT = 6
-MAX_CLAIM_CANDIDATES = 36
+MAX_CLAIM_CANDIDATES = 18
 MAX_SOURCE_REFS_PER_CLAIM = 4
 MAX_EXCERPT_CHARS = 420
 
@@ -337,22 +337,26 @@ def _compact_claims(
 ) -> list[dict[str, Any]]:
     compact: list[dict[str, Any]] = []
     for claim in claims:
-        compact.append(
-            {
-                "claim_id": claim["claim_id"],
-                "category": claim["category"],
-                "statement": trim_text(claim["statement"], 650),
-                "evidence_statuses": claim["evidence_statuses"],
-                "sources": [
-                    {
-                        "source": source["source"],
-                        "evidence_status": source["evidence_status"],
-                        "excerpt": trim_text(source["excerpt"], excerpt_limit),
-                    }
-                    for source in claim["sources"]
-                ],
-            }
+        item = {
+            "claim_id": claim["claim_id"],
+            "category": claim["category"],
+            "statement": trim_text(claim["statement"], 650),
+            "evidence_statuses": claim["evidence_statuses"],
+        }
+        needs_excerpts = bool(
+            set(claim["evidence_statuses"])
+            & {"conflict", "to_verify", "not_found_public"}
         )
+        if excerpt_limit and needs_excerpts:
+            item["sources"] = [
+                {
+                    "source": source["source"],
+                    "evidence_status": source["evidence_status"],
+                    "excerpt": trim_text(source["excerpt"], excerpt_limit),
+                }
+                for source in claim["sources"]
+            ]
+        compact.append(item)
     return compact
 
 
@@ -608,7 +612,12 @@ def build_question_set(
             + json.dumps(prompt_claims, ensure_ascii=False, indent=1)
             + "\n\nReturn the JSON object now."
         )
-    payload = chat_json(SYSTEM_PROMPT, user_prompt, temperature=0.2)
+    payload = chat_json(
+        SYSTEM_PROMPT,
+        user_prompt,
+        temperature=0.2,
+        stage="question_generation",
+    )
     questions, warnings = _normalize_questions(payload, claims, desired_count)
     candidate = profile.get("candidate", {})
     basic = candidate.get("basic_info", {}) if isinstance(candidate, dict) else {}
