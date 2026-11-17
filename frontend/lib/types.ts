@@ -179,6 +179,18 @@ export interface Candidate {
 export interface CandidateProfile {
   schema_version: "1.0.0";
   candidate: Candidate;
+  /** 从 CV 文件提取的内嵌图片（独立于受 schema 约束的 candidate 结构）。 */
+  cv_images?: CvImage[];
+}
+
+/** 从上传 CV 中提取并由后端托管的一张内嵌图片。 */
+export interface CvImage {
+  url: string;
+  filename: string;
+  content_type?: string;
+  bytes?: number;
+  width?: number;
+  height?: number;
 }
 
 // —— 以下为 API 请求/响应类型（对应 docs/api.md） ——
@@ -229,6 +241,7 @@ export interface AnalyzeResponse {
   schema_version?: string;
   candidate?: Candidate;
   assessment?: LlmAssessment | null;
+  cv_images?: CvImage[];
   warnings?: AnalysisWarning[];
   error?: AnalysisError;
   progress?: AnalysisProgress;

@@ -21,7 +21,7 @@ import {
   type ArchiveEntry,
   type InterviewScoreRecord,
 } from "@/lib/archive";
-import type { Candidate, LlmAssessment } from "@/lib/types";
+import type { Candidate, CvImage, LlmAssessment } from "@/lib/types";
 
 type ArchiveContextValue = {
   archives: ArchiveEntry[];
@@ -29,6 +29,7 @@ type ArchiveContextValue = {
     profileId: string,
     candidate: Candidate,
     llm?: LlmAssessment | null,
+    cvImages?: CvImage[] | null,
   ) => void;
   saveInterviewScore: (profileId: string, record: InterviewScoreRecord) => void;
   openArchive: (id: string) => void;
@@ -78,8 +79,11 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
       profileId: string,
       candidate: Candidate,
       llm?: LlmAssessment | null,
+      cvImages?: CvImage[] | null,
     ) => {
-      setArchives(upsertArchive(buildArchive(profileId, candidate, llm)));
+      setArchives(
+        upsertArchive(buildArchive(profileId, candidate, llm, cvImages)),
+      );
     },
     [],
   );

@@ -7,11 +7,13 @@ import {
   uploadFiles,
   analyze,
   getAnalyzeStatus,
+  getProfile,
   fetchScore,
   askQuestion,
 } from "@/lib/api";
 import { Section } from "@/components/Section";
 import Starfield, { HERO_IMAGE } from "@/components/Starfield";
+import IntroOverlay from "@/components/IntroOverlay";
 import AnalyzingStage from "@/components/AnalyzingStage";
 import CountUp from "@/components/CountUp";
 import {
@@ -27,6 +29,9 @@ import { useArchive } from "@/components/ArchiveProvider";
 import { useQaHistory } from "@/components/QaHistoryProvider";
 import { getArchive } from "@/lib/archive";
 import { computeAssessment } from "@/lib/scoring";
+import { derivePersona } from "@/lib/persona";
+import PersonaCard from "@/components/PersonaCard";
+import CvImageGallery from "@/components/CvImageGallery";
 import {
   authorRoleLabel,
   venueTypeLabel,
@@ -38,6 +43,7 @@ import type {
   Evidence,
   EvidenceStatus,
   Candidate,
+  CvImage,
   AnalysisWarning,
   AnalysisProgress,
   LlmAssessment,
@@ -215,18 +221,9 @@ function InterviewButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-function HeroIntro() {
-  return (
-    <div className="hero-intro-overlay" aria-hidden="true">
-      <img src={HERO_IMAGE} alt="" className="hero-intro-glacier" />
-      <span className="hero-intro-sweep" />
-    </div>
-  );
-}
-
 function ScrollHint() {
   return (
-    <div className="animate-scroll-hint mt-14 flex flex-col items-center gap-2 text-ink/75">
+    <div className="mt-14 flex flex-col items-center gap-2 text-ink/75">
       <span className="text-[11px] uppercase tracking-[0.35em]">Scroll</span>
       <svg
         viewBox="0 0 16 16"
@@ -255,7 +252,7 @@ function StepImage({ src, alt }: { src: string; alt: string }) {
   }, []);
 
   return (
-    <div className="step-float relative aspect-[16/10] w-full overflow-hidden rounded-3xl border border-ink/10 bg-ink/[0.05] shadow-[0_30px_60px_-32px_rgba(22,50,74,0.5)]">
+    <div className="relative aspect-[16/10] w-full overflow-hidden rounded-3xl border border-ink/10 bg-ink/[0.05] shadow-[0_30px_60px_-32px_rgba(22,50,74,0.5)]">
       {!loaded && (
         <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-accent/15 via-accent/5 to-background" />
       )}
@@ -294,33 +291,20 @@ const STEPS = [
   },
 ];
 
+const MODULES = [
+  { key: "basic", label: "Basic Info", num: "01" },
+  { key: "edu", label: "Education", num: "02" },
+  { key: "awards", label: "Awards", num: "03" },
+  { key: "pubs", label: "Publications", num: "04" },
+  { key: "service", label: "Service", num: "05" },
+  { key: "eval", label: "Evaluation", num: "06" },
+];
+
 function StepSection({ step }: { step: (typeof STEPS)[number] }) {
-  const ref = useRef<HTMLElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          setVisible(true);
-          io.disconnect();
-        }
-      },
-      { threshold: 0.3 },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
   return (
-    <section
-      ref={ref}
-      className="snap-align flex min-h-screen items-center px-8 py-16"
-    >
+    <section className="snap-align flex min-h-screen items-center px-8 py-16">
       <div className="mx-auto grid w-full max-w-6xl items-center gap-10 lg:grid-cols-2">
-        <div className={visible ? "animate-reveal" : "opacity-0"}>
+        <div>
           <p className="font-display text-7xl font-light leading-none text-accent">
             {step.num}
           </p>
@@ -331,10 +315,7 @@ function StepSection({ step }: { step: (typeof STEPS)[number] }) {
             {step.text}
           </p>
         </div>
-        <div
-          className={`${visible ? "animate-reveal" : "opacity-0"} relative`}
-          style={{ animationDelay: "0.15s" }}
-        >
+        <div className="relative">
           <StepImage src={step.img} alt={step.title} />
         </div>
       </div>
@@ -348,6 +329,7 @@ export default function Home() {
   const router = useRouter();
   const { setIdentity } = useIdentity();
   const [candidate, setCandidate] = useState<Candidate | null>(null);
+  const [cvImages, setCvImages] = useState<CvImage[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [analysisProgress, setAnalysisProgress] =
@@ -380,18 +362,21 @@ export default function Home() {
   const { addAnswer, history: qaHistory } = useQaHistory();
   const [loadedArchiveId, setLoadedArchiveId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string>("basic");
+  const moduleIndex = MODULES.findIndex((m) => m.key === activeSection);
+  const goModule = (delta: number) =>
+    setActiveSection(MODULES[(moduleIndex + delta + MODULES.length) % MODULES.length].key);
 
   // 开场动画只在整页首次加载时播放一次，之后「返回首页」直接显示内容
-  const [introDone] = useState(() => {
+  const [playIntro] = useState(() => {
     // SSR 始终按“首次访问”渲染（与客户端首帧一致，避免 hydration 不一致）；
     // 客户端首次渲染时读取模块级标志，只有真正的新会话才播开场。
-    if (typeof window === "undefined") return false;
+    if (typeof window === "undefined") return true;
     const done = introPlayed;
     introPlayed = true;
-    return done;
+    return !done;
   });
-  const playIntro = !introDone;
-  const delay = (base: string) => (playIntro ? base : "0s");
+  // 开场覆盖层结束（自动淡出或点击跳过）后，首屏内容再做一次简短进场
+  const [introActive, setIntroActive] = useState(playIntro);
 
   const getStatus = (e: Evidence): EvidenceStatus =>
     corrections.get(e) ?? e.evidence_status;
@@ -426,6 +411,28 @@ export default function Home() {
     );
   }, [candidate, setIdentity]);
 
+  // 旧版档案（升级前保存、没有 cvImages 字段）打开时向后端补拉 CV 图片；
+  // 后端在首次 GET 时惰性提取，拿到后回写存档，后续打开不再重复请求。
+  useEffect(() => {
+    if (!profileId || !candidate) return;
+    const entry = getArchive(profileId);
+    if (!entry || entry.cvImages !== undefined) return;
+    let cancelled = false;
+    getProfile({ profile_id: profileId })
+      .then((profile) => {
+        if (cancelled) return;
+        const images = profile.cv_images ?? [];
+        setCvImages(images);
+        saveArchive(profileId, candidate, llmAssessment, images);
+      })
+      .catch(() => {
+        // 后端不可用时静默降级：图片仅为增强展示，不影响档案阅读
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profileId, candidate, llmAssessment, getArchive, saveArchive]);
+
   const correctEvidence = (target: Evidence, status: EvidenceStatus) => {
     setCorrections((prev) => {
       const next = new Map(prev);
@@ -450,12 +457,14 @@ export default function Home() {
       ) {
         setProfileId(first.profile_id ?? null);
         setCandidate(first.candidate ?? null);
+        setCvImages(first.cv_images ?? []);
         setLlmAssessment(first.assessment ?? null);
         if (first.profile_id && first.candidate) {
           saveArchive(
             first.profile_id,
             first.candidate,
             first.assessment ?? null,
+            first.cv_images ?? null,
           );
           if (!first.assessment) {
             void refreshLlmScore(first.profile_id, first.candidate);
@@ -485,9 +494,15 @@ export default function Home() {
         setAnalysisProgress(null);
         setProfileId(res.profile_id ?? null);
         setCandidate(res.candidate ?? null);
+        setCvImages(res.cv_images ?? []);
         setLlmAssessment(res.assessment ?? null);
         if (res.profile_id && res.candidate) {
-          saveArchive(res.profile_id, res.candidate, res.assessment ?? null);
+          saveArchive(
+            res.profile_id,
+            res.candidate,
+            res.assessment ?? null,
+            res.cv_images ?? null,
+          );
           if (!res.assessment) {
             void refreshLlmScore(res.profile_id, res.candidate);
           }
@@ -523,6 +538,7 @@ export default function Home() {
 
   const resetToHome = () => {
     setCandidate(null);
+    setCvImages([]);
     setProfileId(null);
     setFilter({ tags: [], search: "" });
     setSelectedEvidence(null);
@@ -543,6 +559,7 @@ export default function Home() {
     setLoadedArchiveId(pendingId);
     if (entry) {
       setCandidate(entry.candidate);
+      setCvImages(entry.cvImages ?? []);
       setProfileId(entry.profileId);
       setLlmAssessment(entry.llm ?? null);
       setFilter({ tags: [], search: "" });
@@ -572,6 +589,7 @@ export default function Home() {
     setLoadedArchiveId(pendingInterviewId);
     if (entry) {
       setCandidate(entry.candidate);
+      setCvImages(entry.cvImages ?? []);
       setProfileId(entry.profileId);
       setLlmAssessment(entry.llm ?? null);
       setFilter({ tags: [], search: "" });
@@ -617,10 +635,16 @@ export default function Home() {
     [c, corrections, llmAssessment],
   );
 
+  // 面试官视角的六维人物画像（纯前端推导，随候选人与 LLM 评分刷新）
+  const persona = useMemo(
+    () => (c ? derivePersona(c, llmAssessment) : null),
+    [c, llmAssessment],
+  );
+
   if (!c) {
     return (
       <div className="relative h-screen snap-scroll overflow-y-auto text-ink">
-        <Starfield image={HERO_IMAGE} />
+        <Starfield image={HERO_IMAGE} calm />
 
         {loading ? (
           <main className="relative flex min-h-screen flex-col justify-center px-6 py-14">
@@ -640,26 +664,26 @@ export default function Home() {
           </main>
         ) : (
           <>
-            {playIntro && <HeroIntro />}
+            {introActive && (
+              <IntroOverlay onFinish={() => setIntroActive(false)} />
+            )}
 
             <section className="snap-align relative flex min-h-screen flex-col items-center justify-center px-6 py-16">
               <div className="w-full max-w-3xl text-center">
-            {/* 小标：宽字距 + 星芒 */}
+            {/* 小标：宽字距 + 静态星芒（开场覆盖层结束后一次性淡入） */}
             <p
-              className="animate-reveal flex items-center justify-center gap-3 text-xs font-medium uppercase tracking-[0.45em] text-ink/75"
-              style={{ animationDelay: delay("2.1s") }}
+              className={`${introActive ? "opacity-0" : "animate-reveal"} flex items-center justify-center gap-3 text-xs font-medium uppercase tracking-[0.45em] text-ink/75`}
+              style={{ animationDelay: "0.05s" }}
             >
-              <span className="animate-sparkle inline-block text-accent">✦</span>
+              <span className="inline-block text-accent">✦</span>
               AIE1903 · AI-assisted faculty hiring
-              <span className="animate-sparkle inline-block text-accent" style={{ animationDelay: "1.2s" }}>
-                ✦
-              </span>
+              <span className="inline-block text-accent">✦</span>
             </p>
 
             {/* 主标题：几何轻体 */}
             <h2
-              className="animate-reveal mt-9 font-display text-5xl font-light leading-[1.06] tracking-tight sm:text-6xl lg:text-[5.2rem]"
-              style={{ animationDelay: delay("2.35s") }}
+              className={`${introActive ? "opacity-0" : "animate-reveal"} mt-9 font-display text-5xl font-light leading-[1.06] tracking-tight sm:text-6xl lg:text-[5.2rem]`}
+              style={{ animationDelay: "0.15s" }}
             >
               Every claim,
               <br />
@@ -667,18 +691,18 @@ export default function Home() {
             </h2>
 
             <p
-              className="animate-reveal mx-auto mt-8 max-w-xl text-base leading-relaxed text-ink/75"
-              style={{ animationDelay: delay("2.55s") }}
+              className={`${introActive ? "opacity-0" : "animate-reveal"} mx-auto mt-8 max-w-xl text-base leading-relaxed text-ink/75`}
+              style={{ animationDelay: "0.25s" }}
             >
               Upload a CV, cover letter, research statement and teaching statement.
               Get a structured candidate profile where every field links back to its source.
             </p>
 
             <div
-              className="animate-reveal mt-11 flex flex-wrap items-center justify-center gap-4"
-              style={{ animationDelay: delay("2.7s") }}
+              className={`${introActive ? "opacity-0" : "animate-reveal"} mt-11 flex flex-wrap items-center justify-center gap-4`}
+              style={{ animationDelay: "0.35s" }}
             >
-              <label className="animate-halo group relative cursor-pointer overflow-hidden rounded-full bg-ink px-9 py-3.5 text-sm font-medium text-white transition hover:bg-ink/90">
+              <label className="group relative cursor-pointer rounded-full bg-ink px-9 py-3.5 text-sm font-medium text-white transition hover:bg-ink/90">
                 <span className="relative z-10">Choose files</span>
                 <input
                   aria-label="Choose files"
@@ -703,9 +727,9 @@ export default function Home() {
                   void refreshLlmScore("demo", mockProfile.candidate);
                 }}
                 disabled={loading}
-                className="animate-sweep relative overflow-hidden rounded-full border border-ink/20 px-9 py-3.5 text-sm text-ink/75 transition hover:border-ink/40 hover:text-ink disabled:cursor-not-allowed disabled:opacity-75"
+                className="rounded-full border border-ink/20 px-9 py-3.5 text-sm text-ink/75 transition hover:border-ink/40 hover:text-ink disabled:cursor-not-allowed disabled:opacity-75"
               >
-                <span className="relative z-10">Load example data</span>
+                Load example data
               </button>
             </div>
 
@@ -813,7 +837,7 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen text-ink/90">
-      <Starfield image={HERO_IMAGE} />
+      <Starfield image={HERO_IMAGE} calm />
       <main className="mx-auto max-w-6xl space-y-5 px-8 py-10">
         <div
           className="animate-pop flex items-center justify-between gap-4"
@@ -883,56 +907,89 @@ export default function Home() {
           ))}
         </div>
 
-        {/* 模块导航 */}
-        <div className="flex flex-wrap gap-2">
-          {[
-            { key: "basic", label: "Basic Info", icon: "01" },
-            { key: "edu", label: "Education", icon: "02" },
-            { key: "awards", label: "Awards", icon: "03" },
-            { key: "pubs", label: "Publications", icon: "04" },
-            { key: "service", label: "Service", icon: "05" },
-            { key: "eval", label: "Evaluation", icon: "06" },
-          ].map((t) => {
-            const active = activeSection === t.key;
-            return (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setActiveSection(t.key)}
-                className={`group relative flex items-center gap-2 overflow-hidden rounded-full px-4 py-2.5 text-base transition-all duration-300 ${
-                  active
-                    ? "bg-accent text-white shadow-[0_12px_28px_-12px_rgba(63,127,158,0.85)]"
-                    : "bg-ink/[0.06] text-ink/75 hover:bg-ink/[0.12] hover:text-ink"
-                }`}
-              >
-                <span
-                  className={`font-mono text-xs tabular-nums transition-colors ${
-                    active ? "text-white" : "text-ink/75 group-hover:text-ink/75"
-                  }`}
-                >
-                  {t.icon}
-                </span>
-                {t.label}
-                {active && (
-                  <span className="absolute inset-x-3 bottom-1 h-0.5 rounded-full bg-white/60" />
-                )}
-              </button>
-            );
-          })}
+        {/* 面试官人物画像总览卡：六维雷达 + 标签 + 面试关注点 */}
+        {persona && (
+          <PersonaCard
+            persona={persona}
+            name={c.basic_info.name ?? "Unknown Candidate"}
+            position={c.basic_info.position}
+            institution={c.basic_info.institution}
+          />
+        )}
+
+        {/* 模块导航：轮播式选取（中间主内容 + 左右箭头 + 下方内容联动） */}
+        <div className="flex items-center justify-center gap-3 rounded-2xl border border-ink/10 bg-ink/[0.03] px-4 py-3">
+          <button
+            type="button"
+            onClick={() => goModule(-1)}
+            aria-label="Previous module"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-ink/15 bg-ink/[0.04] text-xl text-ink/70 transition hover:border-accent/40 hover:bg-accent/[0.06] hover:text-ink"
+          >
+            ←
+          </button>
+
+          <div className="min-w-0 flex-1 text-center">
+            <p className="font-mono text-sm tabular-nums text-accent">
+              {MODULES[moduleIndex].num} / {String(MODULES.length).padStart(2, "0")}
+            </p>
+            <h3 className="mt-1 truncate text-xl font-semibold tracking-tight">
+              {MODULES[moduleIndex].label}
+            </h3>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => goModule(1)}
+            aria-label="Next module"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-ink/15 bg-ink/[0.04] text-xl text-ink/70 transition hover:border-accent/40 hover:bg-accent/[0.06] hover:text-ink"
+          >
+            →
+          </button>
+        </div>
+
+        {/* 模块指示点 */}
+        <div className="mt-2 flex justify-center gap-1.5">
+          {MODULES.map((m, i) => (
+            <button
+              key={m.key}
+              type="button"
+              onClick={() => setActiveSection(m.key)}
+              aria-label={m.label}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === moduleIndex ? "w-5 bg-accent" : "w-1.5 bg-ink/25 hover:bg-ink/45"
+              }`}
+            />
+          ))}
         </div>
 
         {/* 模块内容（按 tab 切换显示） */}
         <div>
         {/* 1. 基本信息 */}
         <Section title="Basic Information" hidden={activeSection !== "basic"} delay={0.1} className="lg:col-span-5">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h3 className="text-2xl font-semibold tracking-tight">{n(c.basic_info.name)}</h3>
-            <span className="text-ink/75">{n(c.basic_info.position)}</span>
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-accent">
+                Candidate
+              </p>
+              <h3 className="mt-1.5 break-words text-3xl font-bold leading-tight tracking-tight text-ink sm:text-4xl">
+                <span className="border-b-[3px] border-accent/40 pb-0.5">
+                  {n(c.basic_info.name)}
+                </span>
+              </h3>
+              <p className="mt-2.5 text-base font-medium text-ink/85">
+                {n(c.basic_info.position)}
+              </p>
+              <p className="mt-1 text-sm text-ink/70">
+                {n(c.basic_info.institution)}
+                {c.basic_info.highest_degree ? ` · ${c.basic_info.highest_degree}` : ""}
+              </p>
+            </div>
+            {cvImages.length > 0 && (
+              <div className="shrink-0 border-l-0 sm:border-l sm:border-ink/10 sm:pl-5">
+                <CvImageGallery images={cvImages} />
+              </div>
+            )}
           </div>
-          <p className="mt-1 text-sm text-ink/75">
-            {n(c.basic_info.institution)}
-            {c.basic_info.highest_degree ? ` · ${c.basic_info.highest_degree}` : ""}
-          </p>
 
           <TagRow label="Research interests" items={interests} />
           <TagRow label="Skills" items={skills} />

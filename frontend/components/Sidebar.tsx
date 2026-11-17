@@ -38,6 +38,35 @@ const NAV = [
   },
 ];
 
+const AVATAR_IMAGE_URL = `https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=${encodeURIComponent(
+  "anime key visual style, 2D illustration, clean lineart, cel shading, soft studio lighting, highly detailed, head-and-shoulders portrait of a friendly confident young academic researcher, neat dark hair, smart business casual attire, gentle smile, looking at viewer, soft glacier blue gradient background, centered avatar composition. negative: lowres, bad anatomy, extra fingers, blurry, watermark, text, logo, realistic photo, 3d render",
+)}&image_size=square`;
+
+/** 品牌位候选人动漫头像；外链图失败时回退本地 SVG 学者剪影，固定尺寸避免布局抖动。 */
+function BrandAvatar() {
+  const [failed, setFailed] = useState(false);
+  return (
+    <span className="relative grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-accent/15 ring-1 ring-accent/25">
+      {failed ? (
+        <svg viewBox="0 0 32 32" className="h-full w-full" role="img" aria-label="Candidate avatar">
+          <rect width="32" height="32" fill="rgba(40,101,127,0.14)" />
+          <circle cx="16" cy="12.5" r="5.2" fill="#28657f" />
+          <path d="M6.5 27c1-5.4 5-8 9.5-8s8.5 2.6 9.5 8z" fill="#28657f" />
+        </svg>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={AVATAR_IMAGE_URL}
+          alt=""
+          loading="eager"
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      )}
+    </span>
+  );
+}
+
 /** 左侧导航栏：品牌区 + 页面导航 + 底部身份位。玻璃质感，与背景同色。 */
 export default function Sidebar() {
   const pathname = usePathname();
@@ -198,9 +227,7 @@ export default function Sidebar() {
     <aside className="sticky top-0 z-20 hidden h-screen w-[220px] shrink-0 flex-col border-r border-ink/[0.07] bg-ink/[0.03] px-4 py-6 backdrop-blur-2xl lg:flex">
       {/* 品牌区 */}
       <Link href="/" className="mb-9 flex items-center gap-2.5 px-2">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent/15 text-sm text-accent ring-1 ring-accent/25">
-          ✦
-        </span>
+        <BrandAvatar />
         <span className="min-w-0">
           <span className="block truncate text-sm font-medium text-ink">
             Candidate Profile

@@ -11,7 +11,10 @@ const frontend=path.resolve(import.meta.dirname,'..'),temp=path.join(frontend,'.
 await mkdir(temp,{recursive:true});
 let source=await readFile(path.join(frontend,'app/seminar/page.tsx'),'utf8');
 source=source.replace('import Link from "next/link";','function Link({children,href}){return <a href={href}>{children}</a>;}')
-.replace('import { useArchive } from "@/components/ArchiveProvider";','function useArchive(){return {archives:[{profileId:"p",name:"Test"}]};}');
+.replace('import { useArchive } from "@/components/ArchiveProvider";','function useArchive(){return {archives:[{profileId:"p",name:"Test"}]};}')
+.replace('import Starfield, { HERO_IMAGE } from "@/components/Starfield";','function Starfield(){return null;} const HERO_IMAGE="";')
+.replace('import GuideModal, { GUIDE_SEEN_KEY } from "@/components/seminar/GuideModal";','function GuideModal(){return null;} const GUIDE_SEEN_KEY="guide-seen";')
+.replace('import PolarBear from "@/components/seminar/PolarBear";','function PolarBear(){return null;}');
 for(const component of ['SegmentEditor','AlignmentEvidence','DualVideoPlayer'])source=source.replace(`import ${component} from "@/components/seminar/${component}";`,`function ${component}(){return <div data-component="${component}"/>;}`);
 for(const lib of ['seminar-workflow','seminar-parts','seminar-review','seminar'])source=source.replaceAll(`@/lib/${lib}`,pathToFileURL(path.join(frontend,'lib',lib+'.ts')).href);
 await writeFile(path.join(temp,'page.mjs'),ts.transpileModule(source,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText);

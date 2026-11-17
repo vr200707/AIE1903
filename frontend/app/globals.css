@@ -48,15 +48,15 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* 玻璃面板：浅 sage 磨砂 + 森林绿发丝边 + 内高光。
+/* 玻璃面板：冰川蓝磨砂 + 细亮边 + 内高光。
    不依赖 backdrop-filter（构建时会被 CSS 压缩器丢弃），无 blur 也成立。 */
 .glass {
   position: relative;
   background: linear-gradient(
     158deg,
-    rgba(255, 255, 255, 0.46) 0%,
-    rgba(224, 228, 210, 0.32) 42%,
-    rgba(203, 207, 184, 0.24) 100%
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(228, 239, 247, 0.38) 45%,
+    rgba(210, 227, 239, 0.3) 100%
   );
   border: 1px solid rgba(22, 50, 74, 0.16);
   box-shadow:
@@ -64,6 +64,18 @@ body {
     0 18px 40px -28px rgba(22, 50, 74, 0.4);
   backdrop-filter: blur(20px) saturate(120%);
   -webkit-backdrop-filter: blur(20px) saturate(120%);
+}
+
+/* 仅玻璃背景（不带边框），供 seminar 等已自带 border 的卡片复用 */
+.glass-bg {
+  background: linear-gradient(
+    158deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(228, 239, 247, 0.38) 45%,
+    rgba(210, 227, 239, 0.3) 100%
+  );
+  backdrop-filter: blur(16px) saturate(115%);
+  -webkit-backdrop-filter: blur(16px) saturate(115%);
 }
 
 /* ---------- 进场动效 ---------- */
@@ -498,6 +510,357 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- 开场动画（冰川 + AI 能力介绍文案，可点击跳过）---------- */
+
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  cursor: pointer;
+  animation: intro-overlay-out 6.8s ease forwards;
+}
+@keyframes intro-overlay-out {
+  0%,
+  86% {
+    opacity: 1;
+  }
+  96%,
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+.intro-glacier {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: intro-glacier-in 6.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes intro-glacier-in {
+  0% {
+    opacity: 0;
+    transform: scale(1.12);
+    filter: blur(10px);
+  }
+  14% {
+    opacity: 1;
+    transform: scale(1.02);
+    filter: blur(0);
+  }
+  78% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+  96%,
+  100% {
+    opacity: 0;
+    transform: scale(1.06);
+    filter: blur(22px);
+  }
+}
+
+/* 浅色遮罩：保证深色文字在冰川图上的可读性 */
+.intro-scrim {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    120% 90% at 50% 30%,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(232, 241, 247, 0.72) 55%,
+    rgba(210, 227, 239, 0.82) 100%
+  );
+}
+
+.intro-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.5rem;
+  text-align: center;
+  color: var(--foreground);
+}
+
+.intro-eyebrow {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--accent);
+  animation: intro-text-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.7s both;
+}
+
+.intro-title {
+  max-width: 18ch;
+  margin-top: 1.4rem;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.6rem);
+  font-weight: 300;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 18px rgba(255, 255, 255, 0.6);
+  animation: intro-text-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.15s both;
+}
+
+.intro-lines {
+  display: flex;
+  max-width: 46rem;
+  margin-top: 2.2rem;
+  list-style: none;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.intro-line {
+  font-size: 17px;
+  line-height: 1.6;
+  color: rgba(22, 50, 74, 0.82);
+  text-shadow: 0 1px 12px rgba(255, 255, 255, 0.7);
+  opacity: 0;
+  animation: intro-text-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes intro-text-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.intro-skip {
+  position: absolute;
+  bottom: 2.2rem;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  text-align: center;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(22, 50, 74, 0.55);
+  animation: intro-text-in 0.7s ease 1s both;
+}
+
+/* ---------- Seminar 工作区字号整体上调（仅作用于主内容区，不影响北极熊气泡与说明弹窗）---------- */
+.seminar-main .text-xs {
+  font-size: 15px;
+  line-height: 1.45;
+}
+.seminar-main .text-sm {
+  font-size: 17px;
+  line-height: 1.55;
+}
+/* 区块标题默认继承 16px 偏小，上调到约 21px */
+.seminar-main h2 {
+  font-size: 1.3125rem;
+  line-height: 1.4;
+}
+
+/* ---------- 北极熊向导：待机呼吸 / 眨眼 / 庆祝跳跃 ---------- */
+
+/* 整体轻微摇摆（内层，不与外层跳跃 transform 冲突） */
+.bear-idle {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: bear-sway 5s ease-in-out infinite;
+}
+@keyframes bear-sway {
+  0%,
+  100% {
+    transform: rotate(-1.4deg);
+  }
+  50% {
+    transform: rotate(1.4deg);
+  }
+}
+
+/* 身体呼吸起伏 */
+.bear-breathe {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: bear-breathe 3.6s ease-in-out infinite;
+}
+@keyframes bear-breathe {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.025, 1.018);
+  }
+}
+
+/* 眨眼：眼睑短暂落下 */
+.bear-eyelid {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bear-blink 5.4s ease-in-out infinite;
+}
+.bear-eyelid.delay {
+  animation-delay: 0.12s;
+}
+@keyframes bear-blink {
+  0%,
+  91%,
+  100% {
+    transform: scaleY(0);
+  }
+  94%,
+  97% {
+    transform: scaleY(1);
+  }
+}
+
+/* 手臂自然垂放，庆祝时举起 */
+.bear-arm {
+  transform-box: fill-box;
+  transform-origin: top center;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.bear-arm-l {
+  transform: rotate(8deg);
+}
+.bear-arm-r {
+  transform: rotate(-8deg);
+}
+.bear-celebrate .bear-arm-l {
+  transform: rotate(150deg);
+}
+.bear-celebrate .bear-arm-r {
+  transform: rotate(-150deg);
+}
+
+/* 庆祝跳跃：大跳 + 落地缓冲小跳（仅在 .bear-celebrate 门控下播放） */
+.bear-jump {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+.bear-celebrate .bear-jump {
+  animation: bear-jump 1.15s cubic-bezier(0.2, 0.8, 0.3, 1) 2;
+}
+@keyframes bear-jump {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  28% {
+    transform: translateY(-30px) scale(0.97, 1.04);
+  }
+  46% {
+    transform: translateY(0) scale(1.07, 0.9);
+  }
+  62% {
+    transform: translateY(-13px) scale(0.99, 1.02);
+  }
+  80% {
+    transform: translateY(0) scale(1, 1);
+  }
+}
+
+/* 跳跃时地面阴影同步收缩 */
+.bear-shadow {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.3s ease;
+}
+.bear-celebrate .bear-shadow {
+  animation: bear-shadow-jump 1.15s cubic-bezier(0.2, 0.8, 0.3, 1) 2;
+}
+@keyframes bear-shadow-jump {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.12;
+  }
+  28% {
+    transform: scale(0.62);
+    opacity: 0.07;
+  }
+  46% {
+    transform: scale(1.08);
+    opacity: 0.15;
+  }
+  62% {
+    transform: scale(0.8);
+    opacity: 0.09;
+  }
+}
+
+/* 工作时的汗滴 */
+.bear-sweat {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.bear-working .bear-sweat {
+  opacity: 1;
+  animation: bear-sweat-drop 1.7s ease-in infinite;
+}
+@keyframes bear-sweat-drop {
+  0% {
+    transform: translateY(-4px);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+}
+
+/* 庆祝表情与工作表情切换 */
+.bear-eye-happy,
+.bear-mouth-happy {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.bear-celebrate .bear-eye-happy,
+.bear-celebrate .bear-mouth-happy {
+  opacity: 1;
+}
+.bear-celebrate .bear-eye-normal,
+.bear-celebrate .bear-mouth-normal,
+.bear-celebrate .bear-mouth-working,
+.bear-celebrate .bear-eyelid {
+  opacity: 0;
+  animation: none;
+}
+.bear-mouth-working {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.bear-working .bear-mouth-working {
+  opacity: 1;
+}
+.bear-working .bear-mouth-normal {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bear-idle,
+  .bear-breathe,
+  .bear-eyelid,
+  .bear-jump,
+  .bear-celebrate .bear-shadow,
+  .bear-working .bear-sweat {
+    animation: none;
   }
 }
 

@@ -478,6 +478,20 @@ def _web_evidence(
     }
 
 
+def _relevant_to_claim(claim: str, result: Any) -> bool:
+    """判断搜索结果是否与声明相关（至少共享一个英文词），用于过滤无关结果。
+
+    Bing 的免费 HTML 抓取在无 key 阶段可能被反爬，返回与查询完全无关的内容
+    （例如把英文人名模糊匹配成中文视频网站）。这里用「词重叠」做一次粗过滤：
+    结果标题/摘要若与声明没有任何共同英文词（>=3 字符），则视为无关。
+    """
+    claim_tokens = set(re.findall(r"[a-zA-Z0-9]{3,}", claim.lower()))
+    if not claim_tokens:
+        return True
+    text = f"{result.title} {result.snippet}".lower()
+    return bool(claim_tokens & set(re.findall(r"[a-zA-Z0-9]{3,}", text)))
+
+
 def verify_text_claim(
     claim_text: str,
     *,
@@ -516,10 +530,19 @@ def verify_text_claim(
             query_date,
         )
 
-    top = results[0]
+    relevant = [r for r in results if _relevant_to_claim(claim_text, r)]
+    if not relevant:
+        return _web_evidence(
+            f"No relevant public web result was found for \"{claim_text}\", so the claim cannot yet be confirmed.",
+            "not_found_public",
+            None,
+            query_date,
+        )
+
+    top = relevant[0]
     snippet = (top.snippet or "")[:160]
     text = f"Web search found a relevant lead: {top.title} ({snippet})."
-    others = "；".join(r.title for r in results[1:3] if r.title)
+    others = "；".join(r.title for r in relevant[1:3] if r.title)
     if others:
         text += f" Other results: {others}."
     text += " Web search cannot automatically confirm truth; open the source links for human review."

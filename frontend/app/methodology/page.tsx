@@ -1,4 +1,5 @@
 import { Section } from "@/components/Section";
+import Starfield, { HERO_IMAGE } from "@/components/Starfield";
 import { evidenceStatusLabel } from "@/lib/labels";
 import type { EvidenceStatus } from "@/lib/types";
 
@@ -18,7 +19,8 @@ const statusOrder: EvidenceStatus[] = [
 
 export default function MethodologyPage() {
   return (
-    <div className="min-h-screen text-ink/90">
+    <div className="relative min-h-screen text-ink/90">
+      <Starfield image={HERO_IMAGE} />
       <main className="mx-auto max-w-4xl space-y-5 px-8 py-10">
         {/* 1. 证据字段定义 */}
         <Section title="Evidence Field Definitions">

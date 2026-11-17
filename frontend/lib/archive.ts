@@ -2,7 +2,7 @@
 // 供左侧栏的档案库文件夹展示与一键重新打开。
 
 import { computeCredibility } from "./scoring";
-import type { Candidate, LlmAssessment } from "./types";
+import type { Candidate, CvImage, LlmAssessment } from "./types";
 import type {
   InterviewCompetency,
   InterviewReport,
@@ -43,6 +43,8 @@ export interface ArchiveEntry {
   credibility: number;
   llm?: LlmAssessment | null;
   candidate: Candidate;
+  /** 从 CV 提取的内嵌图片（后端托管 URL）；旧档案可能没有该字段。 */
+  cvImages?: CvImage[];
   /** 面试评分：候选人上传作答视频并完成分析后写入，与总分/可信度相互独立。 */
   interviewScore?: InterviewScoreRecord | null;
   createdAt: number;
@@ -85,6 +87,7 @@ export function buildArchive(
   profileId: string,
   candidate: Candidate,
   llm?: LlmAssessment | null,
+  cvImages?: CvImage[] | null,
 ): ArchiveEntry {
   const cred = computeCredibility(candidate, (e) => e.evidence_status);
   const bi = candidate.basic_info;
@@ -98,6 +101,7 @@ export function buildArchive(
     credibility: cred.overall,
     llm: llm ?? null,
     candidate,
+    cvImages: cvImages ?? undefined,
     createdAt: Date.now(),
   };
 }

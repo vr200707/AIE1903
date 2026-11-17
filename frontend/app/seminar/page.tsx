@@ -4,18 +4,21 @@
 import Link from "next/link";
 import {reviewHighlights,sentenceGestures} from "@/lib/seminar-review";
 import {lastUnlockedStep,allowedStep} from "@/lib/seminar-workflow";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useArchive } from "@/components/ArchiveProvider";
 import SegmentEditor from "@/components/seminar/SegmentEditor";
 import {groups,groupNames,sharedPart} from "@/lib/seminar-parts";
 import AlignmentEvidence from "@/components/seminar/AlignmentEvidence";
 import DualVideoPlayer from "@/components/seminar/DualVideoPlayer";
+import PolarBear from "@/components/seminar/PolarBear";
+import Starfield, { HERO_IMAGE } from "@/components/Starfield";
+import GuideModal, { GUIDE_SEEN_KEY } from "@/components/seminar/GuideModal";
 import { seminarRequest, uploadSeminarVideo, timecode, type Seminar, type View,
   type Observation, type Dimension, type ReviewStatus, type SeminarPart } from "@/lib/seminar";
 
 const dimensions: Record<Dimension,string> = {audience_orientation:"Audience orientation",gesture_usage:"Gesture usage",posture_movement:"Posture and movement"};
-const input="rounded-lg border border-ink/20 bg-white/80 px-3 py-2 text-sm disabled:opacity-50";
-const button="rounded-full bg-ink px-5 py-2 text-sm text-white disabled:opacity-40";
+const input="rounded-lg border border-ink/20 bg-white/80 px-3 py-2 text-sm transition focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-50";
+const button="rounded-full bg-ink px-5 py-2 text-sm text-white transition hover:bg-ink/90 disabled:opacity-40";
 
 export default function SeminarPage() {
   const {archives}=useArchive();
@@ -34,9 +37,31 @@ export default function SeminarPage() {
   const [selected,setSelected]=useState<string|null>(null);
   const [gestureNotes,setGestureNotes]=useState(false);
   const [dimension,setDimension]=useState<Dimension|"all">("all");
+  // 首次访问自动弹出说明：用 external store 读取 localStorage，避免 effect 内 setState
+  const guideUnseen=useSyncExternalStore(
+    onChange=>{window.addEventListener("storage",onChange);return()=>window.removeEventListener("storage",onChange);},
+    ()=>!window.localStorage.getItem(GUIDE_SEEN_KEY),
+    ()=>false,
+  );
+  const [guideDismissed,setGuideDismissed]=useState(false);
+  const [manualGuideOpen,setManualGuideOpen]=useState(false);
+  const guideOpen=manualGuideOpen||(guideUnseen&&!guideDismissed);
+  const closeGuide=useCallback(()=>{
+    setManualGuideOpen(false);
+    setGuideDismissed(true);
+    window.localStorage.setItem(GUIDE_SEEN_KEY,"1");
+  },[]);
+  // 北极熊庆祝信号：关键任务成功时递增，触发跳跃与开心表情
+  const [celebrateNonce,setCelebrateNonce]=useState(0);
+  const cheer=useCallback(()=>setCelebrateNonce(n=>n+1),[]);
   const running=record?.status==="analyzing";
   const preparing=record?.outline_job?.status==="running";
   const locked=Boolean(busy)||running||preparing;
+  const wasRunningRef=useRef(false);
+  useEffect(()=>{
+    if(wasRunningRef.current && !running) cheer();
+    wasRunningRef.current=running;
+  },[running,cheer]);
   const draftOffset=Number(offset);
   const aligned=record?.aligned && Math.round(draftOffset*1000)===record.offset_ms;
   const currentId=record?.id;
@@ -150,7 +175,7 @@ export default function SeminarPage() {
       if(uploaded.videos.speaker && uploaded.videos.screen) {
         setBusy("Estimating audio alignment…");
         open(await seminarRequest<Seminar>(`/${uploaded.id}/alignment/estimate`,"POST"));
-        go(2,uploaded);
+        go(2,uploaded);cheer();
       }
       await refresh();
     });
@@ -164,19 +189,26 @@ export default function SeminarPage() {
   const highlights=reviewHighlights(record?.observations??[]);
   const shown=highlights.filter(o=>dimension==="all"||o.dimension===dimension);
 
-  return <main className="mx-auto max-w-7xl space-y-6 px-5 py-8 text-ink md:px-10">
+  return (
+    <div className="relative min-h-screen text-ink">
+      <Starfield image={HERO_IMAGE} calm />
+      <GuideModal open={guideOpen} onClose={closeGuide} />
+      <PolarBear step={step} stepTitle={steps[step]} working={running||preparing} celebrate={celebrateNonce} />
+      <main className="seminar-main w-full max-w-7xl space-y-6 px-5 py-8 md:px-10 lg:mr-auto lg:max-w-[calc(100%-17rem)] xl:ml-14 2xl:ml-24">
     {offsetToast && <div role="status" aria-live="polite" className={`fixed right-5 top-5 z-50 max-w-sm animate-pop rounded-xl border px-5 py-4 text-sm shadow-xl ${offsetToast.reliable ? "border-teal-600/30 bg-teal-50 text-teal-950" : "border-amber-500/40 bg-amber-50 text-amber-950"}`}>
       {offsetToast.text}
     </div>}
     <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="min-w-0">
-      <p className="text-xs uppercase tracking-[.2em] text-ink/60">Project 3 · Candidate presentation</p>
-      <h1 className="mt-2 break-words text-3xl font-semibold">{archives.find(a=>a.profileId===(step===0?candidate:record?.profile_id))?.name ?? "Seminar Analysis"}</h1>
+      <h1 className="break-words text-3xl font-semibold">{archives.find(a=>a.profileId===(step===0?candidate:record?.profile_id))?.name ?? "Seminar Analysis"}</h1>
       {(step===0?title.trim():record?.title) && <p className="mt-2 break-words text-lg text-ink/75">{step===0?title.trim():record?.title}</p>}
       <p className="mt-3 max-w-3xl text-sm leading-6 text-ink/75">Review a candidate’s research talk or teaching demonstration. Align two views, find visible presenter actions, and check every AI comment against the original recordings.</p>
-      <Link href="/" className="mt-2 inline-block text-sm underline">Back to candidate profiles</Link>
+      <div className="mt-3 flex flex-wrap items-center gap-4">
+        <Link href="/" className="inline-block text-sm underline">Back to candidate profiles</Link>
+        <button type="button" onClick={()=>setManualGuideOpen(true)} className="rounded-full border border-ink/20 glass-bg px-4 py-1.5 text-sm transition hover:border-accent/50 hover:text-accent">How it works · 使用说明</button>
       </div>
-      <nav aria-label="Step navigation" className="flex w-fit max-w-full shrink-0 items-center gap-2 self-end rounded-xl border border-ink/15 bg-white/95 p-2 shadow-sm lg:self-start">
+      </div>
+      <nav aria-label="Step navigation" className="flex w-fit max-w-full shrink-0 items-center gap-2 self-end rounded-xl border border-ink/15 glass-bg p-2 shadow-sm lg:self-start">
         <button className="rounded-full bg-ink px-3 py-2 text-xs text-white disabled:opacity-40" disabled={step===0||Boolean(busy)} onClick={()=>go(step-1)}>← Previous</button>
         <span title={partsDirty?"Save your part edits before scanning":undefined} className="whitespace-nowrap px-1 text-center text-xs text-ink/60">{steps[step]} · {step+1}/{steps.length}{partsDirty?" *":""}</span>
         <button className="rounded-full bg-ink px-3 py-2 text-xs text-white disabled:opacity-40" disabled={step===5||Boolean(busy)||!reachable(step+1)} onClick={()=>go(step+1)}>Next →</button>
@@ -184,9 +216,9 @@ export default function SeminarPage() {
     </header>
     {error && <p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
     {busy && <p role="status" className="text-sm">{busy}</p>}
-    <nav aria-label="Seminar workflow" className="flex flex-wrap gap-2">{steps.map((label,i)=><button key={label} aria-current={step===i?"step":undefined} disabled={!reachable(i)||Boolean(busy)} onClick={()=>go(i)} className={`rounded-full border px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-30 ${step===i?"border-ink bg-ink text-white":"border-ink/20 bg-white/60"}`}>{!reachable(i)?"🔒 ":""}{i+1}. {label}</button>)}</nav>
-    {(running||preparing)&&<p role="status" className="rounded-xl bg-white/70 p-3 text-sm">{preparing?record?.outline_job?.message:`Scanning · ${record?.progress.done}/${record?.progress.total} batches. You can move between steps while this runs.`}</p>}
-    <section hidden={step!==0} className="rounded-2xl border border-ink/15 bg-white/50 p-5">
+    <nav aria-label="Seminar workflow" className="flex flex-wrap gap-2">{steps.map((label,i)=><button key={label} aria-current={step===i?"step":undefined} disabled={!reachable(i)||Boolean(busy)} onClick={()=>go(i)} className={`rounded-full border px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-30 ${step===i?"border-ink bg-ink text-white":"border-ink/20 glass-bg transition hover:border-accent/40 hover:text-ink"}`}>{!reachable(i)?"🔒 ":""}{i+1}. {label}</button>)}</nav>
+    {(running||preparing)&&<p role="status" className="rounded-xl glass-bg p-3 text-sm">{preparing?record?.outline_job?.message:`Scanning · ${record?.progress.done}/${record?.progress.total} batches. You can move between steps while this runs.`}</p>}
+    <section hidden={step!==0} className="rounded-2xl border border-ink/15 glass-bg p-5">
       <h2 className="font-semibold">1. Choose a candidate and seminar</h2>
       <div className="mt-4 flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-xs">Candidate<select className={input} value={candidate} disabled={locked} onChange={e=>setCandidate(e.target.value)}>
@@ -194,21 +226,42 @@ export default function SeminarPage() {
         </select></label>
         <label className="flex flex-col gap-1 text-xs">Seminar title<input className={input} value={title} placeholder="Enter a seminar title" required maxLength={200} disabled={locked} onChange={e=>setTitle(e.target.value)} /></label>
         <button className={button} disabled={locked||!archives.find(a=>a.profileId===candidate)?.name?.trim()||!title.trim()} onClick={()=>act("Creating seminar…",async()=>{
-          const created=await seminarRequest<Seminar>("","POST",{profile_id:candidate,title:title.trim()});open(created);setPartsDirty(false);go(1,created);await refresh();
+          const created=await seminarRequest<Seminar>("","POST",{profile_id:candidate,title:title.trim()});open(created);setPartsDirty(false);go(1,created);await refresh();cheer();
         })}>Create seminar</button>
       </div>
       {archives.length===0 && <p className="mt-3 text-sm text-ink/70">Analyze a candidate’s documents first to create a linked seminar.</p>}
 
     </section>
     {record && <>
-      <section hidden={step!==1} className="rounded-2xl border border-ink/15 bg-white/50 p-5">
+      <section hidden={step!==1} className="rounded-2xl border border-ink/15 glass-bg p-5">
         <h2 className="font-semibold">2. Add two views of the same presentation</h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">{(["speaker","screen"] as const).map(view=><label key={view} className="rounded-xl border border-dashed border-ink/25 p-4 text-sm">
-          <span className="font-medium">{view==="speaker"?"Speaker recording":"Shared-screen recording"}</span>
-          <span className="my-2 block text-xs text-ink/70">{record.videos[view]?.display_name ?? "No video uploaded"}{record.videos[view] ? ` · ${timecode(record.videos[view]!.duration_ms)}`:""}</span>
-          <input aria-label={`Upload ${view} recording`} type="file" accept=".mp4,.m4v,.mov,.webm,.mkv" disabled={locked} className="block w-full text-xs"
-            onChange={e=>{const file=e.target.files?.[0];e.target.value="";if(file)upload(view,file);}} />
-        </label>)}</div>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">{(["speaker","screen"] as const).map(view=>{
+          const video=record.videos[view];
+          return <div key={view} className="flex flex-col gap-3 rounded-xl border border-dashed border-ink/25 bg-white/55 p-5">
+            <div>
+              <p className="font-medium">{view==="speaker"?"Speaker recording":"Shared-screen recording"}</p>
+              <p className="mt-1 text-xs text-ink/60">{view==="speaker"?"Camera view showing the presenter":"Slide or screen-share view · audio is optional"}</p>
+            </div>
+            {video ? (
+              <div className="flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/[0.08] px-3 py-2.5 text-sm">
+                <span aria-hidden="true" className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-xs text-white">✓</span>
+                <span className="min-w-0 flex-1 truncate font-medium">{video.display_name}</span>
+                <span className="shrink-0 text-xs text-ink/60">{timecode(video.duration_ms)}</span>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-ink/20 bg-ink/[0.03] px-3 py-2.5 text-sm text-ink/50">No file selected — click the button below to choose one</div>
+            )}
+            <label aria-disabled={locked} className={`inline-flex w-fit cursor-pointer items-center gap-2 rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-white transition hover:bg-ink/90 ${locked?"pointer-events-none opacity-40":""}`}>
+              <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                <path d="M8 11V2m0 0L4.5 5.5M8 2l3.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M2 11.5V13a1.5 1.5 0 001.5 1.5h9A1.5 1.5 0 0014 13v-1.5" strokeLinecap="round" />
+              </svg>
+              {video ? "Replace video" : "Choose video file"}
+              <input aria-label={`Upload ${view} recording`} type="file" accept=".mp4,.m4v,.mov,.webm,.mkv" disabled={locked} className="hidden"
+                onChange={e=>{const file=e.target.files?.[0];e.target.value="";if(file)upload(view,file);}} />
+            </label>
+          </div>;
+        })}</div>
         <p className="mt-3 text-xs text-ink/60">Screen audio is optional. Replacing either recording resets alignment and its analysis. MP4 with H.264/AAC is recommended for browser playback.</p>
       </section>
       {record.videos.speaker && record.videos.screen && <>
@@ -222,7 +275,7 @@ export default function SeminarPage() {
               if(estimated.alignment_suggestion?.reliable) setOffset(String(estimated.alignment_suggestion.offset_ms!/1000));
             })}>Estimate offset</button>
             <button className={button} disabled={locked||!Number.isFinite(draftOffset)||offset===""} onClick={()=>act("Saving alignment…",async()=>{
-              const saved=await seminarRequest<Seminar>(`/${record.id}/alignment`,"POST",{offset_ms:Math.round(draftOffset*1000)});open(saved);setPartsDirty(false);setPartSelection([]);go(3,saved);
+              const saved=await seminarRequest<Seminar>(`/${record.id}/alignment`,"POST",{offset_ms:Math.round(draftOffset*1000)});open(saved);setPartsDirty(false);setPartSelection([]);go(3,saved);cheer();
             })}>{aligned?"Alignment confirmed":"Confirm alignment"}</button>
           </div>
           <p className="text-xs text-ink/60">Example: speaker 00:10 matches screen 00:13 → offset +3. Changing alignment clears previous analysis.</p>
@@ -234,10 +287,10 @@ export default function SeminarPage() {
             onPrepare={(script,generate)=>act("Starting transcript preparation…",async()=>setRecord(await seminarRequest<Seminar>(`/${record.id}/outline`,"POST",{script,generate})))}
             onImport={(content,view)=>act("Importing subtitles…",async()=>setRecord(await seminarRequest<Seminar>(`/${record.id}/transcript`,"PUT",{content,view})))} />
         </div>
-        <section hidden={step!==4} className="rounded-2xl border border-ink/15 bg-white/50 p-5">
+        <section hidden={step!==4} className="rounded-2xl border border-ink/15 glass-bg p-5">
           <h2 className="font-semibold">5. Choose parts to scan</h2>
           <p className="mt-2 text-sm text-ink/70">Choose any combination of saved parts. Only footage shared by both recordings is scanned. Parts crossing its edges are clipped to the shared range.</p>
-          <div className="my-4 grid gap-4 sm:grid-cols-2">{groups.map(group=>{const parts=(record.segments??[]).filter(p=>p.group===group),available=parts.filter(p=>sharedPart(p,record.overlap));return <div key={group} className={`rounded-xl border p-4 ${parts.length?"border-ink/20 bg-white/60":"border-dashed border-slate-300 bg-slate-100/60 text-slate-500"}`}><label className="flex items-center gap-2 font-medium"><input type="checkbox" disabled={locked||!available.length} checked={Boolean(available.length)&&available.every(p=>partSelection.includes(p.id))} onChange={e=>setPartSelection(ids=>e.target.checked?[...new Set([...ids,...available.map(p=>p.id)])]:ids.filter(id=>!available.some(p=>p.id===id)))}/>{groupNames[group]}</label>{!parts.length&&<p className="mt-2 text-xs">Optional · not present</p>}{parts.map(p=>{const range=sharedPart(p,record.overlap);return <label key={p.id} className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" disabled={locked||!range} checked={partSelection.includes(p.id)} onChange={e=>setPartSelection(ids=>e.target.checked?[...ids,p.id]:ids.filter(id=>id!==p.id))}/><span>{p.title}<span className="block text-xs text-ink/60">{timecode(p.start_ms)}–{timecode(p.end_ms)}{!range?" · outside shared footage":range[0]!==p.start_ms||range[1]!==p.end_ms?` · scan ${timecode(range[0])}–${timecode(range[1])}`:""}</span></span></label>;})}</div>;})}</div>
+          <div className="my-4 grid gap-4 sm:grid-cols-2">{groups.map(group=>{const parts=(record.segments??[]).filter(p=>p.group===group),available=parts.filter(p=>sharedPart(p,record.overlap));return <div key={group} className={`rounded-xl border p-4 ${parts.length?"border-ink/20 glass-bg":"border-dashed border-slate-300 bg-slate-100/60 text-slate-500"}`}><label className="flex items-center gap-2 font-medium"><input type="checkbox" disabled={locked||!available.length} checked={Boolean(available.length)&&available.every(p=>partSelection.includes(p.id))} onChange={e=>setPartSelection(ids=>e.target.checked?[...new Set([...ids,...available.map(p=>p.id)])]:ids.filter(id=>!available.some(p=>p.id===id)))}/>{groupNames[group]}</label>{!parts.length&&<p className="mt-2 text-xs">Optional · not present</p>}{parts.map(p=>{const range=sharedPart(p,record.overlap);return <label key={p.id} className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" disabled={locked||!range} checked={partSelection.includes(p.id)} onChange={e=>setPartSelection(ids=>e.target.checked?[...ids,p.id]:ids.filter(id=>id!==p.id))}/><span>{p.title}<span className="block text-xs text-ink/60">{timecode(p.start_ms)}–{timecode(p.end_ms)}{!range?" · outside shared footage":range[0]!==p.start_ms||range[1]!==p.end_ms?` · scan ${timecode(range[0])}–${timecode(range[1])}`:""}</span></span></label>;})}</div>;})}</div>
           <p className="mb-4 text-sm">{partSelection.length} parts selected · {timecode((record.segments??[]).filter(p=>partSelection.includes(p.id)).reduce((sum,p)=>{const r=sharedPart(p,record.overlap);return sum+(r?r[1]-r[0]:0);},0))} of footage</p>
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-xs">Transcript source<select className={input} value={audio} disabled={locked} onChange={e=>setAudio(e.target.value as View|"none")}>
@@ -261,7 +314,7 @@ export default function SeminarPage() {
           <option value="all">All dimensions</option>{Object.entries(dimensions).map(([key,label])=><option key={key} value={key}>{label}</option>)}
         </select></div>
         <p className="text-xs text-ink/65">Up to 6 key observations, with similar repeated actions omitted and at most 2 per dimension. AI comments are tentative observations of presentation behavior, not personality or hiring assessments. Check the frames and both original recordings.</p>
-        {selectedObservation && <div className="rounded-2xl border border-accent/40 bg-white/60 p-4"><h3 className="font-medium">Evidence · {timecode(selectedObservation.start_ms)}–{timecode(selectedObservation.end_ms)}</h3>
+        {selectedObservation && <div className="rounded-2xl border border-accent/40 glass-bg p-4"><h3 className="font-medium">Evidence · {timecode(selectedObservation.start_ms)}–{timecode(selectedObservation.end_ms)}</h3>
           <div className="mt-3 flex gap-3 overflow-x-auto pb-2">{selectedFrames?.map(frame=><figure key={frame.id} className="w-64 shrink-0">
             <a href={`/api/seminars/${record.id}/frames/${frame.id}`} target="_blank" rel="noreferrer"><img alt={`${frame.view} view at ${timecode(frame.source_ms)}`} src={`/api/seminars/${record.id}/frames/${frame.id}`} className="aspect-video w-full rounded bg-black object-contain" /></a>
             <figcaption className="mt-1 text-xs">{frame.view} · source {timecode(frame.source_ms)} · shared {timecode(frame.time_ms)}</figcaption>
@@ -270,7 +323,7 @@ export default function SeminarPage() {
         {record.error&&<p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{record.error}</p>}
         {record.warnings.length>0&&<details className="rounded-xl bg-amber-50 p-3 text-sm"><summary>{record.warnings.length} scan notes</summary>{record.warnings.map((w,i)=><p key={i}>{w}</p>)}</details>}
         {shown.length===0 && <p className="rounded-xl border border-dashed border-ink/20 p-6 text-sm text-ink/65">No observations to display yet. Choose saved parts to scan, or check scan notes if no action could be supported.</p>}
-        <div className="grid gap-4 xl:grid-cols-2">{shown.map(item=><article key={item.id} className="rounded-2xl border border-ink/15 bg-white/60 p-5">
+        <div className="grid gap-4 xl:grid-cols-2">{shown.map(item=><article key={item.id} className="rounded-2xl border border-ink/15 glass-bg p-5">
           <div className="flex justify-between gap-3 text-xs text-ink/65"><span>{dimensions[item.dimension]}</span><span>{timecode(item.start_ms)}–{timecode(item.end_ms)}</span></div>
           <p className="mt-2 text-xs text-ink/60">{(record.segments??[]).filter(p=>p.start_ms<=item.start_ms&&p.end_ms>item.start_ms).map(p=>`${groupNames[p.group]} · ${p.title}`).join(", ")}</p><h3 className="mt-3 font-medium">Visible action</h3><p className="mt-1 text-sm leading-6">{item.observed_action}</p>
           <h4 className="mt-3 text-xs font-semibold uppercase tracking-wider text-ink/60">AI comment</h4><p className="mt-1 text-sm leading-6">{item.comment}</p>
@@ -282,12 +335,12 @@ export default function SeminarPage() {
         </article>)}</div>
         {record.observations.length>0&&<details className="rounded-xl border border-ink/15 p-4"><summary className="cursor-pointer text-sm">All saved observations ({record.observations.length}) · review history</summary>
           <p className="mt-2 text-xs text-ink/60">Inspect omitted observations or change a previous review decision.</p>
-          <div className="mt-3 max-h-80 space-y-3 overflow-y-auto">{record.observations.map(item=><div key={item.id} className="rounded-lg bg-white/60 p-3 text-sm"><p>{timecode(item.start_ms)} · {item.observed_action}</p><div className="mt-2 flex items-center gap-3"><button className="text-xs underline" disabled={!aligned} onClick={()=>evidence(item)}>View evidence</button><select aria-label={`Saved review ${item.id}`} className={input} value={item.review_status} disabled={locked} onChange={e=>{const review_status=e.target.value as ReviewStatus;act("Saving review…",async()=>setRecord(await seminarRequest<Seminar>(`/${record.id}/observations/${item.id}`,"PATCH",{review_status})));}}><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="inaccurate">Inaccurate</option><option value="uncertain">Cannot determine</option></select></div></div>)}</div>
+          <div className="mt-3 max-h-80 space-y-3 overflow-y-auto">{record.observations.map(item=><div key={item.id} className="rounded-lg glass-bg p-3 text-sm"><p>{timecode(item.start_ms)} · {item.observed_action}</p><div className="mt-2 flex items-center gap-3"><button className="text-xs underline" disabled={!aligned} onClick={()=>evidence(item)}>View evidence</button><select aria-label={`Saved review ${item.id}`} className={input} value={item.review_status} disabled={locked} onChange={e=>{const review_status=e.target.value as ReviewStatus;act("Saving review…",async()=>setRecord(await seminarRequest<Seminar>(`/${record.id}/observations/${item.id}`,"PATCH",{review_status})));}}><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="inaccurate">Inaccurate</option><option value="uncertain">Cannot determine</option></select></div></div>)}</div>
         </details>}
         {record.transcript.length>0 && <details className="rounded-2xl border border-ink/15 p-5"><summary className="cursor-pointer font-medium">Transcript context ({record.transcript.length} segments)</summary>
           <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" role="switch" checked={gestureNotes} onChange={e=>setGestureNotes(e.target.checked)}/>Gesture notes</label>
           {gestureNotes&&<p className="mt-2 text-xs text-ink/60">Notes use overlapping visual evidence from the scan. They describe the surrounding interval, not necessarily the exact spoken word. No additional API requests.</p>}
-          <div className="mt-3 max-h-80 space-y-2 overflow-y-auto">{record.transcript.map((segment,i)=><button key={`${segment.segment_id}-${i}`} disabled={!aligned} onClick={()=>setSeek(previous=>({ms:segment.start_ms,nonce:(previous?.nonce ?? 0)+1}))} className={`block w-full rounded p-2 text-left text-sm ${segment.uncertain?"bg-amber-100":"bg-white/60"}`}>
+          <div className="mt-3 max-h-80 space-y-2 overflow-y-auto">{record.transcript.map((segment,i)=><button key={`${segment.segment_id}-${i}`} disabled={!aligned} onClick={()=>setSeek(previous=>({ms:segment.start_ms,nonce:(previous?.nonce ?? 0)+1}))} className={`block w-full rounded p-2 text-left text-sm ${segment.uncertain?"bg-amber-100":"glass-bg"}`}>
             <span className="mr-3 text-xs">{timecode(segment.start_ms)}</span>{segment.text}{segment.uncertain?" · ASR uncertain":""}
             {gestureNotes&&<span className="mt-2 block border-l-2 border-teal-500/40 pl-3 text-xs text-ink/70">Gesture: {sentenceGestures(segment,record.observations).map(o=>o.observed_action).join("; ")||"No supported gesture description for this interval."}</span>}
           </button>)}</div>
@@ -295,5 +348,7 @@ export default function SeminarPage() {
       </section>
     </>}
 
-  </main>;
+    </main>
+    </div>
+  );
 }

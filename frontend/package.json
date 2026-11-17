@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:seminar": "node --experimental-strip-types --test tests/seminar-*.test.mjs"
+    "test:seminar": "node --experimental-strip-types --test tests/seminar-*.test.mjs",
+    "test:persona": "node --experimental-strip-types --test tests/persona.test.mjs",
+    "test:cv-images": "node --experimental-strip-types --test tests/cv-images.test.mjs"
   },
   "dependencies": {
     "next": "16.3.6",

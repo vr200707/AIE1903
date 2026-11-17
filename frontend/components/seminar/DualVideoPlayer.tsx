@@ -73,7 +73,7 @@ export default function DualVideoPlayer({session, offset, seek, onTime, active=t
     if(screen.current.readyState>=1) screen.current.currentTime=times[1];
     setTime(times[0]);
   }
-  return <section className="rounded-2xl border border-ink/15 bg-white/50 p-4" aria-label="Synchronized seminar recordings">
+  return <section className="rounded-2xl border border-ink/15 glass-bg p-4" aria-label="Synchronized seminar recordings">
     <div className="grid gap-4 md:grid-cols-2">
       {(["speaker","screen"] as const).map(view=><div key={view}>
         <p className="mb-2 text-sm font-medium">{view==="speaker"?"Speaker view":"Shared-screen view"}</p>
