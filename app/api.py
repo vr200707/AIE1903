@@ -35,6 +35,7 @@ from fastapi.responses import JSONResponse
 from app import health as health_monitor
 from app.extractor import extract_profile
 from app.interview_api import create_interview_router
+from app.seminar_api import create_seminar_router
 from app.parser import (
     CONTENT_TYPES,
     SUPPORTED_SUFFIXES,
@@ -967,3 +968,5 @@ def qa(body: dict[str, Any]) -> dict[str, Any]:
 
 
 app.include_router(create_interview_router(_resolve_interview_profile))
+
+app.include_router(create_seminar_router(_resolve_interview_profile))

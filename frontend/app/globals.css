@@ -500,3 +500,17 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* A half-turn, then a brief rest before the next hourglass flip. */
+@keyframes seminar-hourglass-flip {
+  0%, 12.5% { transform: rotate(0deg); }
+  37.5%, 62.5% { transform: rotate(180deg); }
+  87.5%, 100% { transform: rotate(360deg); }
+}
+.seminar-hourglass {
+  transform-origin: center;
+  animation: seminar-hourglass-flip 2.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .seminar-hourglass { animation: none; }
+}
