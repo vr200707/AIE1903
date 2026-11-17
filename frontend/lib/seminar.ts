@@ -3,14 +3,21 @@ export type Dimension = "audience_orientation" | "gesture_usage" | "posture_move
 export type ReviewStatus = "pending" | "confirmed" | "inaccurate" | "uncertain";
 export type Video = {filename: string; display_name: string; duration_ms: number; size_bytes: number};
 export type Frame = {id: string; view: View; time_ms: number; source_ms: number};
-export type Observation = {id: string; dimension: Dimension; observed_action: string; comment: string;
+export type Observation = {importance?:number; id: string; dimension: Dimension; observed_action: string; comment: string;
   frame_ids: string[]; start_ms: number; end_ms: number; review_status: ReviewStatus};
 export type Seminar = {id: string; profile_id: string; title: string; updated_at: string;
+  segments?: SeminarPart[]; segments_revision?: number;
+  full_transcript?: {segment_id:string; start_ms:number; end_ms:number; text:string; uncertain?:boolean}[];
+  script_context?:string; transcript_source?:string;
+  outline_job?: {status:string; stage:string; message:string; done?:number; total?:number};
+  segment_proposal?: {parts:SeminarPart[]; base_revision:number};
   videos: Partial<Record<View, Video>>; uploading_views: View[]; offset_ms: number; aligned: boolean;
+  alignment_suggestion?: {offset_ms: number | null; reliable: boolean; score: number; message: string; visual_verified?: boolean; drift_detected?: boolean;
+    checkpoints?: {speaker_ms:number; screen_ms:number; reliable:boolean; offset_ms:number|null}[]};
   overlap?: [number, number]; status: string; stage: string; progress: {done: number; total: number};
   warnings: string[]; error: string | null; frames: Frame[]; observations: Observation[];
   transcript: {segment_id: string; start_ms: number; end_ms: number; text: string; uncertain?: boolean}[]};
-export type Summary = Pick<Seminar, "id" | "profile_id" | "title" | "status" | "updated_at">;
+export type Summary = Pick<Seminar, "id" | "profile_id" | "title" | "status" | "updated_at"> & Partial<Pick<Seminar,"stage" | "progress" | "outline_job">>;
 export async function seminarRequest<T>(path = "", method = "GET", body?: unknown): Promise<T> {
   const response = await fetch(`/api/seminars${path}`, {method, headers: {"Content-Type": "application/json"},
     body: body === undefined ? undefined : JSON.stringify(body)});
@@ -37,3 +44,6 @@ export function timecode(ms: number) {
   const seconds=Math.floor(ms/1000);
   return `${Math.floor(seconds/60).toString().padStart(2,"0")}:${(seconds%60).toString().padStart(2,"0")}`;
 }
+
+export type PartGroup = "introduction" | "body" | "conclusion" | "other";
+export type SeminarPart = {id:string; title:string; group:PartGroup; start_ms:number; end_ms:number; summary:string};

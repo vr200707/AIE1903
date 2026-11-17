@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useIdentity } from "./IdentityProvider";
@@ -11,6 +11,8 @@ import {
   clearAllInterviewSessions,
   clearInterviewSession,
 } from "@/lib/interview";
+
+import { seminarRequest, type Summary } from "@/lib/seminar";
 
 const NAV = [
   { href: "/seminar", label: "Seminar", icon: <span aria-hidden="true">▣</span> },
@@ -51,6 +53,15 @@ export default function Sidebar() {
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [expandedQa, setExpandedQa] = useState<string | null>(null);
   const [mobileArchiveOpen, setMobileArchiveOpen] = useState(false);
+  const [seminars,setSeminars]=useState<Summary[]>([]);
+  const [seminarError,setSeminarError]=useState(false);
+  useEffect(()=>{
+    let cancelled=false;
+    const update=()=>seminarRequest<Summary[]>().then(items=>{if(!cancelled){setSeminars(items);setSeminarError(false);}}).catch(()=>{if(!cancelled)setSeminarError(true);});
+    update();const timer=setInterval(update,5000);
+    window.addEventListener("seminars-updated",update);
+    return()=>{cancelled=true;clearInterval(timer);window.removeEventListener("seminars-updated",update);};
+  },[]);
   const initials = (identity?.name ?? "AIE")
     .split(/\s+/)
     .slice(0, 2)
@@ -81,8 +92,8 @@ export default function Sidebar() {
       </p>
     ) : (
       archives.map((entry) => (
+        <div key={entry.id}>
         <ArchiveFolder
-          key={entry.id}
           entry={entry}
           onClick={() => onOpen(entry.id)}
           onOpenInterview={
@@ -90,6 +101,16 @@ export default function Sidebar() {
           }
           onDelete={() => removeFromHistory(entry.id, entry.profileId)}
         />
+        <details className="mt-1 rounded-lg border border-ink/10 bg-white/35 px-2 py-2 text-xs">
+          <summary className="cursor-pointer text-ink/75">Seminars · {seminars.filter(s=>s.profile_id===entry.profileId).length}</summary>
+          {seminarError&&<p className="mt-2 text-amber-800">Could not refresh seminar progress.</p>}
+          {seminars.filter(s=>s.profile_id===entry.profileId).map(s=><a key={s.id} href={`/seminar?session=${encodeURIComponent(s.id)}`} onClick={()=>setMobileArchiveOpen(false)} className="mt-2 block rounded-md border border-ink/10 bg-white/60 p-2 transition hover:bg-white" aria-label={`Open seminar ${s.title}, ${s.status.replaceAll("_"," ")}`}>
+            <span className="block break-words font-medium">{s.title}</span>
+            <span className="mt-1 block text-[10px] text-ink/65">{s.outline_job?.status==="running" ? s.outline_job.message : s.status.replaceAll("_"," ")}{s.status==="analyzing"&&s.progress ? ` · ${s.progress.done}/${s.progress.total} batches` : ""} · {new Date(s.updated_at).toLocaleString()}</span>
+          </a>)}
+          {!seminarError&&!seminars.some(s=>s.profile_id===entry.profileId)&&<p className="mt-2 text-ink/50">No seminars yet</p>}
+        </details>
+        </div>
       ))
     );
 

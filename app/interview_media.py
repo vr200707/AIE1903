@@ -82,7 +82,7 @@ def validate_video_suffix(filename: str) -> str:
     return suffix
 
 
-def probe_video(path: Path) -> dict[str, Any]:
+def probe_video(path: Path, *, enforce_duration_limit: bool = True) -> dict[str, Any]:
     """Read basic media metadata with PyAV, which ships with faster-whisper."""
     try:
         import av
@@ -134,7 +134,7 @@ def probe_video(path: Path) -> dict[str, Any]:
             "invalid_video_duration",
             "The uploaded video has no readable duration.",
         )
-    if duration_ms > max_video_seconds() * 1000:
+    if enforce_duration_limit and duration_ms > max_video_seconds() * 1000:
         raise InterviewMediaError(
             "video_too_long",
             f"Video exceeds the {max_video_seconds()} second limit.",

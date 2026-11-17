@@ -35,7 +35,7 @@ class SeminarStoreTests(unittest.TestCase):
         from fastapi.testclient import TestClient
         from app.seminar_api import create_seminar_router
         app = FastAPI()
-        app.include_router(create_seminar_router(lambda _: {}))
+        app.include_router(create_seminar_router(lambda _: {'candidate':{'basic_info':{'name':'Test Candidate'}}}))
         client = TestClient(app)
         record = client.post('/api/seminars', json={'profile_id': 'p1', 'title': 'Talk'}).json()
         base = '/api/seminars/' + record['id']
@@ -153,7 +153,7 @@ class SeminarPipelineTests(unittest.TestCase):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
         from app.seminar_api import create_seminar_router
-        app=FastAPI();app.include_router(create_seminar_router(lambda _:{}));client=TestClient(app)
+        app=FastAPI();app.include_router(create_seminar_router(lambda _: {'candidate':{'basic_info':{'name':'Test Candidate'}}}));client=TestClient(app)
         base='/api/seminars/'+saved['id']
         observation=saved['observations'][0]
         self.assertEqual(client.patch(base+'/observations/'+observation['id'],json={'review_status':'confirmed'}).status_code,200)
@@ -203,3 +203,44 @@ class SeminarPipelineTests(unittest.TestCase):
         self.assertEqual(store.read(self.record['id'])['observations'],[])
 
 if __name__ == '__main__': unittest.main()
+
+class LongSeminarTests(unittest.TestCase):
+    def test_58_minute_seminar_probe_without_duration_limit(self):
+        from types import SimpleNamespace
+        from app.interview_media import probe_video, InterviewMediaError
+        container=unittest.mock.MagicMock()
+        container.__enter__.return_value=container
+        container.duration=3480*1000000
+        container.streams=[SimpleNamespace(type='video',codec_context=SimpleNamespace(width=1920,height=1080))]
+        with patch('av.open',return_value=container):
+            self.assertEqual(probe_video(Path('lecture.mp4'), enforce_duration_limit=False)['duration_ms'],3480000)
+            with self.assertRaises(InterviewMediaError):probe_video(Path('interview.mp4'))
+
+    def test_full_58_minute_scan_is_accepted(self):
+        from app import seminar_store as store
+        from app.seminar_service import start_scan,active
+        with tempfile.TemporaryDirectory() as tmp,patch.dict(os.environ,{'SEMINAR_DATA_DIR':tmp}):
+            item=store.create('p1','58 minute seminar')
+            item.update(aligned=True,overlap=[0,3480000],status='ready')
+            store.save(item)
+            try:
+                with patch('app.seminar_service.vision_config'),patch('app.seminar_service.executor.submit'):
+                    result=start_scan(item['id'],0,3480000,'none')
+                self.assertEqual(result['progress']['total'],435)
+            finally:active.discard(item['id'])
+
+class CreationValidationTests(SeminarStoreTests):
+    def test_create_requires_real_name_and_nonblank_title(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from app.seminar_api import create_seminar_router
+        profile={'candidate':{'basic_info':{'name':'  '}}}
+        app=FastAPI();app.include_router(create_seminar_router(lambda _:profile))
+        client=TestClient(app)
+        self.assertEqual(client.post('/api/seminars',json={'profile_id':'p','title':'Talk'}).status_code,422)
+        profile['candidate']['basic_info']['name']='Steven'
+        self.assertEqual(client.post('/api/seminars',json={'profile_id':'p','title':'   '}).status_code,422)
+        response=client.post('/api/seminars',json={'profile_id':'p','title':'  Talk  '})
+        self.assertEqual(response.status_code,201)
+        self.assertEqual(response.json()['title'],'Talk')
+        self.assertEqual(response.json()['candidate_name'],'Steven')

@@ -10,7 +10,6 @@ from app.seminar_analysis import analyze_window, ground_observations, vision_con
 executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix='seminar')
 active: set[str] = set()
 WINDOW_MS = 8000
-MAX_SCAN_MS = 120000  # A deliberate preview budget, displayed before paid calls.
 
 
 def recover_interrupted() -> None:
@@ -21,26 +20,31 @@ def recover_interrupted() -> None:
                 store.save(record)
 
 
-def start_scan(session_id: str, start_ms: int, end_ms: int, audio_view: str) -> dict:
+def start_scan(session_id: str, start_ms: int, end_ms: int, audio_view: str, *, ranges=None, part_ids=None, revision=None) -> dict:
     with store.lock:
         record = store.read(session_id)
         if record['status'] == 'analyzing':
             return record
+        if record.get('outline_job',{}).get('status')=='running':
+            raise ValueError('Wait for transcript preparation to finish.')
         if not record['aligned'] or record.get('uploads'):
             raise ValueError('Finish both uploads and confirm alignment before scanning.')
         low, high = record['overlap']
-        if not low <= start_ms < end_ms <= high or end_ms-start_ms > MAX_SCAN_MS:
-            raise ValueError('Select an overlapping range of at most 120 seconds.')
+        if not low <= start_ms < end_ms <= high:
+            raise ValueError('Select a range within the overlapping recordings.')
+        ranges = ranges or [(start_ms,end_ms)]
+        if any(not low <= a < b <= high for a,b in ranges) or any(a[1] > b[0] for a,b in zip(ranges,ranges[1:])):
+            raise ValueError("Selected ranges must be ordered, nonoverlapping and inside the shared video range.")
         vision_config()
         if len(active) >= 2:
             raise ValueError('Two scans are already running. Please try again shortly.')
         record.update(status='analyzing', stage='preparing', error=None, warnings=[],
-                      progress={'done':0,'total':(end_ms-start_ms+WINDOW_MS-1)//WINDOW_MS},
-                      scan={'start_ms':start_ms,'end_ms':end_ms,'audio_view':audio_view})
+                      progress={'done':0,'total':sum((b-a+WINDOW_MS-1)//WINDOW_MS for a,b in ranges)},
+                      scan={'start_ms':start_ms,'end_ms':end_ms,'audio_view':audio_view,'ranges':ranges,'part_ids':part_ids or [],'segments_revision':revision})
         store.save(record)
         active.add(session_id)
         try:
-            executor.submit(run_scan, session_id, start_ms, end_ms, audio_view)
+            executor.submit(run_scan, session_id, start_ms, end_ms, audio_view, ranges)
         except Exception:
             active.discard(session_id)
             record.update(status='failed',error='Could not queue scan. Please retry.')
@@ -49,13 +53,16 @@ def start_scan(session_id: str, start_ms: int, end_ms: int, audio_view: str) -> 
         return record
 
 
-def run_scan(session_id: str, start_ms: int, end_ms: int, audio_view: str) -> None:
+def run_scan(session_id: str, start_ms: int, end_ms: int, audio_view: str, ranges=None) -> None:
     try:
         record = store.read(session_id)
         folder = store.directory(session_id)
+        ranges = ranges or [(start_ms,end_ms)]
         warnings = []
         transcript = []
-        if audio_view != 'none':
+        if audio_view == 'speaker' and record.get('full_transcript'):
+            transcript=[c for c in record['full_transcript'] if any(c['end_ms']>a and c['start_ms']<b for a,b in ranges)]
+        elif audio_view != 'none':
             record['stage'] = 'transcribing'
             store.save(record)
             try:
@@ -65,6 +72,7 @@ def run_scan(session_id: str, start_ms: int, end_ms: int, audio_view: str) -> No
                 warnings.append(f'Transcript unavailable ({type(exc).__name__}); visual review continues. Select another audio track or scan without transcript.')
         else:
             warnings.append('Transcript omitted by reviewer; comments use visual evidence only.')
+        transcript=[c for c in transcript if any(c['end_ms']>a and c['start_ms']<b for a,b in ranges)]
         # Each run has its own frames. Existing observations remain until a window
         # succeeds; a failed retry cannot erase earlier reviewed observations.
         run_id = uuid.uuid4().hex
@@ -72,8 +80,8 @@ def run_scan(session_id: str, start_ms: int, end_ms: int, audio_view: str) -> No
         successful = 0
         prior_ids = {o["id"] for o in record["observations"]}
         successful_ranges: list[list[int]] = []
-        for index, window_start in enumerate(range(start_ms, end_ms, WINDOW_MS)):
-            window_end = min(window_start+WINDOW_MS, end_ms)
+        windows=[(a,min(a+WINDOW_MS,end)) for start,end in ranges for a in range(start,end,WINDOW_MS)]
+        for index, (window_start,window_end) in enumerate(windows):
             record['stage'] = 'scanning'
             frames = []
             for view in ('speaker', 'screen'):
@@ -89,6 +97,9 @@ def run_scan(session_id: str, start_ms: int, end_ms: int, audio_view: str) -> No
                 try:
                     raw = analyze_window(frames, frames_dir, context)
                     observations, rejected = ground_observations(raw, frames)
+                    for observation in observations:
+                        observation['part_ids']=[p['id'] for p in record.get('segments',[]) if p['start_ms']<=observation['start_ms']<p['end_ms']]
+                        observation['segments_revision']=record.get('segments_revision',0)
                     successful += 1
                     if rejected:
                         warnings.append(f'{window_start/1000:g}s: discarded {rejected} unsupported observation(s).')
@@ -113,7 +124,7 @@ def run_scan(session_id: str, start_ms: int, end_ms: int, audio_view: str) -> No
                             for low, high in successful_ranges)] + observations
                 latest['frames'].extend(frames)
                 latest['transcript'] = [s for s in latest['transcript']
-                    if s['end_ms'] <= start_ms or s['start_ms'] >= end_ms] + transcript
+                    if not any(s['end_ms']>a and s['start_ms']<b for a,b in ranges)] + transcript
                 latest.update(stage='scanning', progress={'done': index+1, 'total': record['progress']['total']}, warnings=warnings)
                 latest['observations'].sort(key=lambda o:o['start_ms'])
                 store.save(latest)

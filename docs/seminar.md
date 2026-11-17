@@ -26,8 +26,8 @@ provider, not live account credentials.
 
 1. Generate a candidate profile; click **Review seminar**. Create a titled session.
 2. Upload speaker and shared-screen recordings of the same event. Each uses
-   4 MiB chunks and the existing video size/duration limits (500 MiB / 20 minutes
-   by default; `INTERVIEW_MAX_VIDEO_BYTES`, `INTERVIEW_MAX_VIDEO_SECONDS`).
+   4 MiB chunks and the existing video size limit (500 MiB by default;
+   `INTERVIEW_MAX_VIDEO_BYTES`). Seminar recordings have no duration limit.
    A screen recording without audio is allowed. Use MP4 H.264/AAC for broad
    browser playback; other containers can decode server-side but fail in a browser.
 3. Adjust offset. **screen_time = speaker_time + offset**. If speaker 00:10 matches
@@ -35,10 +35,10 @@ provider, not live account credentials.
    Only the overlapping interval is played/scanned. Replacing media or changing
    confirmed alignment invalidates prior observations. Reconfirming the same
    offset preserves them.
-4. Pick up to **120 seconds** in speaker time and a transcript source. Start a
+4. Pick any overlapping range or the full recording in speaker time and a transcript source. Start a
    scan. Images go to the configured model and may incur charges. Each request
    contains at most one eight-second window (roughly 8 speaker + 2 screen frames,
-   more screen frames when the screen changes). Scan later ranges as needed.
+   more screen frames when the screen changes). Long recordings remain split into eight-second batches.
 5. Review the three dimensions. Click **View evidence** to position both videos
    and see saved frame sequences. Mark Confirmed, Inaccurate or Cannot determine.
    Refresh and select the saved seminar to resume; reviews are saved server-side.
@@ -108,3 +108,113 @@ fails because this machine lacks Poppler (`pdfinfo`/`pdftoppm`). Existing OCR
 implementation was not modified. Browser checks with labeled synthetic H.264
 videos confirmed evidence seek, paired playback and stopping at the shared end.
 No real candidate footage or live paid vision API call was used.
+
+## Automatic offset reference
+
+After both uploads finish, the page estimates a reference offset from shared
+audio and fills it in only if the match is reliable. **Estimate offset** also
+works on saved sessions. The estimate never confirms alignment: the input remains
+editable and the reviewer must check playback and press **Confirm alignment**.
+Existing confirmed alignment is not changed by requesting a new reference.
+
+The local estimator compares 20 ms audio energy envelopes from the first ten
+minutes of each recording, using normalized cross-correlation and a distinct-peak
+check. It requires at least 30 seconds of informative overlapping audio. Missing,
+silent, unrelated, or ambiguous audio yields a manual-alignment message rather
+than a guessed offset. Large start differences beyond the sampled shared content,
+clock drift and dissimilar audio tracks may require manual adjustment.
+
+Alignment verification now checks 90-second audio windows near the beginning,
+middle and end after the initial estimate. Reliable checkpoint offsets differing
+by more than 500 ms withdraw the fixed-offset recommendation. Missing matches
+remain explicitly unverified; matching audio never establishes visual alignment.
+The expandable visual evidence panel offers independent players for recording the
+same visible event in each view. It calculates screen minus speaker timestamps,
+flags inconsistent event offsets, and lets the reviewer apply their mean when
+consistent. These manual references are temporary to the current page session;
+only the separately confirmed offset is persisted. Automatic visual event recognition
+is not implemented. Offset notifications dismiss after three seconds.
+
+### Transcript, structure and step navigation
+
+The seminar workflow now has six screens: candidate, videos, alignment, structure,
+selected-part scan and review. The session and step are in the URL, so saved work
+can be reopened directly. Back/next controls and prerequisite checks replace the
+long single-page sequence. Save manual outline edits before scanning; edits stay
+in memory while moving between screens, but only saved edits survive refresh.
+
+Structure uses the speaker video's clock. Introduction, Body, Conclusion and
+Other/Q&A are optional parent groups; empty groups render as gray dashed cards.
+AI never has to populate all groups. Children are consecutive logical parts,
+covering the speaker recording without gaps or overlaps. No video files are cut
+or re-encoded. The editor supports titles, group reassignment, split at playhead,
+dragging or entering a cut time, merging adjacent parts, and undo (last 50 edits).
+Adding a group creates a real part: the whole recording if empty, or a split of
+the selected part at the playhead (midpoint if the playhead is outside that part).
+
+Import timed SRT/VTT on either recording's timeline, or run local English ASR on
+the speaker video. Untimed scripts are optional context for topic recognition;
+actual boundaries are anchored to timed transcript cues. ASR and DeepSeek outline
+requests run in a background worker, with saved transcript, status and recoverable
+errors. Full transcript is separate from per-scan transcript excerpts. The AI
+proposal is previewed and only replaces saved parts after explicit acceptance.
+
+Scan selection supports parents, children and nonadjacent parts. Each selected
+range is clipped to shared footage and that clipping is shown before scanning;
+parts entirely outside shared footage are disabled. Unselected gaps are never
+scanned. The server snapshots selected IDs, revision and ranges for the task.
+Existing observations are associated with the current outline by timestamp in the
+review UI, so boundary edits do not need fresh vision requests merely for grouping.
+
+New endpoints: POST `/{id}/outline` (background transcript/AI preparation), PUT
+`/{id}/transcript` (SRT/VTT import), PUT `/{id}/parts` (revision-checked edits), POST
+`/{id}/scan-parts` (revision and selected IDs). Draft outline generation does not
+modify accepted parts. Source replacement resets the outline; changing offset
+preserves speaker-timed parts but resets parts derived from screen subtitles.
+
+### Chunked long-recording transcription
+Seminar preparation now decodes speaker audio once, adjusts its stream origin to
+video time, and selects roughly four-minute chunks with quiet cuts within five
+seconds of each target. Two-second context padding surrounds each chunk. At most
+two CTranslate2 workers run concurrently; CPU threads are bounded per worker.
+The seminar path uses greedy decoding (`beam_size=1`) and word timestamps.
+Words are assigned to a single core chunk by their global midpoint. Result times
+are clipped to core bounds and assembled in chronological order. This trades
+some decoding accuracy for speed; actual speedup depends on hardware and speech.
+Each completed chunk is written atomically under the session's
+`transcription_chunks` directory, keyed by video path/size/mtime, model settings,
+and chunk boundaries. Progress includes done/total counts. Failed or interrupted
+preparation can be retried, reusing completed chunks; full_transcript is set only
+once every chunk succeeds. Existing full transcripts are reused without redoing
+ASR. Partial results are not sent to topic segmentation as if complete.
+
+AI and manual segmentation now share one saved timeline. Successful generation
+writes the editable parts directly and increments their revision; there is no
+separate proposal preview/accept view. Existing compatible saved proposals migrate
+once when reopened. Manual edits continue on those same parts. Regeneration shows
+an in-page replacement confirmation before starting, and failure retains the
+existing timeline.
+
+Review now displays at most six diverse highlights (two per analysis dimension),
+ranked by model importance and reviewer confirmation, omitting similar repeated
+actions and inaccurate/uncertain findings. Raw observations remain stored. The
+transcript has an off-by-default Gesture notes switch. Each cue receives literal
+hand/gesture actions from temporally overlapping reliable observations, or an
+explicit unsupported-description message. These are interval-based evidence
+annotations, not claims of word-level gesture alignment; toggling does not issue
+new model calls. Future scans request only distinctive, actionable events and
+return an importance level for highlight selection.
+
+### Doubao example configuration
+For an activated image-capable Doubao model on Volcengine Ark, set these backend
+variables in the untracked `.env` (replace the placeholder with your own key):
+
+```dotenv
+SEMINAR_VISION_MODEL=doubao-seed-2-1-lite-260915
+SEMINAR_VISION_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
+SEMINAR_VISION_API_KEY=your_ark_api_key
+```
+
+The adapter disables thinking for `doubao-seed-*` models so the JSON answer fits
+within the output budget. Each developer/deployment must supply its own key;
+credentials, video uploads, ASR caches and session records are never part of git.

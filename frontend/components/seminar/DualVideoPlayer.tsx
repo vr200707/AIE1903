@@ -4,7 +4,7 @@ import { overlapSeconds, synchronizedTimes } from "@/lib/seminar-timing";
 import { timecode, type Seminar } from "@/lib/seminar";
 
 type Seek = {ms: number; nonce: number};
-export default function DualVideoPlayer({session, offset, seek}: {session: Seminar; offset: number; seek: Seek | null}) {
+export default function DualVideoPlayer({session, offset, seek, onTime, active=true}: {session: Seminar; offset: number; seek: Seek | null; onTime?:(ms:number)=>void; active?:boolean}) {
   const speaker = useRef<HTMLVideoElement>(null);
   const screen = useRef<HTMLVideoElement>(null);
   const wanted = useRef(false);
@@ -24,13 +24,17 @@ export default function DualVideoPlayer({session, offset, seek}: {session: Semin
     a.pause(); b.pause(); wanted.current=false;
     const times=synchronizedTimes((seek?.ms ?? low*1000)/1000,offset,[low,high]);
     requestedPosition.current=times[0];
+    // Show the selected part's time even before metadata/timeupdate arrives.
+    let cancelled=false;
+    queueMicrotask(()=>{if(!cancelled){setTime(times[0]);setPlaying(false);}});
     if(a.readyState>=1) a.currentTime=times[0];
     if(b.readyState>=1) b.currentTime=times[1];
+    return()=>{cancelled=true;};
   }, [seek, offset, low, high]);
 
   useEffect(() => {
     const a=speaker.current, b=screen.current;
-    if(!a || !b || high<=low) return;
+    if(!a || !b || high<=low || !active) return;
     const tick = () => {
       if(!wanted.current || busy.current) return;
       if(a.currentTime>=high-0.04) {
@@ -59,7 +63,7 @@ export default function DualVideoPlayer({session, offset, seek}: {session: Semin
     a.addEventListener("ended",stop);b.addEventListener("ended",stop);
     return()=>{clearInterval(timer);wanted.current=false;a.pause();b.pause();
       a.removeEventListener("waiting",wait);b.removeEventListener("waiting",wait);a.removeEventListener("ended",stop);b.removeEventListener("ended",stop);};
-  },[offset,low,high]);
+  },[offset,low,high,active]);
 
   function jump(t: number) {
     if(!bounds || !speaker.current || !screen.current) return;
@@ -81,7 +85,7 @@ export default function DualVideoPlayer({session, offset, seek}: {session: Semin
               const times=synchronizedTimes(requestedPosition.current ?? (seek?.ms ?? low*1000)/1000,offset,bounds);
               player.currentTime=times[view==="speaker"?0:1];
             }
-          }} onTimeUpdate={view==="speaker"?()=>setTime(speaker.current?.currentTime ?? 0):undefined}
+          }} onTimeUpdate={view==="speaker"?()=>{const t=speaker.current?.currentTime ?? 0;setTime(t);onTime?.(Math.round(t*1000));}:undefined}
           onPause={view==="speaker"?()=>setPlaying(false):undefined}
           onError={()=>setMessage("This video cannot be played in this browser. Convert it to MP4 (H.264/AAC) and upload again.")} />
       </div>)}
@@ -92,7 +96,7 @@ export default function DualVideoPlayer({session, offset, seek}: {session: Semin
       <div className="mt-2 flex flex-wrap items-center gap-4 text-sm">
         <button className="rounded-full bg-ink px-5 py-2 text-white" onClick={()=>{
           if(wanted.current){wanted.current=false;speaker.current?.pause();screen.current?.pause();setPlaying(false);}
-          else {if(time>=high-0.05)jump(low);wanted.current=true;setMessage("Starting synchronized playback…");}
+          else {if(time>=high-0.05)jump(low);wanted.current=true;setMessage("");}
         }}>{playing?"Pause both":"Play both"}</button>
         <span>Speaker {timecode(time*1000)} · Screen {timecode((time+offset)*1000)}</span>
         <label className="ml-auto">Listen to <select className="ml-2 rounded border p-1" value={audio} onChange={e=>setAudio(e.target.value as "speaker"|"screen")}>
