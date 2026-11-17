@@ -36,6 +36,12 @@ import httpx
 
 from app import health
 from app.search import search_web
+from app.web_verification import (
+    WebClaim,
+    build_web_claims,
+    gate_search_results,
+    strip_web_evidence,
+)
 
 
 CROSSREF_WORKS = "https://api.crossref.org/works"
@@ -46,6 +52,7 @@ CONFIRM_THRESHOLD = 0.8
 YEAR_TOLERANCE = 1
 HTTP_TIMEOUT = 30.0
 DEFAULT_VERIFY_MAX_WORKERS = 8
+DEFAULT_WEB_VERIFY_MAX_WORKERS = 3
 # 429 由断路器处理，不进入重试；5xx 才按退避重试。
 OPENALEX_RETRYABLE_STATUS = {500, 502, 503, 504}
 OPENALEX_MAX_RETRIES = 3
@@ -80,6 +87,18 @@ def _verify_max_workers() -> int:
         value = int(raw)
     except ValueError:
         return DEFAULT_VERIFY_MAX_WORKERS
+    return max(1, value)
+
+
+def _web_verify_max_workers() -> int:
+    raw = os.getenv(
+        "WEB_VERIFY_MAX_WORKERS",
+        str(DEFAULT_WEB_VERIFY_MAX_WORKERS),
+    )
+    try:
+        value = int(raw)
+    except ValueError:
+        return DEFAULT_WEB_VERIFY_MAX_WORKERS
     return max(1, value)
 
 
@@ -478,25 +497,12 @@ def _web_evidence(
     }
 
 
-def _relevant_to_claim(claim: str, result: Any) -> bool:
-    """判断搜索结果是否与声明相关（至少共享一个英文词），用于过滤无关结果。
-
-    Bing 的免费 HTML 抓取在无 key 阶段可能被反爬，返回与查询完全无关的内容
-    （例如把英文人名模糊匹配成中文视频网站）。这里用「词重叠」做一次粗过滤：
-    结果标题/摘要若与声明没有任何共同英文词（>=3 字符），则视为无关。
-    """
-    claim_tokens = set(re.findall(r"[a-zA-Z0-9]{3,}", claim.lower()))
-    if not claim_tokens:
-        return True
-    text = f"{result.title} {result.snippet}".lower()
-    return bool(claim_tokens & set(re.findall(r"[a-zA-Z0-9]{3,}", text)))
-
-
 def verify_text_claim(
-    claim_text: str,
+    claim: str | WebClaim,
     *,
     query_date: str | None = None,
     search: Any = None,
+    judge: Any = None,
     max_results: int = 5,
 ) -> dict[str, Any]:
     """对一条非论文声明做通用网页搜索核验，返回一条 evidence。
@@ -504,12 +510,23 @@ def verify_text_claim(
     口径（保守，网页搜索不能自动认定真伪）：
     - 搜索服务异常 -> `to_verify`（不把故障误判成造假）；
     - 搜索无结果 -> `not_found_public`；
-    - 搜索有结果 -> `to_verify`，附上 top 结果链接与摘要，供人工打开核对。
+    - 搜索有结果但未通过实体闸口或模型复核 -> `not_found_public`；
+    - 结果通过两段式闸口 -> `to_verify`，附上链接、摘要和判定理由。
     """
+    if isinstance(claim, WebClaim):
+        web_claim = claim
+    else:
+        web_claim = WebClaim(
+            kind="other",
+            index=None,
+            claim_text=claim,
+            query=claim,
+            candidate_name="",
+        )
     query_date = query_date or _today()
     search = search or search_web
     try:
-        results = search(claim_text, max_results=max_results)
+        results = search(web_claim.query, max_results=max_results)
     except Exception as exc:  # 网络 / 服务异常不判为造假。
         return _web_evidence(
             f"Web search is temporarily unavailable ({type(exc).__name__}). The claim is marked as to_verify.",
@@ -524,77 +541,72 @@ def verify_text_claim(
 
     if not results:
         return _web_evidence(
-            f"No public web result was found for \"{claim_text}\", so the claim cannot yet be confirmed.",
+            f"No public web result was found for \"{web_claim.claim_text}\", so the claim cannot yet be confirmed.",
             "not_found_public",
             None,
             query_date,
         )
 
-    relevant = [r for r in results if _relevant_to_claim(claim_text, r)]
-    if not relevant:
+    outcome = gate_search_results(web_claim, results, judge=judge)
+    if outcome.judge_error:
         return _web_evidence(
-            f"No relevant public web result was found for \"{claim_text}\", so the claim cannot yet be confirmed.",
+            (
+                f'Relevant search results for "{web_claim.claim_text}" could not '
+                f"be validated ({outcome.judge_error}). The claim is marked as to_verify."
+            ),
+            "to_verify",
+            None,
+            query_date,
+            (
+                f"Search query: {web_claim.query}. Relevance judge failed. "
+                "Retryable: yes."
+            ),
+        )
+
+    if not outcome.accepted:
+        return _web_evidence(
+            (
+                f'No reliable public web result was found for '
+                f'"{web_claim.claim_text}", so the claim cannot yet be confirmed.'
+            ),
             "not_found_public",
             None,
             query_date,
+            (
+                f"Search query: {web_claim.query}. "
+                f"Rejected {outcome.rejected_count} unrelated result(s)."
+            ),
         )
 
-    top = relevant[0]
-    snippet = (top.snippet or "")[:160]
-    text = f"Web search found a relevant lead: {top.title} ({snippet})."
-    others = "；".join(r.title for r in relevant[1:3] if r.title)
+    top = outcome.accepted[0]
+    snippet = (top.result.snippet or "")[:160]
+    text = (
+        f"Web search found a reviewed lead: {top.result.title} ({snippet}). "
+        f"Gate reason: {top.reason}"
+    )
+    others = "；".join(
+        item.result.title for item in outcome.accepted[1:3] if item.result.title
+    )
     if others:
         text += f" Other results: {others}."
     text += " Web search cannot automatically confirm truth; open the source links for human review."
-    return _web_evidence(text, "to_verify", top.url, query_date)
-
-
-def _claim_text(*parts: Any) -> str:
-    return " ".join(str(p) for p in parts if p not in (None, "")).strip()
+    return _web_evidence(
+        text,
+        "to_verify",
+        top.result.url,
+        query_date,
+        (
+            f"Search query: {web_claim.query}. "
+            f"Authority: {top.authority}. Relevance gate: accepted."
+        ),
+    )
 
 
 def _web_claims_from_profile(
     candidate: dict[str, Any],
-) -> list[tuple[str, str, int | None]]:
-    """从档案中收集可网页核验的声明，返回 (claim 文本, 模块, 列表索引)。"""
-    claims: list[tuple[str, str, int | None]] = []
-
-    basic = candidate.get("basic_info") or {}
-    basic_text = _claim_text(
-        basic.get("name"), basic.get("institution"), basic.get("position")
-    )
-    if basic_text:
-        claims.append((basic_text, "basic_info", None))
-
-    edu = (candidate.get("education_employment") or {}).get("education") or []
-    for index, item in enumerate(edu):
-        text = _claim_text(
-            item.get("degree"), item.get("field"), item.get("institution")
-        )
-        if text:
-            claims.append((text, "education", index))
-
-    emp = (candidate.get("education_employment") or {}).get("employment") or []
-    for index, item in enumerate(emp):
-        text = _claim_text(item.get("position"), item.get("institution"))
-        if text:
-            claims.append((text, "employment", index))
-
-    awards = (candidate.get("awards_funding") or {}).get("awards") or []
-    for index, item in enumerate(awards):
-        text = _claim_text(
-            item.get("name"), item.get("awarding_body"), item.get("year")
-        )
-        if text:
-            claims.append((text, "award", index))
-
-    funding = (candidate.get("awards_funding") or {}).get("funding") or []
-    for index, item in enumerate(funding):
-        text = _claim_text(item.get("project_name"), item.get("funder"))
-        if text:
-            claims.append((text, "funding", index))
-
-    return claims
+) -> list[WebClaim]:
+    """从档案中收集可网页核验的精确声明。"""
+    return build_web_claims(candidate)
 
 
 def _append_web_evidence(
@@ -623,17 +635,22 @@ def _verify_web_claims(
     *,
     query_date: str,
     search: Any,
+    judge: Any = None,
     on_progress: Callable[[str, int, int], None] | None = None,
 ) -> dict[str, Any]:
     claims = _web_claims_from_profile(candidate)
     if not claims:
         return candidate
-    workers = min(_verify_max_workers(), len(claims))
+    workers = min(_web_verify_max_workers(), len(claims))
     total = len(claims)
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {
             executor.submit(
-                verify_text_claim, claim[0], query_date=query_date, search=search
+                verify_text_claim,
+                claim,
+                query_date=query_date,
+                search=search,
+                judge=judge,
             ): index
             for index, claim in enumerate(claims)
         }
@@ -645,8 +662,8 @@ def _verify_web_claims(
             done += 1
             if on_progress is not None:
                 on_progress("verifying_web_claims", done, total)
-    for (_, kind, index), evidence in zip(claims, evidence_items):
-        _append_web_evidence(candidate, kind, index, evidence)
+    for claim, evidence in zip(claims, evidence_items):
+        _append_web_evidence(candidate, claim.kind, claim.index, evidence)
     return candidate
 
 
@@ -656,6 +673,7 @@ def verify_profile(
     query_date: str | None = None,
     verify_web: bool = False,
     search: Any = None,
+    judge: Any = None,
     on_progress: Callable[[str, int, int], None] | None = None,
 ) -> dict[str, Any]:
     """对完整档案执行公开来源核验，返回追加核验证据后的档案（浅拷贝）。
@@ -677,8 +695,32 @@ def verify_profile(
             candidate,
             query_date=query_date or _today(),
             search=search,
+            judge=judge,
             on_progress=on_progress,
         )
+    verified["candidate"] = candidate
+    return verified
+
+
+def reverify_web_claims(
+    profile: dict[str, Any],
+    *,
+    query_date: str | None = None,
+    search: Any = None,
+    judge: Any = None,
+    on_progress: Callable[[str, int, int], None] | None = None,
+) -> dict[str, Any]:
+    """Replace only WebSearch evidence without re-running extraction or papers."""
+    verified = dict(profile)
+    candidate = copy.deepcopy(profile["candidate"])
+    strip_web_evidence(candidate)
+    candidate = _verify_web_claims(
+        candidate,
+        query_date=query_date or _today(),
+        search=search or search_web,
+        judge=judge,
+        on_progress=on_progress,
+    )
     verified["candidate"] = candidate
     return verified
 
@@ -717,14 +759,14 @@ def mark_verification_incomplete(
             )
         )
 
-    for claim_text, kind, index in _web_claims_from_profile(candidate):
+    for claim in _web_claims_from_profile(candidate):
         _append_web_evidence(
             candidate,
-            kind,
-            index,
+            claim.kind,
+            claim.index,
             _web_evidence(
                 (
-                    f'{reason}. The claim "{claim_text}" was not checked against '
+                    f'{reason}. The claim "{claim.claim_text}" was not checked against '
                     "public web sources."
                 ),
                 "to_verify",

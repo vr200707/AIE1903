@@ -68,6 +68,15 @@ DeepSeek、Crossref、OpenAlex 或 Bing，避免产生费用和额外限流。
 - 当前免费搜索后端依赖公开 Bing HTML 页面。
 - 页面结构变化或速率限制会触发 `to_verify`。
 - 系统不会把搜索故障误判为声明为假。
+- 搜索结果先经过姓名/实体规则，再经过 `web_verify` 模型复核；失败时不会展示链接。
+- 修改核验规则后，可只重算缓存档案中的 WebSearch 证据，不重新调用抽取模型：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\reverify_web_evidence.py --upload-id upl_xxx
+```
+
+使用 `--profile-id`、`--name` 或 `--all` 可选择其他范围。建议先加 `--dry-run`
+确认命中的档案。
 
 ## 本地数据
 
