@@ -24,6 +24,9 @@ test('missing structures gray, manual addition colors selected section, undo res
  const root=createRoot(document.getElementById('root'));
  try{
   await act(async()=>root.render(React.createElement(Editor,{session,active:true,locked:false,onSave:async()=>{},onPrepare:()=>{},onImport:()=>{},onDirty:()=>{}})));
+  for(const title of ['Transcript source','Section overview','Speaker timeline','Synced preview','Edit part or cut','Transcript of the selected part']){
+    assert.ok(document.body.textContent.includes(title),`missing block: ${title}`);
+  }
   assert.equal(document.querySelector('[data-group="body"]').dataset.empty,'true');
   await click(document.querySelector('[data-group="body"] button'));
   assert.equal(document.querySelector('[data-group="body"]').dataset.empty,'false');

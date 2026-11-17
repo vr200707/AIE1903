@@ -30,9 +30,10 @@ from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from app import health as health_monitor
+from app.cv_images import extract_cv_images
 from app.extractor import extract_profile
 from app.interview_api import create_interview_router
 from app.seminar_api import create_seminar_router
@@ -91,6 +92,7 @@ def _save_profile_snapshot(upload_id: str, entry: dict[str, Any]) -> None:
         "status": entry.get("status"),
         "progress": entry.get("progress"),
         "error": entry.get("error"),
+        "cv_images": entry.get("cv_images", []),
     }
     try:
         temporary.write_text(
@@ -132,6 +134,7 @@ def load_profile_snapshots() -> int:
             "status": payload.get("status"),
             "progress": payload.get("progress"),
             "error": payload.get("error"),
+            "cv_images": payload.get("cv_images") if isinstance(payload.get("cv_images"), list) else [],
         }
         if entry.get("status") == "processing":
             # The analysis thread died with the previous process. The raw
@@ -143,6 +146,29 @@ def load_profile_snapshots() -> int:
         _UPLOADS[upload_id] = entry
         loaded += 1
     return loaded
+
+
+def _cv_images_dir(upload_id: str) -> Path:
+    return UPLOAD_DIR / upload_id / "cv_images"
+
+
+def _ensure_cv_images(upload_id: str, entry: dict[str, Any]) -> list[dict[str, Any]]:
+    """确保该上传档案的 CV 图片已提取，返回带访问 URL 的元数据列表。
+
+    结果缓存在 entry["cv_images"]；对升级前的旧档案在首次访问时惰性补提，
+    全程 best-effort，失败返回空列表且不影响其他接口。
+    """
+    cached = entry.get("cv_images")
+    if isinstance(cached, list) and cached:
+        return cached
+    records = extract_cv_images(entry.get("paths", []), _cv_images_dir(upload_id))
+    payload: list[dict[str, Any]] = []
+    for record in records:
+        item = record.as_dict() if hasattr(record, "as_dict") else dict(record)
+        item["url"] = f"/api/uploads/{upload_id}/cv-images/{item['filename']}"
+        payload.append(item)
+    entry["cv_images"] = payload
+    return payload
 
 
 @asynccontextmanager
@@ -710,6 +736,11 @@ def _run_analysis(upload_id: str, entry: dict[str, Any]) -> None:
                 ),
             )
 
+        # CV 内嵌图片提取（best-effort，失败仅得到空列表，不阻断分析）
+        with _UPLOAD_LOCK:
+            _ensure_cv_images(upload_id, entry)
+            _save_profile_snapshot(upload_id, entry)
+
         _set_progress("extracting", 0, 0)
         try:
             profile, _skipped = extract_profile(documents)
@@ -807,6 +838,9 @@ def analyze(body: dict[str, Any]) -> JSONResponse:
     with _UPLOAD_LOCK:
         if entry.get("profile") is not None:
             profile = entry["profile"]
+            # 已处于 _UPLOAD_LOCK 内（Lock 不可重入），直接惰性补提并持久化
+            cv_images = _ensure_cv_images(upload_id, entry)
+            _save_profile_snapshot(upload_id, entry)
             return JSONResponse(
                 status_code=200,
                 content={
@@ -815,6 +849,7 @@ def analyze(body: dict[str, Any]) -> JSONResponse:
                     "status": entry.get("status", "completed"),
                     "schema_version": profile["schema_version"],
                     "candidate": profile["candidate"],
+                    "cv_images": cv_images,
                     "warnings": entry.get("warnings", []),
                 },
             )
@@ -857,6 +892,9 @@ def analyze_status(upload_id: str) -> JSONResponse:
         progress = entry.get("progress")
         assessment = entry.get("assessment")
     if profile is not None:
+        with _UPLOAD_LOCK:
+            cv_images = _ensure_cv_images(upload_id, entry)
+            _save_profile_snapshot(upload_id, entry)
         return JSONResponse(
             status_code=200,
             content={
@@ -866,6 +904,7 @@ def analyze_status(upload_id: str) -> JSONResponse:
                 "schema_version": profile["schema_version"],
                 "candidate": profile["candidate"],
                 "assessment": assessment,
+                "cv_images": cv_images,
                 "warnings": warnings,
             },
         )
@@ -942,10 +981,53 @@ def profile(
             "Profile has not been generated. Call /api/analyze first.",
         )
     stored = entry["profile"]
+    resolved_upload_id = _entry_upload_id(profile_id, upload_id, entry)
+    with _UPLOAD_LOCK:
+        cv_images = _ensure_cv_images(resolved_upload_id, entry)
+        _save_profile_snapshot(resolved_upload_id, entry)
     return {
         "schema_version": stored["schema_version"],
         "candidate": stored["candidate"],
+        "cv_images": cv_images,
     }
+
+
+def _entry_upload_id(
+    profile_id: str | None,
+    upload_id: str | None,
+    entry: dict[str, Any],
+) -> str:
+    """解析 profile 端点对应条目所属的 upload_id。"""
+    if upload_id:
+        return upload_id
+    # _find_entry 按 profile_id 命中时，反向遍历注册表定位其 upload_id
+    for candidate_id, candidate_entry in _UPLOADS.items():
+        if candidate_entry is entry:
+            return candidate_id
+    raise _http_error(404, "upload_not_found", "Upload record for this profile no longer exists.")
+
+
+@app.get("/api/uploads/{upload_id}/cv-images/{filename}")
+def serve_cv_image(upload_id: str, filename: str) -> FileResponse:
+    """提供从 CV 中提取的内嵌图片；只放行元数据已登记的文件名，杜绝路径穿越。"""
+    entry = _find_entry(profile_id=None, upload_id=upload_id)
+    allowed = {
+        item.get("filename"): item
+        for item in entry.get("cv_images", [])
+        if isinstance(item, dict) and isinstance(item.get("filename"), str)
+    }
+    meta = allowed.get(filename)
+    if meta is None:
+        raise _http_error(404, "cv_image_not_found", "Unknown CV image.")
+    target = (_cv_images_dir(upload_id) / filename).resolve()
+    image_root = _cv_images_dir(upload_id).resolve()
+    if not str(target).startswith(str(image_root)) or not target.is_file():
+        raise _http_error(404, "cv_image_not_found", "CV image file is missing.")
+    return FileResponse(
+        target,
+        media_type=meta.get("content_type") or "image/jpeg",
+        filename=filename,
+    )
 
 
 @app.post("/api/qa")

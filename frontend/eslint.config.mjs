@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 测试转译产物与运行时缓存，不属于待检查源码
+    ".cache/**",
   ]),
 ]);
 

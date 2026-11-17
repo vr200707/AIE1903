@@ -20,7 +20,7 @@ export default function AlignmentEvidence({session,onApply,disabled=false,active
  }
  const offsets=anchors.map(x=>x.screen-x.speaker);
  const drift=offsets.length>1 && Math.max(...offsets)-Math.min(...offsets)>0.5;
- return <details className="rounded-xl border border-ink/20 bg-white/60 p-4">
+ return <details className="rounded-xl border border-ink/20 glass-bg p-4">
  <summary className="cursor-pointer font-medium">Verify alignment using visible events</summary>
  {session.alignment_suggestion?.checkpoints?.length ? <div className="my-3 text-sm"><p>Audio checkpoints (pictures still require verification):</p>{session.alignment_suggestion.checkpoints.map((c,i)=><p key={i}>{["Beginning","Middle","End"][i]} · speaker {(c.speaker_ms/1000).toFixed(1)}s · {c.reliable && c.offset_ms !== null ? `offset ${(c.offset_ms/1000).toFixed(2)}s` : "No reliable match"}</p>)}{session.alignment_suggestion.drift_detected && <p role="alert">Offsets vary across the recording; a fixed offset may not work.</p>}</div> : null}
  <p className="my-3 text-sm">Find the same slide change or visible action in both views. Pause each video on that event, describe it, and save the pair. Check the beginning, middle and end. If the views share no visible event, visual alignment cannot be verified automatically.</p>

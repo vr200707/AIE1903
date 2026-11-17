@@ -14,13 +14,16 @@ export const HERO_IMAGE =
  *
  * `contained` 为 true 时铺满父容器（父容器需 relative），默认铺满视口。
  * `image` 传入时用背景图（首页用），否则纯冰川渐变。
+ * `calm` 为 true 时关闭飘雪与呼吸光晕等循环动效（首页/seminar 使用）。
  */
 export default function Starfield({
   contained = false,
   image,
+  calm = false,
 }: {
   contained?: boolean;
   image?: string;
+  calm?: boolean;
 }) {
   return (
     <div
@@ -62,9 +65,9 @@ export default function Starfield({
         }}
       />
 
-      {/* 柔和光斑：冰面反光 */}
+      {/* 柔和光斑：冰面反光（calm 模式下静态展示，不做呼吸循环） */}
       <div
-        className="animate-glow-breathe absolute inset-0"
+        className={calm ? "absolute inset-0" : "animate-glow-breathe absolute inset-0"}
         style={{
           background:
             "radial-gradient(22% 18% at 16% 20%, rgba(255,255,255,0.38) 0%, transparent 70%)," +
@@ -73,16 +76,20 @@ export default function Starfield({
         }}
       />
 
-      {/* 飘落冰晶：三个缓慢下落的亮点 */}
-      <span className="animate-snow absolute left-[18%] top-[-6%] h-1.5 w-1.5 rounded-full bg-white/70" />
-      <span
-        className="animate-snow absolute left-[52%] top-[-6%] h-1 w-1 rounded-full bg-white/50"
-        style={{ animationDelay: "3s", animationDuration: "14s" }}
-      />
-      <span
-        className="animate-snow absolute left-[76%] top-[-6%] h-1.5 w-1.5 rounded-full bg-white/60"
-        style={{ animationDelay: "6s", animationDuration: "18s" }}
-      />
+      {/* 飘落冰晶：三个缓慢下落的亮点（calm 模式关闭） */}
+      {!calm && (
+        <>
+          <span className="animate-snow absolute left-[18%] top-[-6%] h-1.5 w-1.5 rounded-full bg-white/70" />
+          <span
+            className="animate-snow absolute left-[52%] top-[-6%] h-1 w-1 rounded-full bg-white/50"
+            style={{ animationDelay: "3s", animationDuration: "14s" }}
+          />
+          <span
+            className="animate-snow absolute left-[76%] top-[-6%] h-1.5 w-1.5 rounded-full bg-white/60"
+            style={{ animationDelay: "6s", animationDuration: "18s" }}
+          />
+        </>
+      )}
 
       {/* 中心柔光，把标题托出来 */}
       <div
