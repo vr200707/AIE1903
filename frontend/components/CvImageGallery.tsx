@@ -38,7 +38,7 @@ export default function CvImageGallery({ images }: { images: CvImage[] }) {
               type="button"
               onClick={() => setActive(i)}
               aria-label={`View CV image ${i + 1} of ${images.length}`}
-              className="group relative h-24 w-24 overflow-hidden rounded-xl border border-ink/15 bg-ink/[0.04] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-lg sm:h-28 sm:w-28"
+              className="group relative h-32 w-32 overflow-hidden rounded-xl border border-ink/15 bg-ink/[0.04] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-lg sm:h-36 sm:w-36"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img

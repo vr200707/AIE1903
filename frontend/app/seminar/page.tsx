@@ -210,21 +210,24 @@ export default function SeminarPage() {
     {offsetToast && <div role="status" aria-live="polite" className={`fixed right-5 top-5 z-50 max-w-sm animate-pop rounded-xl border px-5 py-4 text-sm shadow-xl ${offsetToast.reliable ? "border-teal-600/30 bg-teal-50 text-teal-950" : "border-amber-500/40 bg-amber-50 text-amber-950"}`}>
       {offsetToast.text}
     </div>}
-    <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-      <div className="min-w-0">
-      <h1 className="break-words text-3xl font-semibold">{archives.find(a=>a.profileId===(step===0?candidate:record?.profile_id))?.name ?? "Seminar Analysis"}</h1>
-      {(step===0?title.trim():record?.title) && <p className="mt-2 break-words text-lg text-ink/75">{step===0?title.trim():record?.title}</p>}
-      <p className="mt-3 max-w-3xl text-sm leading-6 text-ink/75">Review a candidate’s research talk or teaching demonstration. Upload a speaker recording, optionally add and align a screen recording, then review visible presenter actions against the original evidence.</p>
-      <div className="mt-3 flex flex-wrap items-center gap-4">
-        <Link href="/" className="inline-block text-sm underline">Back to candidate profiles</Link>
-        <button type="button" onClick={()=>setManualGuideOpen(true)} className="rounded-full border border-ink/20 glass-bg px-4 py-1.5 text-sm transition hover:border-accent/50 hover:text-accent">How it works</button>
+    <header className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link href="/" className="inline-flex items-center gap-2 rounded-full border border-ink/20 glass-bg px-4 py-2 text-sm font-medium transition hover:border-accent/50 hover:text-accent">
+          <span aria-hidden="true">←</span> Back to candidate profiles
+        </Link>
+        <button type="button" onClick={()=>setManualGuideOpen(true)} className="rounded-full border border-ink/20 glass-bg px-4 py-2 text-sm transition hover:border-accent/50 hover:text-accent">How it works</button>
       </div>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <h1 className="break-words text-4xl font-semibold sm:text-5xl">{archives.find(a=>a.profileId===(step===0?candidate:record?.profile_id))?.name ?? "Seminar Analysis"}</h1>
+          {(step===0?title.trim():record?.title) && <p className="mt-2 break-words text-lg text-ink/75">{step===0?title.trim():record?.title}</p>}
+        </div>
+        <nav aria-label="Step navigation" className="flex w-fit max-w-full shrink-0 items-center gap-2 self-end rounded-xl border border-ink/15 glass-bg p-2 shadow-sm lg:self-start">
+          <button className="rounded-full bg-ink px-3 py-2 text-xs text-white disabled:opacity-40" disabled={step===0||Boolean(busy)} onClick={()=>go(visibleSteps[position-1])}>← Previous</button>
+          <span title={partsDirty?"Save your part edits before scanning":undefined} className="whitespace-nowrap px-1 text-center text-xs text-ink/60">{steps[step]} · {position+1}/{visibleSteps.length}{partsDirty?" *":""}</span>
+          <button className="rounded-full bg-ink px-3 py-2 text-xs text-white disabled:opacity-40" disabled={step===5||Boolean(busy)||!reachable(visibleSteps[position+1])} onClick={()=>go(visibleSteps[position+1])}>Next →</button>
+        </nav>
       </div>
-      <nav aria-label="Step navigation" className="flex w-fit max-w-full shrink-0 items-center gap-2 self-end rounded-xl border border-ink/15 glass-bg p-2 shadow-sm lg:self-start">
-        <button className="rounded-full bg-ink px-3 py-2 text-xs text-white disabled:opacity-40" disabled={step===0||Boolean(busy)} onClick={()=>go(visibleSteps[position-1])}>← Previous</button>
-        <span title={partsDirty?"Save your part edits before scanning":undefined} className="whitespace-nowrap px-1 text-center text-xs text-ink/60">{steps[step]} · {position+1}/{visibleSteps.length}{partsDirty?" *":""}</span>
-        <button className="rounded-full bg-ink px-3 py-2 text-xs text-white disabled:opacity-40" disabled={step===5||Boolean(busy)||!reachable(visibleSteps[position+1])} onClick={()=>go(visibleSteps[position+1])}>Next →</button>
-      </nav>
     </header>
     {error && <p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
     {busy && <p role="status" className="text-sm">{busy}</p>}
