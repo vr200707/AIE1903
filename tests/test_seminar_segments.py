@@ -140,3 +140,19 @@ class UnifiedOutlineTests(unittest.TestCase):
         self.assertEqual(first['segments'],[part()])
         self.assertEqual(first['segments_revision'],1)
         self.assertEqual(second['segments_revision'],1)
+
+class EnglishMetadataTests(unittest.TestCase):
+    def test_translate_display_fields_preserves_structure(self):
+        from app.seminar_segments import english_metadata
+        item=part();item['title']='研究方法';item['summary']='方法说明'
+        client=MagicMock()
+        client.with_options.return_value.chat.completions.create.return_value=SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content='{"items":[{"index":0,"title":"Research Methods","summary":"Explanation of the method"}]}'))])
+        with patch('app.seminar_segments.get_client',return_value=client):result=english_metadata([item])
+        self.assertEqual(result[0]['title'],'Research Methods')
+        for key in ('id','start_ms','end_ms','group'):self.assertEqual(result[0][key],item[key])
+        self.assertEqual(item['title'],'研究方法')
+
+    def test_already_english_needs_no_model_call(self):
+        from app.seminar_segments import english_metadata
+        with patch('app.seminar_segments.get_client') as client:
+            self.assertEqual(english_metadata([part()]),[part()]);client.assert_not_called()

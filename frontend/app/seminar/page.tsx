@@ -205,7 +205,7 @@ export default function SeminarPage() {
       <p className="mt-3 max-w-3xl text-sm leading-6 text-ink/75">Review a candidate’s research talk or teaching demonstration. Align two views, find visible presenter actions, and check every AI comment against the original recordings.</p>
       <div className="mt-3 flex flex-wrap items-center gap-4">
         <Link href="/" className="inline-block text-sm underline">Back to candidate profiles</Link>
-        <button type="button" onClick={()=>setManualGuideOpen(true)} className="rounded-full border border-ink/20 glass-bg px-4 py-1.5 text-sm transition hover:border-accent/50 hover:text-accent">How it works · 使用说明</button>
+        <button type="button" onClick={()=>setManualGuideOpen(true)} className="rounded-full border border-ink/20 glass-bg px-4 py-1.5 text-sm transition hover:border-accent/50 hover:text-accent">How it works</button>
       </div>
       </div>
       <nav aria-label="Step navigation" className="flex w-fit max-w-full shrink-0 items-center gap-2 self-end rounded-xl border border-ink/15 glass-bg p-2 shadow-sm lg:self-start">
