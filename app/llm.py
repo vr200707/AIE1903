@@ -107,6 +107,7 @@ def record_usage(
     completion_tokens: int | None = None,
     cached_tokens: int | None = None,
     latency_ms: int = 0,
+    prompt_version: str | None = None,
 ) -> None:
     """Aggregate per-stage usage for diagnostics and `/health/dependencies`."""
     with _stats_lock:
@@ -125,10 +126,20 @@ def record_usage(
                 "completion_tokens": completion_tokens,
                 "cached_tokens": cached_tokens,
                 "latency_ms": latency_ms,
+                "prompt_version": prompt_version,
                 "at": time.time(),
             }
         )
         del _recent_calls[:-100]
+
+
+def _stable_messages(
+    messages: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    """Keep the system prefix first so provider-side prefix caches can match."""
+    return [item for item in messages if item.get("role") == "system"] + [
+        item for item in messages if item.get("role") != "system"
+    ]
 
 
 def call_chat(
@@ -138,12 +149,13 @@ def call_chat(
     temperature: float = 0,
     max_tokens: int | None = None,
     response_format: dict[str, str] | None = None,
+    prompt_version: str | None = None,
 ) -> LlmResult:
     """Call the shared client and return the message text plus usage."""
     started = time.monotonic()
     kwargs: dict[str, Any] = {
         "model": stage_model(stage),
-        "messages": messages,
+        "messages": _stable_messages(messages),
         "temperature": temperature,
     }
     if max_tokens is not None:
@@ -161,6 +173,7 @@ def call_chat(
         completion_tokens=completion_tokens,
         cached_tokens=cached_tokens,
         latency_ms=elapsed,
+        prompt_version=prompt_version,
     )
     return LlmResult(
         text=text,
