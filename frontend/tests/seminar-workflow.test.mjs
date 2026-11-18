@@ -24,3 +24,19 @@ test('direct URLs and history clamp to reachable step',()=>{
  assert.equal(allowedStep(-1,3),0);
  assert.equal(allowedStep(1.5,3),0);
 });
+
+test('speaker-only sessions require submission, then skip alignment in both directions and direct URLs',async()=>{
+ const {workflowSteps,availableStep}=await import('../lib/seminar-workflow.ts');
+ const record={videos:{speaker:{}},recordings_submitted:false,uploading_views:[],aligned:false,status:'created'};
+ assert.equal(lastUnlockedStep(record),1);
+ record.recordings_submitted=true;
+ assert.equal(lastUnlockedStep(record),3);
+ const visible=workflowSteps(record);
+ assert.deepEqual(visible,[0,1,3,4,5]);
+ assert.equal(visible[visible.indexOf(1)+1],3);
+ assert.equal(visible[visible.indexOf(3)-1],1);
+ assert.equal(availableStep(2,3,visible),3);
+ record.segments=[{id:'part'}];assert.equal(lastUnlockedStep(record),4);
+ record.videos.screen={};assert.equal(lastUnlockedStep(record),2);
+ assert.deepEqual(workflowSteps(record),[0,1,2,3,4,5]);
+});

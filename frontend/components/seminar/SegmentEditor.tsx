@@ -49,7 +49,7 @@ export default function SegmentEditor({session,locked,active,onSave,onPrepare,on
   const id=crypto.randomUUID();change(splitPart(parts,target.id,at,id,group));setSelection(id);jump(at);
  }
  return <section className="space-y-5">
-  <div><h2 className="text-xl font-semibold">4. Structure the presentation</h2><p className="mt-2 text-sm text-ink/70">AI-generated sections appear directly in this timeline. Select any part or cut to edit the AI result. Every section is optional. Grey dashed cards mean no content has been assigned yet.</p></div>
+  <div><h2 className="text-xl font-semibold">{session.videos.screen?4:3}. Structure the presentation</h2><p className="mt-2 text-sm text-ink/70">AI-generated sections appear directly in this timeline. Select any part or cut to edit the AI result. Every section is optional. Grey dashed cards mean no content has been assigned yet.</p></div>
   {error&&<p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
 
   {/* 板块 ①：转写与字幕来源 */}
@@ -57,7 +57,7 @@ export default function SegmentEditor({session,locked,active,onSave,onPrepare,on
    <BlockTitle index={1} title="Transcript source" hint="Import subtitles or let AI transcribe the speaker audio before building sections." />
    <summary className="-mt-2 cursor-pointer font-medium">Transcript & AI sections {session.full_transcript?.length?`· ${session.full_transcript.length} timed cues`:""}</summary>
    <p className="my-3 text-sm text-ink/70">Import SRT/VTT subtitles, or generate a transcript from the speaker audio (English ASR). Long recordings are prepared in the background. An untimed script can guide topics; timing always comes from subtitles or audio transcription.</p>
-   <div className="flex flex-wrap items-center gap-3"><label className="text-sm">Subtitle timeline <select className={input} disabled={locked} value={source} onChange={e=>setSource(e.target.value as "speaker"|"screen")}><option value="speaker">Speaker</option><option value="screen">Screen (apply offset)</option></select></label>
+   <div className="flex flex-wrap items-center gap-3"><label className="text-sm">Subtitle timeline <select className={input} disabled={locked} value={source} onChange={e=>setSource(e.target.value as "speaker"|"screen")}><option value="speaker">Speaker</option>{session.videos.screen&&<option value="screen">Screen (apply offset)</option>}</select></label>
     <label className="text-sm">Import subtitles <input type="file" accept=".srt,.vtt" disabled={locked} onChange={async e=>{const file=e.target.files?.[0];e.target.value="";if(file){if(file.size>1000000){setError("Subtitle file exceeds 1 MB.");return;}try{onImport(await file.text(),source);}catch{setError("Could not read subtitle file.");}}}}/></label></div>
    <label className="mt-3 block text-sm">Optional script context<textarea value={script} maxLength={100000} disabled={locked} onChange={e=>setScript(e.target.value)} placeholder="Paste an untimed script if you have one…" className={`${input} mt-1 block min-h-24 w-full`} /></label>
    <div className="mt-3 flex flex-wrap gap-3"><button className={button} disabled={locked} onClick={()=>{if(parts.length)setConfirmRegenerate(true);else onPrepare(script,true);}}>{parts.length?"Regenerate AI sections":session.full_transcript?.length?"Generate AI sections":"Transcribe & generate AI sections"}</button><button className={input} disabled={locked} onClick={()=>onPrepare(script,false)}>Prepare transcript only</button></div>
@@ -90,9 +90,9 @@ export default function SegmentEditor({session,locked,active,onSave,onPrepare,on
     </div>
    </div>
    <div>
-    <BlockTitle index={4} title="Synced preview" hint="Both views play together using the confirmed offset." />
+    <BlockTitle index={4} title={session.videos.screen?"Synced preview":"Speaker preview"} hint={session.videos.screen?"Both views play together using the confirmed offset.":"Preview the speaker recording and edit parts on its timeline."} />
     <DualVideoPlayer session={session} offset={session.offset_ms/1000} seek={seek} onTime={setPlayhead} active={active}/>
-    <p className="mt-3 text-xs text-ink/60">Shared playback: {timecode(session.overlap?.[0]??0)}–{timecode(session.overlap?.[1]??duration)}. Parts outside this range remain in the outline; scanning uses only the overlapping footage.</p>
+    <p className="mt-3 text-xs text-ink/60">{session.videos.screen?"Shared playback":"Speaker playback"}: {timecode(session.overlap?.[0]??0)}–{timecode(session.overlap?.[1]??duration)}. {session.videos.screen?"Parts outside this range remain in the outline; scanning uses only the overlapping footage.":"Scanning uses the selected parts of the speaker recording."}</p>
    </div>
   </div>
 

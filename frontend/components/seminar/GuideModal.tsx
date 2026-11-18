@@ -22,15 +22,15 @@ const GUIDE: Record<
   en: {
     title: "How the seminar review works",
     subtitle:
-      "Six steps from raw recordings to evidence-checked presentation feedback.",
+      "Upload a speaker recording to begin. Add a screen recording if available; alignment is only needed for two views.",
     steps: [
       {
         title: "Choose a candidate",
         body: "Pick a candidate profile you analyzed earlier and give this seminar a title. The session is saved on the server, so you can close the page and resume later.",
       },
       {
-        title: "Upload two views",
-        body: "Add the speaker recording and the shared-screen recording of the same event. Screen audio is optional. MP4 with H.264/AAC plays most reliably in the browser.",
+        title: "Submit recordings",
+        body: "Choose a required speaker recording and an optional shared-screen recording, then click Submit recordings. Speaker-only sessions skip alignment. Screen audio is optional. MP4 with H.264/AAC plays most reliably in the browser.",
       },
       {
         title: "Align the recordings",
@@ -42,11 +42,11 @@ const GUIDE: Record<
       },
       {
         title: "Scan with vision AI",
-        body: "Tick the parts you want analyzed. The AI samples frames from both views, joins them with transcript context and returns observations linked to evidence frames. Scanning runs in the background.",
+        body: "Tick the parts you want analyzed. The AI samples frames from the available recordings, joins them with transcript context and returns observations linked to evidence frames. Scanning runs in the background.",
       },
       {
         title: "Review the feedback",
-        body: "Up to six key observations across three dimensions: audience orientation, gesture usage, and posture and movement. Play the synced evidence, then mark each one Confirmed, Inaccurate or Cannot determine.",
+        body: "Up to six key observations across three dimensions: audience orientation, gesture usage, and posture and movement. Play the evidence, then mark each one Confirmed, Inaccurate or Cannot determine.",
       },
     ],
     note: "AI comments describe visible presentation behavior only — never personality or hiring verdicts. Every comment can be checked against the original recordings.",
@@ -54,15 +54,15 @@ const GUIDE: Record<
   },
   zh: {
     title: "研讨会分析使用说明",
-    subtitle: "从原始录像到带证据的演讲反馈，共六步。",
+    subtitle: "从原始录像到带证据的演讲反馈；屏幕录像选填，单视频时跳过对齐。",
     steps: [
       {
         title: "选择候选人",
         body: "选择此前已分析的候选人档案，并为本次研讨会填写标题。会话保存在服务器，关闭页面后可随时恢复继续。",
       },
       {
-        title: "上传两个视角",
-        body: "上传同一场展示的演讲者录像与屏幕共享录像，屏幕录像可以没有声音。推荐使用 H.264/AAC 编码的 MP4，浏览器播放最稳定。",
+        title: "提交录像",
+        body: "选择必填的演讲者录像与选填的屏幕共享录像，然后点击 Submit recordings 提交。只有演讲者录像时会跳过对齐；屏幕录像可以没有声音。推荐使用 H.264/AAC 编码的 MP4，浏览器播放最稳定。",
       },
       {
         title: "对齐两路录像",

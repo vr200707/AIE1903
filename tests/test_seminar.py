@@ -50,6 +50,7 @@ class SeminarStoreTests(unittest.TestCase):
             self.assertEqual(client.put(path + '/chunks/0', content=b'1234').status_code, 200)
             with patch('app.seminar_api.probe_video', return_value={'duration_ms':10000,'width':640,'height':480}):
                 self.assertEqual(client.post(path + '/complete').status_code, 200)
+        self.assertEqual(client.post(base+'/videos/submit',json={}).status_code,200)
         aligned = client.post(base + '/alignment', json={'offset_ms': -1000})
         self.assertEqual(aligned.status_code, 200)
         self.assertEqual(aligned.json()['overlap'], [1000,10000])
@@ -116,7 +117,7 @@ class SeminarPipelineTests(unittest.TestCase):
         self.env=patch.dict(os.environ,{'SEMINAR_DATA_DIR':self.tmp.name,'SEMINAR_VISION_MODEL':'vision-test','SEMINAR_VISION_API_KEY':'test'})
         self.env.start()
         self.record=store.create('p1','Talk')
-        self.record.update(aligned=True,offset_ms=-1000,overlap=[1000,9000],status='ready',videos={
+        self.record.update(recordings_submitted=True,aligned=True,offset_ms=-1000,overlap=[1000,9000],status='ready',videos={
             'speaker':{'filename':'speaker.mp4','duration_ms':9000},'screen':{'filename':'screen.mp4','duration_ms':8000}})
         import av
         from PIL import Image,ImageDraw
@@ -221,7 +222,7 @@ class LongSeminarTests(unittest.TestCase):
         from app.seminar_service import start_scan,active
         with tempfile.TemporaryDirectory() as tmp,patch.dict(os.environ,{'SEMINAR_DATA_DIR':tmp}):
             item=store.create('p1','58 minute seminar')
-            item.update(aligned=True,overlap=[0,3480000],status='ready')
+            item.update(recordings_submitted=True,aligned=True,overlap=[0,3480000],status='ready',videos={'speaker':{'duration_ms':3480000}})
             store.save(item)
             try:
                 with patch('app.seminar_service.vision_config'),patch('app.seminar_service.executor.submit'):
@@ -244,3 +245,95 @@ class CreationValidationTests(SeminarStoreTests):
         self.assertEqual(response.status_code,201)
         self.assertEqual(response.json()['title'],'Talk')
         self.assertEqual(response.json()['candidate_name'],'Steven')
+
+class OptionalScreenTests(unittest.TestCase):
+    setUp = SeminarStoreTests.setUp
+    tearDown = SeminarStoreTests.tearDown
+
+    def client_session(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from app.seminar_api import create_seminar_router
+        app=FastAPI();app.include_router(create_seminar_router(lambda _: {'candidate':{'basic_info':{'name':'Test'}}}))
+        client=TestClient(app)
+        record=client.post('/api/seminars',json={'profile_id':'p','title':'Talk'}).json()
+        return client,'/api/seminars/'+record['id'],record['id']
+
+    def upload(self, client, base, view):
+        upload=client.post(base+'/videos/'+view+'/init',json={'filename':'test.mp4','total_bytes':4}).json()
+        path=base+'/videos/'+view+'/uploads/'+upload['upload_id']
+        client.put(path+'/chunks/0',content=b'test')
+        with patch('app.seminar_api.probe_video',return_value={'duration_ms':10000,'width':640,'height':480}):
+            return client.post(path+'/complete').json()
+
+    def test_required_speaker_explicit_submit_and_solo_pipeline(self):
+        from app import seminar_store as store
+        from app.seminar_service import active,run_scan
+        client,base,identifier=self.client_session()
+        self.assertEqual(client.post(base+'/videos/submit',json={}).status_code,422)
+        uploaded=self.upload(client,base,'speaker')
+        self.assertFalse(uploaded['recordings_submitted'])
+        self.assertEqual(client.post(base+'/outline',json={}).status_code,422)
+        self.assertEqual(client.put(base+'/parts',json={'revision':uploaded['segments_revision'],'parts':[]}).status_code,409)
+        ready=client.post(base+'/videos/submit',json={}).json()
+        self.assertTrue(ready['recordings_submitted']);self.assertFalse(ready['aligned'])
+        self.assertEqual(ready['overlap'],[0,10000])
+        self.assertTrue(store.recordings_ready(ready))
+        self.assertEqual(client.put(base+'/transcript',json={'content':'00:00:00,000 --> 00:00:01,000\nHello','view':'screen'}).status_code,422)
+        self.assertEqual(client.put(base+'/transcript',json={'content':'00:00:00,000 --> 00:00:01,000\nHello'}).status_code,200)
+        part={'id':'part1','title':'Talk','summary':'','group':'body','start_ms':0,'end_ms':10000}
+        saved=client.put(base+'/parts',json={'revision':ready['segments_revision'],'parts':[part]}).json()
+        self.assertEqual(saved['segments'],[part])
+        with patch('app.seminar_segments.executor.submit'):
+            self.assertEqual(client.post(base+'/outline',json={'generate':False}).status_code,202)
+        from app import seminar_segments
+        seminar_segments.active.discard(identifier)
+        record=store.read(identifier);record['outline_job']['status']='completed';store.save(record)
+        body={'revision':saved['segments_revision'],'part_ids':['part1'],'audio_view':'none'}
+        try:
+            with patch('app.seminar_service.vision_config'),patch('app.seminar_service.executor.submit'):
+                self.assertEqual(client.post(base+'/scan-parts',json={**body,'audio_view':'screen'}).status_code,422)
+                self.assertEqual(client.post(base+'/scan-parts',json=body).status_code,202)
+            def sample(path,folder,view,start,end,offset):
+                self.assertEqual(view,'speaker')
+                return [{'id':str(start+i),'view':view,'time_ms':start+i,'filename':str(i)+'.jpg'} for i in (0,1000)]
+            with patch('app.seminar_service.sample_window',side_effect=sample) as sampler,patch('app.seminar_service.analyze_window',return_value={'observations':[]}):
+                run_scan(identifier,0,10000,'none')
+            self.assertEqual(sampler.call_count,2)
+            self.assertEqual(store.read(identifier)['status'],'completed_with_warnings')
+        finally:active.discard(identifier)
+
+    def test_screen_only_rejected_and_dual_requires_submission_and_alignment(self):
+        client,base,identifier=self.client_session()
+        self.upload(client,base,'screen')
+        self.assertEqual(client.post(base+'/videos/submit',json={}).status_code,422)
+        self.upload(client,base,'speaker')
+        self.assertEqual(client.post(base+'/alignment',json={'offset_ms':0}).status_code,409)
+        ready=client.post(base+'/videos/submit',json={}).json()
+        self.assertFalse(ready['aligned'])
+        self.assertEqual(client.post(base+'/outline',json={}).status_code,422)
+        self.assertEqual(client.post(base+'/alignment',json={'offset_ms':0}).status_code,200)
+        solo=client.post(base+'/videos/submit',json={'include_screen':False}).json()
+        self.assertNotIn('screen',solo['videos']);self.assertEqual(solo['overlap'],[0,10000])
+        self.assertFalse(solo['aligned'])
+
+    def test_replacement_requires_resubmission_and_legacy_records_remain_usable(self):
+        from app import seminar_store as store
+        client,base,identifier=self.client_session()
+        self.upload(client,base,'speaker')
+        client.post(base+'/videos/submit',json={})
+        self.upload(client,base,'speaker')
+        self.assertFalse(store.recordings_ready(store.read(identifier)))
+        record=store.read(identifier);record.pop('recordings_submitted');record['aligned']=True
+        self.assertTrue(store.recordings_ready(record))
+
+    def test_failed_optional_screen_upload_can_be_omitted_on_submit(self):
+        from app import seminar_store as store
+        client,base,identifier=self.client_session()
+        self.upload(client,base,'speaker')
+        client.post(base+'/videos/screen/init',json={'filename':'screen.mp4','total_bytes':4})
+        self.assertEqual(client.post(base+'/videos/submit',json={}).status_code,409)
+        response=client.post(base+'/videos/submit',json={'include_screen':False})
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.json()['uploading_views'],[])
+        self.assertTrue(store.recordings_ready(store.read(identifier)))

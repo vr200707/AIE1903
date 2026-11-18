@@ -135,8 +135,8 @@ def start_job(session_id: str, generate: bool, script: str = '') -> dict:
         record=store.read(session_id)
         if record['status']=='analyzing' or record.get('outline_job',{}).get('status')=='running' or record.get('uploads'):
             raise ValueError('Wait for the current task or upload to finish.')
-        if not record.get('aligned'):
-            raise ValueError('Confirm video alignment first.')
+        if not store.recordings_ready(record):
+            raise ValueError('Submit the speaker recording and confirm alignment if a screen recording is included.')
         if active:
             raise ValueError('Another transcript or outline is being prepared. Try again shortly.')
         record['outline_job']={'status':'running','stage':'transcribing' if not record.get('full_transcript') else 'segmenting',

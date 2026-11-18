@@ -27,8 +27,10 @@ def start_scan(session_id: str, start_ms: int, end_ms: int, audio_view: str, *, 
             return record
         if record.get('outline_job',{}).get('status')=='running':
             raise ValueError('Wait for transcript preparation to finish.')
-        if not record['aligned'] or record.get('uploads'):
-            raise ValueError('Finish both uploads and confirm alignment before scanning.')
+        if not store.recordings_ready(record):
+            raise ValueError('Submit the speaker recording and confirm alignment if a screen recording is included.')
+        if audio_view != 'none' and audio_view not in record['videos']:
+            raise ValueError('The selected audio recording is not available.')
         low, high = record['overlap']
         if not low <= start_ms < end_ms <= high:
             raise ValueError('Select a range within the overlapping recordings.')
@@ -84,7 +86,7 @@ def run_scan(session_id: str, start_ms: int, end_ms: int, audio_view: str, range
         for index, (window_start,window_end) in enumerate(windows):
             record['stage'] = 'scanning'
             frames = []
-            for view in ('speaker', 'screen'):
+            for view in record['videos']:
                 frames += sample_window(folder / record['videos'][view]['filename'], frames_dir,
                                         view, window_start, window_end, record['offset_ms'])
             # Include run in IDs so saved evidence remains unambiguous across scans.

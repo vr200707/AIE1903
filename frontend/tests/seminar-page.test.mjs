@@ -37,4 +37,45 @@ test('restored seminar and navigation do not produce duplicate component keys',a
   assert.deepEqual(errors.filter(e=>e.includes('same key')),[]);
  }finally{await act(async()=>root.unmount());console.error=previousError;globalThis.fetch=previousFetch;dom.window.close();}
 });
+test('file selection stays local and speaker is required; submitting speaker alone skips alignment',async()=>{
+ const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost/seminar?session=sem_test&step=1'});
+ globalThis.window=dom.window;globalThis.document=dom.window.document;globalThis.Event=dom.window.Event;
+ globalThis.IS_REACT_ACT_ENVIRONMENT=true;dom.window.scrollTo=()=>{};
+ let record={id:'sem_test',profile_id:'p',title:'Talk',videos:{},recordings_submitted:false,uploading_views:[],aligned:false,offset_ms:0,segments:[],status:'created',stage:'upload',observations:[],frames:[],transcript:[],warnings:[],progress:{done:0,total:0}};
+ const previousFetch=globalThis.fetch,calls=[];
+ globalThis.fetch=async(url,options={})=>{
+  const method=options.method??'GET';calls.push([url,method]);
+  let result=record;
+  if(url.endsWith('/init'))result={upload_id:'u',chunk_size:1024};
+  if(url.endsWith('/complete'))record={...record,videos:{speaker:{filename:'speaker.mp4',display_name:'talk.mp4',duration_ms:10000}},recordings_submitted:false};
+  if(url.endsWith('/videos/submit'))record={...record,recordings_submitted:true,overlap:[0,10000],status:'ready'};
+  return {ok:true,json:async()=>structuredClone(result===record?result:url.endsWith('/complete')||url.endsWith('/videos/submit')?record:result)};
+ };
+ const root=createRoot(document.getElementById('root'));
+ const button=name=>[...document.querySelectorAll('button')].find(b=>b.textContent===name);
+ const select=async(view)=>{
+  const input=document.querySelector(`input[aria-label="Upload ${view} recording"]`);
+  Object.defineProperty(input,'files',{configurable:true,value:[new dom.window.File(['test'],'talk.mp4',{type:'video/mp4'})]});
+  await act(async()=>input.dispatchEvent(new dom.window.Event('change',{bubbles:true})));
+ };
+ try {
+  await act(async()=>{root.render(React.createElement(Page));await new Promise(r=>setTimeout(r,10));});
+  assert.equal(button('Submit recordings').disabled,true);
+  await select('screen');
+  assert.equal(button('Submit recordings').disabled,true,'screen alone cannot be submitted');
+  assert.equal(calls.filter(([,method])=>method!=='GET').length,0,'choosing files must not upload');
+  await act(async()=>button('Remove screen recording').click());
+  await select('speaker');
+  assert.equal(button('Submit recordings').disabled,false);
+  assert.equal(calls.filter(([,method])=>method!=='GET').length,0);
+  await act(async()=>{button('Submit recordings').click();await new Promise(r=>setTimeout(r,20));});
+  assert.ok(calls.some(([url])=>url.endsWith('/videos/submit')));
+  assert.ok(!calls.some(([url])=>url.includes('/alignment')));
+  assert.ok(!document.querySelector('[aria-label="Seminar workflow"]').textContent.includes('Alignment'));
+  assert.equal(document.querySelector('[aria-current="step"]').textContent,'3. Structure');
+  await act(async()=>button('← Previous').click());
+  assert.equal(document.querySelector('[aria-current="step"]').textContent,'2. Videos');
+ } finally {await act(async()=>root.unmount());globalThis.fetch=previousFetch;dom.window.close();}
+});
+
 test.after(async()=>rm(temp,{recursive:true,force:true}));
