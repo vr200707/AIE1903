@@ -51,4 +51,23 @@ test('new evidence selection updates both loaded players with a negative offset'
   }finally{await act(async()=>root.unmount());}
 });
 
+test('speaker-only player seeks and plays without requesting a screen recording',async()=>{
+ const root=createRoot(document.getElementById('root'));
+ const solo={id:'solo',videos:{speaker:{filename:'solo.mp4',duration_ms:100000}}};
+ const originalPlay=dom.window.HTMLMediaElement.prototype.play;
+ let plays=0;dom.window.HTMLMediaElement.prototype.play=function(){plays++;return Promise.resolve();};
+ try {
+  await act(async()=>root.render(React.createElement(Player,{session:solo,offset:0,seek:{ms:45000,nonce:1}})));
+  assert.equal(document.querySelectorAll('video').length,1);
+  const speaker=document.querySelector('video');
+  await act(async()=>{readiness.set(speaker,4);speaker.dispatchEvent(new dom.window.Event('loadedmetadata'));});
+  assert.equal(speaker.currentTime,45);
+  assert.ok(!document.body.textContent.includes('Shared-screen view'));
+  const play=[...document.querySelectorAll('button')].find(b=>b.textContent==='Play');
+  await act(async()=>{play.click();await new Promise(r=>setTimeout(r,200));});
+  assert.ok(plays>0);
+  assert.ok(!document.querySelector('[role="alert"]'));
+ } finally {await act(async()=>root.unmount());dom.window.HTMLMediaElement.prototype.play=originalPlay;}
+});
+
 test.after(async()=>{dom.window.close();await rm(temporary,{recursive:true,force:true});});

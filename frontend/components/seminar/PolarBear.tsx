@@ -7,15 +7,15 @@ import { useUiLang, setUiLang } from "@/components/IntroOverlay";
 const TIPS: Record<"en" | "zh", string[]> = {
   en: [
     "Pick a saved candidate profile and give this seminar session a title.",
-    "Upload both views of the same talk: the speaker recording and the shared screen.",
+    "Choose the required speaker recording and an optional screen recording, then click Submit recordings.",
     "Adjust the offset until both recordings show the same moment, then confirm.",
     "Split the talk into logical parts. Whisper transcription or SRT/VTT import can build the timeline for you.",
-    "Choose the parts to scan — vision AI watches both views and saves evidence frames in the background.",
+    "Choose the parts to scan — vision AI reviews the available recordings and saves evidence frames in the background.",
     "Play the synced evidence, then mark each observation Confirmed, Inaccurate or Cannot determine.",
   ],
   zh: [
     "选择一个已保存的候选人档案，并为本次研讨会填写标题。",
-    "上传同一场展示的两个视角：演讲者录像与屏幕共享录像。",
+    "选择必填的演讲者录像和选填的屏幕录像，然后点击 Submit recordings 提交。",
     "调整时间偏移，直到两路录像显示同一时刻，然后确认对齐。",
     "把演讲拆成逻辑段落；可用 Whisper 转写或导入 SRT/VTT 字幕自动生成时间线。",
     "勾选要扫描的段落——视觉 AI 会同时观察两个视角，并在后台保存证据帧。",
@@ -58,11 +58,15 @@ type Mood = "idle" | "working" | "celebrating";
 export default function PolarBear({
   step,
   stepTitle,
+  position = step,
+  total = 6,
   working = false,
   celebrate = 0,
 }: {
   step: number;
   stepTitle: string;
+  position?: number;
+  total?: number;
   working?: boolean;
   /** 每次递增该值即触发一次庆祝跳跃 */
   celebrate?: number;
@@ -140,7 +144,7 @@ export default function PolarBear({
             ×
           </button>
           <p className="text-xs font-semibold uppercase tracking-wider text-accent">
-            {lang === "zh" ? `第 ${step + 1}/6 步` : `Step ${step + 1}/6`} · {stepTitle}
+            {lang === "zh" ? `第 ${position + 1}/${total} 步` : `Step ${position + 1}/${total}`} · {stepTitle}
           </p>
           <p className="mt-2 pr-6 text-sm leading-6 text-ink/80">{tipText}</p>
           <p className="mt-2.5 flex items-center gap-1.5 border-t border-ink/10 pt-2.5 text-xs leading-5 text-accent-deep">

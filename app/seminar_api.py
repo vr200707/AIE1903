@@ -26,6 +26,10 @@ class Upload(BaseModel):
     total_bytes: StrictInt = Field(gt=0)
 
 
+class RecordingSubmission(BaseModel):
+    include_screen: bool = True
+
+
 class Alignment(BaseModel):
     offset_ms: StrictInt
 
@@ -133,6 +137,7 @@ def create_seminar_router(profile_resolver: Callable[[str], dict]) -> APIRouter:
             if old:
                 import shutil
                 shutil.rmtree(store.directory(session_id) / 'uploads' / old['id'], ignore_errors=True)
+            record['recordings_submitted'] = False
             record['uploads'][view] = {'id': upload_id, 'suffix': suffix,
                 'display_name': body.filename.replace('\\','/').split('/')[-1],
                 'total_bytes': body.total_bytes, 'chunk_count': math.ceil(body.total_bytes / CHUNK_SIZE)}
@@ -191,6 +196,7 @@ def create_seminar_router(profile_resolver: Callable[[str], dict]) -> APIRouter:
             record['videos'][view]={**details,'filename':target.name,'display_name':meta['display_name'],'size_bytes':meta['total_bytes']}
             del record['uploads'][view]
             record['aligned']=False
+            record['recordings_submitted']=False
             for key in ('full_transcript','partial_transcript','transcript_source','segment_proposal','segments','outline_job','script_context'):
                 record.pop(key,None)
             record['segments_revision']=record.get('segments_revision',0)+1
@@ -204,12 +210,46 @@ def create_seminar_router(profile_resolver: Callable[[str], dict]) -> APIRouter:
                 (folder/old['filename']).unlink(missing_ok=True)
             return public(record)
 
+    @router.post('/{session_id}/videos/submit')
+    def submit_recordings(session_id: str, body: RecordingSubmission):
+        with store.lock:
+            record=get_record(session_id); editable(record)
+            if not record['videos'].get('speaker'):
+                raise HTTPException(422, 'Speaker recording is required.')
+            if any(view!='screen' or body.include_screen for view in record.get('uploads',{})):
+                raise HTTPException(409, 'Finish the pending uploads before submitting.')
+            abandoned=record['uploads'].pop('screen',None) if not body.include_screen else None
+            if not body.include_screen and record['videos'].get('screen'):
+                old=record['videos'].pop('screen')
+                record.update(aligned=False,offset_ms=0)
+                record.pop('alignment_suggestion',None)
+                if record.get('transcript_source')=='screen_subtitles':
+                    for key in ('full_transcript','segments','segment_proposal','outline_job'):
+                        record.pop(key,None)
+                    record['segments_revision']=record.get('segments_revision',0)+1
+                store.invalidate(record)
+                # Keep old media on disk until the new metadata has been persisted.
+            else:
+                old=None
+            record['recordings_submitted']=True
+            if not record['videos'].get('screen'):
+                record.update(offset_ms=0, aligned=False,
+                              overlap=[0,record['videos']['speaker']['duration_ms']],
+                              status='ready' if record['status']=='created' else record['status'],stage='structure')
+            store.save(record)
+            if old:
+                (store.directory(session_id)/old['filename']).unlink(missing_ok=True)
+            if abandoned:
+                import shutil
+                shutil.rmtree(store.directory(session_id)/'uploads'/abandoned['id'],ignore_errors=True)
+            return public(record)
+
     @router.post('/{session_id}/alignment/estimate')
     def estimate_alignment(session_id: str):
         with store.lock:
             record=get_record(session_id); editable(record)
-            if set(record['videos']) != {'speaker','screen'} or record['uploads']:
-                raise HTTPException(409,'Finish both uploads first.')
+            if set(record['videos']) != {'speaker','screen'} or record['uploads'] or not record.get('recordings_submitted',record.get('aligned',False)):
+                raise HTTPException(409,'Submit both recordings first.')
             filenames={v:record['videos'][v]['filename'] for v in ('speaker','screen')}
         folder=store.directory(session_id)
         try:
@@ -219,7 +259,7 @@ def create_seminar_router(profile_resolver: Callable[[str], dict]) -> APIRouter:
                         'message':'Could not decode a shared audio match. Adjust the offset manually.'}
         with store.lock:
             record=get_record(session_id); editable(record)
-            if any(record['videos'][v]['filename']!=filenames[v] for v in filenames) or record['uploads']:
+            if any(record['videos'].get(v,{}).get('filename')!=filenames[v] for v in filenames) or record['uploads']:
                 raise HTTPException(409,'The recordings changed. Estimate again after uploads finish.')
             record['alignment_suggestion']=suggestion
             store.save(record)
@@ -229,8 +269,8 @@ def create_seminar_router(profile_resolver: Callable[[str], dict]) -> APIRouter:
     def alignment(session_id: str, body: Alignment):
         with store.lock:
             record=get_record(session_id); editable(record)
-            if set(record['videos']) != {'speaker','screen'} or record['uploads']:
-                raise HTTPException(409,'Finish both uploads first.')
+            if set(record['videos']) != {'speaker','screen'} or record['uploads'] or not record.get('recordings_submitted',record.get('aligned',False)):
+                raise HTTPException(409,'Submit both recordings first.')
             try:
                 bounds=store.overlap(record['videos']['speaker']['duration_ms'],record['videos']['screen']['duration_ms'],body.offset_ms)
             except ValueError as exc:
@@ -259,8 +299,10 @@ def create_seminar_router(profile_resolver: Callable[[str], dict]) -> APIRouter:
     def import_transcript(session_id: str, body: TranscriptImport):
         with store.lock:
             record=get_record(session_id);editable(record)
-            if not record.get('aligned') or record.get('uploads'):
-                raise HTTPException(409,'Finish uploads and confirm alignment first.')
+            if not store.recordings_ready(record):
+                raise HTTPException(409,'Submit the speaker recording and confirm alignment if a screen recording is included.')
+            if body.view not in record['videos']:
+                raise HTTPException(422,'This subtitle timeline has no uploaded recording.')
             try:
                 cues=segments.parse_subtitles(body.content,record['videos']['speaker']['duration_ms'],record['offset_ms'] if body.view=='screen' else 0)
             except ValueError as exc:
@@ -277,8 +319,8 @@ def create_seminar_router(profile_resolver: Callable[[str], dict]) -> APIRouter:
     def save_parts(session_id: str, body: PartsUpdate):
         with store.lock:
             record=get_record(session_id);editable(record)
-            if not record.get('aligned') or record.get('uploads'):
-                raise HTTPException(409,'Finish uploads and confirm alignment first.')
+            if not store.recordings_ready(record):
+                raise HTTPException(409,'Submit the speaker recording and confirm alignment if a screen recording is included.')
             if body.revision != record.get('segments_revision',0):
                 raise HTTPException(409,'Parts changed in another tab. Reload before saving.')
             try:

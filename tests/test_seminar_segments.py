@@ -44,7 +44,7 @@ class SegmentAPITests(unittest.TestCase):
         self.env=patch.dict(os.environ,{'SEMINAR_DATA_DIR':self.tmp.name});self.env.start()
         app=FastAPI();app.include_router(create_seminar_router(lambda _: {'candidate':{'basic_info':{'name':'Test Candidate'}}}));self.client=TestClient(app)
         self.record=store.create('p','Talk')
-        self.record.update(videos={v:{'filename':v+'.mp4','duration_ms':10000} for v in ('speaker','screen')},aligned=True,overlap=[0,10000])
+        self.record.update(videos={v:{'filename':v+'.mp4','duration_ms':10000} for v in ('speaker','screen')},recordings_submitted=True,aligned=True,overlap=[0,10000])
         store.save(self.record);self.base='/api/seminars/'+self.record['id']
 
     def tearDown(self):self.env.stop();self.tmp.cleanup()

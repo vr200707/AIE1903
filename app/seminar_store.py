@@ -40,7 +40,7 @@ def save(record: dict) -> None:
 
 def create(profile_id: str, title: str) -> dict:
     record = {'id': 'sem_' + uuid.uuid4().hex, 'profile_id': profile_id, 'title': title,
-              'videos': {}, 'uploads': {}, 'offset_ms': 0, 'aligned': False,
+              'videos': {}, 'uploads': {}, 'offset_ms': 0, 'aligned': False, 'recordings_submitted': False,
               'status': 'created', 'stage': 'upload', 'progress': {'done': 0, 'total': 0},
               'warnings': [], 'error': None, 'frames': [], 'observations': [], 'transcript': []}
     save(record)
@@ -69,5 +69,14 @@ def overlap(speaker_ms: int, screen_ms: int, offset_ms: int) -> tuple[int, int]:
 
 def invalidate(record: dict) -> None:
     record.update(frames=[], observations=[], transcript=[], warnings=[], error=None,
-                  status='ready' if record['aligned'] else 'created', stage='alignment',
+                  status='ready' if recordings_ready(record) else 'created',
+                  stage=('upload' if not record.get('recordings_submitted',record.get('aligned',False))
+                         else 'alignment' if record['videos'].get('screen') else 'structure'),
                   progress={'done': 0, 'total': 0})
+
+
+def recordings_ready(record: dict) -> bool:
+    """Legacy aligned sessions remain usable; new uploads require submission."""
+    return bool(record.get('videos', {}).get('speaker') and not record.get('uploads')
+                and record.get('recordings_submitted', record.get('aligned', False))
+                and (not record['videos'].get('screen') or record.get('aligned')))

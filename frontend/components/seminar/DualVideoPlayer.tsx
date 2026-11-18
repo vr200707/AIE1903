@@ -14,72 +14,73 @@ export default function DualVideoPlayer({session, offset, seek, onTime, active=t
   const [time, setTime] = useState(0);
   const [message, setMessage] = useState("");
   const [audio, setAudio] = useState<"speaker" | "screen">("speaker");
-  const bounds = overlapSeconds((session.videos.speaker?.duration_ms ?? 0)/1000,
+  const dual=Boolean(session.videos.screen);
+  const bounds: [number,number] | null = !dual ? ((session.videos.speaker?.duration_ms??0)>0?[0,session.videos.speaker!.duration_ms/1000]:null) : overlapSeconds((session.videos.speaker?.duration_ms ?? 0)/1000,
     (session.videos.screen?.duration_ms ?? 0)/1000, offset);
   const low = bounds?.[0] ?? 0, high = bounds?.[1] ?? 0;
 
   useEffect(() => {
     const a=speaker.current, b=screen.current;
-    if (!a || !b || high<=low) return;
-    a.pause(); b.pause(); wanted.current=false;
+    if (!a || (dual&&!b) || high<=low) return;
+    a.pause(); b?.pause(); wanted.current=false;
     const times=synchronizedTimes((seek?.ms ?? low*1000)/1000,offset,[low,high]);
     requestedPosition.current=times[0];
     // Show the selected part's time even before metadata/timeupdate arrives.
     let cancelled=false;
     queueMicrotask(()=>{if(!cancelled){setTime(times[0]);setPlaying(false);}});
     if(a.readyState>=1) a.currentTime=times[0];
-    if(b.readyState>=1) b.currentTime=times[1];
+    if(b && b.readyState>=1) b.currentTime=times[1];
     return()=>{cancelled=true;};
-  }, [seek, offset, low, high]);
+  }, [seek, offset, low, high, dual]);
 
   useEffect(() => {
     const a=speaker.current, b=screen.current;
-    if(!a || !b || high<=low || !active) return;
+    if(!a || (dual&&!b) || high<=low || !active) return;
     const tick = () => {
       if(!wanted.current || busy.current) return;
       if(a.currentTime>=high-0.04) {
-        wanted.current=false; a.pause(); b.pause(); setPlaying(false); return;
+        wanted.current=false; a.pause(); b?.pause(); setPlaying(false); return;
       }
-      if(a.readyState<3 || b.readyState<3 || a.seeking || b.seeking) {
-        a.pause(); b.pause(); setPlaying(false); return;
+      if(a.readyState<3 || (b && (b.readyState<3 || b.seeking)) || a.seeking) {
+        a.pause(); b?.pause(); setPlaying(false); return;
       }
       const target=a.currentTime+offset;
-      if(Math.abs(b.currentTime-target)>0.18) {
-        a.pause(); b.pause(); b.currentTime=target; return;
+      if(b && Math.abs(b.currentTime-target)>0.18) {
+        a.pause(); b?.pause(); b.currentTime=target; return;
       }
-      if(a.paused || b.paused) {
+      if(a.paused || b?.paused) {
         busy.current=true;
-        Promise.all([a.play(),b.play()]).then(()=>{
-          if(!wanted.current) {a.pause();b.pause();return;}
+        Promise.all([a.play(),...(b?[b.play()]:[])]).then(()=>{
+          if(!wanted.current) {a.pause();b?.pause();return;}
           setPlaying(true); setMessage("");
-        }).catch(()=>{wanted.current=false;a.pause();b.pause();setPlaying(false);setMessage("Playback could not start. Check the video format and try Play again.");})
+        }).catch(()=>{wanted.current=false;a.pause();b?.pause();setPlaying(false);setMessage("Playback could not start. Check the video format and try Play again.");})
           .finally(()=>{busy.current=false;});
       }
     };
     const timer=setInterval(tick,150);
-    const wait=()=>{if(wanted.current){a.pause();b.pause();setPlaying(false);}};
-    const stop=()=>{wanted.current=false;a.pause();b.pause();setPlaying(false);};
-    a.addEventListener("waiting",wait);b.addEventListener("waiting",wait);
-    a.addEventListener("ended",stop);b.addEventListener("ended",stop);
-    return()=>{clearInterval(timer);wanted.current=false;a.pause();b.pause();
-      a.removeEventListener("waiting",wait);b.removeEventListener("waiting",wait);a.removeEventListener("ended",stop);b.removeEventListener("ended",stop);};
-  },[offset,low,high,active]);
+    const wait=()=>{if(wanted.current){a.pause();b?.pause();setPlaying(false);}};
+    const stop=()=>{wanted.current=false;a.pause();b?.pause();setPlaying(false);};
+    a.addEventListener("waiting",wait);b?.addEventListener("waiting",wait);
+    a.addEventListener("ended",stop);b?.addEventListener("ended",stop);
+    return()=>{clearInterval(timer);wanted.current=false;a.pause();b?.pause();
+      a.removeEventListener("waiting",wait);b?.removeEventListener("waiting",wait);a.removeEventListener("ended",stop);b?.removeEventListener("ended",stop);};
+  },[offset,low,high,active,dual]);
 
   function jump(t: number) {
-    if(!bounds || !speaker.current || !screen.current) return;
+    if(!bounds || !speaker.current) return;
     const times=synchronizedTimes(t,offset,bounds);
     requestedPosition.current=times[0];
     if(speaker.current.readyState>=1) speaker.current.currentTime=times[0];
-    if(screen.current.readyState>=1) screen.current.currentTime=times[1];
+    if(screen.current && screen.current.readyState>=1) screen.current.currentTime=times[1];
     setTime(times[0]);
   }
   return <section className="rounded-2xl border border-ink/15 glass-bg p-4" aria-label="Synchronized seminar recordings">
-    <div className="grid gap-4 md:grid-cols-2">
-      {(["speaker","screen"] as const).map(view=><div key={view}>
+    <div className={`grid gap-4 ${dual?"md:grid-cols-2":""}`}>
+      {(["speaker","screen"] as const).filter(view=>session.videos[view]).map(view=><div key={view}>
         <p className="mb-2 text-sm font-medium">{view==="speaker"?"Speaker view":"Shared-screen view"}</p>
         <video ref={view==="speaker"?speaker:screen} className="aspect-video w-full rounded-lg bg-black" playsInline preload="auto"
           src={`/api/seminars/${session.id}/videos/${view}?v=${session.videos[view]?.filename}`}
-          muted={view!==audio} onLoadedMetadata={()=>{
+          muted={dual&&view!==audio} onLoadedMetadata={()=>{
             const player=view==="speaker"?speaker.current:screen.current;
             if(player && bounds) {
               const times=synchronizedTimes(requestedPosition.current ?? (seek?.ms ?? low*1000)/1000,offset,bounds);
@@ -97,11 +98,11 @@ export default function DualVideoPlayer({session, offset, seek, onTime, active=t
         <button className="rounded-full bg-ink px-5 py-2 text-white" onClick={()=>{
           if(wanted.current){wanted.current=false;speaker.current?.pause();screen.current?.pause();setPlaying(false);}
           else {if(time>=high-0.05)jump(low);wanted.current=true;setMessage("");}
-        }}>{playing?"Pause both":"Play both"}</button>
-        <span>Speaker {timecode(time*1000)} · Screen {timecode((time+offset)*1000)}</span>
-        <label className="ml-auto">Listen to <select className="ml-2 rounded border p-1" value={audio} onChange={e=>setAudio(e.target.value as "speaker"|"screen")}>
+        }}>{playing?(dual?"Pause both":"Pause"):(dual?"Play both":"Play")}</button>
+        <span>Speaker {timecode(time*1000)}{dual&&<> · Screen {timecode((time+offset)*1000)}</>}</span>
+        {dual&&<label className="ml-auto">Listen to <select className="ml-2 rounded border p-1" value={audio} onChange={e=>setAudio(e.target.value as "speaker"|"screen")}>
           <option value="speaker">Speaker audio</option><option value="screen">Screen audio</option>
-        </select></label>
+        </select></label>}
       </div>
     </>}
     {message && <p role="status" className="mt-3 text-sm text-ink/70">{message}</p>}

@@ -11,7 +11,7 @@ export type Seminar = {id: string; profile_id: string; title: string; updated_at
   script_context?:string; transcript_source?:string;
   outline_job?: {status:string; stage:string; message:string; done?:number; total?:number};
   segment_proposal?: {parts:SeminarPart[]; base_revision:number};
-  videos: Partial<Record<View, Video>>; uploading_views: View[]; offset_ms: number; aligned: boolean;
+  recordings_submitted?: boolean; videos: Partial<Record<View, Video>>; uploading_views: View[]; offset_ms: number; aligned: boolean;
   alignment_suggestion?: {offset_ms: number | null; reliable: boolean; score: number; message: string; visual_verified?: boolean; drift_detected?: boolean;
     checkpoints?: {speaker_ms:number; screen_ms:number; reliable:boolean; offset_ms:number|null}[]};
   overlap?: [number, number]; status: string; stage: string; progress: {done: number; total: number};

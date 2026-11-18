@@ -15,7 +15,7 @@ Return JSON {"observations":[{"dimension":"audience_orientation|gesture_usage|po
 "observed_action":"literal visible action", "comment":"cautious presentation-related interpretation", "importance":1,
 "frame_ids":["provided IDs"]}]}.
 Use only observable presenter actions supported by at least TWO speaker frames. Distinguish action from interpretation.
-Screen frames provide context, not proof of a body movement. Cite relevant screen frames if discussing screen content.
+A screen recording is optional. When no screen frames are supplied, analyze the speaker only; do not infer slide content or cross-view agreement. Screen frames provide context, not proof of a body movement. Cite relevant screen frames if discussing screen content.
 Do not infer eye contact if eyes/audience are not visible. Do not infer personality, emotion, honesty, protected traits,
 competence, or hiring suitability. Do not score the candidate. Omit occluded, ambiguous or uninformative sequences.
 Use transcript only as context; never infer a visible gesture from speech. Return an empty list if no clear action exists.
