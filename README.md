@@ -320,6 +320,9 @@ Committee check（清晰 / 与岗位相关 / 候选人专属）是本地勾选�
 | `TESSERACT_CMD` | 否 | Tesseract 可执行文件路径 |
 | `WEB_SEARCH_PROVIDER` | 否 | 搜索后端，当前为 `bing` |
 | `WEB_SEARCH_BASE_URL` | 否 | 搜索端点覆盖 |
+| `DEEPSEEK_MODEL_WEB_VERIFY` | 否 | WebSearch 相关性判定模型，默认沿用主模型 |
+| `WEB_VERIFY_JUDGE_MAX_OUTPUT_TOKENS` | 否 | 相关性判定输出上限，默认 `1024` |
+| `WEB_VERIFY_MAX_WORKERS` | 否 | WebSearch 声明核验并发数，默认 `3` |
 | `VERIFY_MAX_WORKERS` | 否 | 外部核验并发数，默认 `8` |
 | `INTERVIEW_ASR_MODEL` | 否 | 本地英文 Whisper 模型，默认 `small.en` |
 | `INTERVIEW_LLM_INPUT_CHAR_BUDGET` | 否 | 面试模型单次输入字符预算，默认 `24000` |

@@ -411,27 +411,33 @@ export default function Home() {
     );
   }, [candidate, setIdentity]);
 
-  // 旧版档案（升级前保存、没有 cvImages 字段）打开时向后端补拉 CV 图片；
-  // 后端在首次 GET 时惰性提取，拿到后回写存档，后续打开不再重复请求。
+  // 打开历史档案时从后端刷新一次候选人快照和 CV 图片。浏览器 localStorage
+  // 可能保存着旧版 WebSearch 证据，后台重算或规则升级后必须重新水合。
   useEffect(() => {
-    if (!profileId || !candidate) return;
-    const entry = getArchive(profileId);
-    if (!entry || entry.cvImages !== undefined) return;
+    if (!loadedArchiveId || !profileId || loadedArchiveId !== profileId) return;
+    if (!getArchive(profileId)) return;
     let cancelled = false;
     getProfile({ profile_id: profileId })
       .then((profile) => {
         if (cancelled) return;
+        const freshCandidate = profile.candidate;
         const images = profile.cv_images ?? [];
+        setCandidate(freshCandidate);
         setCvImages(images);
-        saveArchive(profileId, candidate, llmAssessment, images);
+        saveArchive(profileId, freshCandidate, llmAssessment, images);
       })
       .catch(() => {
-        // 后端不可用时静默降级：图片仅为增强展示，不影响档案阅读
+        // 后端不可用时保留本地快照，避免阻断历史档案阅读。
       });
     return () => {
       cancelled = true;
     };
-  }, [profileId, candidate, llmAssessment, getArchive, saveArchive]);
+  }, [
+    loadedArchiveId,
+    profileId,
+    llmAssessment,
+    saveArchive,
+  ]);
 
   const correctEvidence = (target: Evidence, status: EvidenceStatus) => {
     setCorrections((prev) => {

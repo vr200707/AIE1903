@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,6 +18,16 @@ def _doc(name: str, text: str) -> ParsedDocument:
 
 
 class ExtractorUnitTests(unittest.TestCase):
+    def setUp(self):
+        self.original_span_mode = os.environ.get("EXTRACT_EVIDENCE_SPANS")
+        os.environ["EXTRACT_EVIDENCE_SPANS"] = "0"
+
+    def tearDown(self):
+        if self.original_span_mode is None:
+            os.environ.pop("EXTRACT_EVIDENCE_SPANS", None)
+        else:
+            os.environ["EXTRACT_EVIDENCE_SPANS"] = self.original_span_mode
+
     def test_render_documents_adds_page_markers(self):
         doc = _doc("cv.pdf", "Hello CV")
         rendered = extractor._render_documents([doc])
@@ -142,6 +153,16 @@ def _publication(title: str, year: int) -> dict:
 
 
 class ExtractorSplitTests(unittest.TestCase):
+    def setUp(self):
+        self.original_span_mode = os.environ.get("EXTRACT_EVIDENCE_SPANS")
+        os.environ["EXTRACT_EVIDENCE_SPANS"] = "0"
+
+    def tearDown(self):
+        if self.original_span_mode is None:
+            os.environ.pop("EXTRACT_EVIDENCE_SPANS", None)
+        else:
+            os.environ["EXTRACT_EVIDENCE_SPANS"] = self.original_span_mode
+
     def test_dedup_publications_keeps_first_by_normalized_title(self):
         pubs = [
             _publication("Calibration Drift in Clinical Decision Support", 2025),
@@ -244,6 +265,89 @@ class ExtractorSplitTests(unittest.TestCase):
         self.assertGreaterEqual(chat.call_count, 3)
         pubs = profile["candidate"]["publications_impact"]["publications"]
         self.assertEqual([p["title"] for p in pubs], ["Paper A", "Paper B"])
+
+    def test_span_mode_hydrates_evidence_from_block_ids(self):
+        meta_candidate = _meta_candidate()
+        meta_candidate["basic_info"]["evidence_refs"] = [
+            {"id": "b00002", "status": "confirmed"}
+        ]
+        meta_candidate["basic_info"].pop("evidence")
+        meta = json.dumps(
+            {"schema_version": "1.0.0", "candidate": meta_candidate}
+        )
+        enumerate_raw = json.dumps(
+            {
+                "publications": [
+                    {"title": "Paper A", "year": 2024},
+                    {"title": "Paper B", "year": 2023},
+                ]
+            }
+        )
+        expand_raw = json.dumps(
+            {
+                "publications": [
+                    {
+                        "title": "Paper A",
+                        "year": 2024,
+                        "author_role": "first_author",
+                        "venue": "Journal",
+                        "venue_type": "journal",
+                        "ranking": None,
+                        "citation_count": None,
+                        "citation_query_date": None,
+                        "code_repository": None,
+                        "repository_stars": None,
+                        "stars_query_date": None,
+                        "evidence_refs": [
+                            {"id": "b00002", "status": "confirmed"}
+                        ],
+                    },
+                    {
+                        "title": "Paper B",
+                        "year": 2023,
+                        "author_role": "first_author",
+                        "venue": "Journal",
+                        "venue_type": "journal",
+                        "ranking": None,
+                        "citation_count": None,
+                        "citation_query_date": None,
+                        "code_repository": None,
+                        "repository_stars": None,
+                        "stars_query_date": None,
+                        "evidence_refs": [
+                            {"id": "b00002", "status": "confirmed"}
+                        ],
+                    },
+                ]
+            }
+        )
+        doc = _doc("cv.pdf", "Jialun Cao\nPUBLICATIONS\nPaper A\nPaper B")
+        with tempfile.TemporaryDirectory() as tmp:
+            original_cache = extractor.CACHE_DIR
+            extractor.CACHE_DIR = Path(tmp)
+            try:
+                with mock.patch.dict(
+                    os.environ,
+                    {"EXTRACT_EVIDENCE_SPANS": "1"},
+                ), mock.patch.object(
+                    extractor,
+                    "_chat",
+                    side_effect=[meta, enumerate_raw, expand_raw],
+                ):
+                    profile, skipped = extractor.extract_profile([doc])
+            finally:
+                extractor.CACHE_DIR = original_cache
+        self.assertEqual(skipped, [])
+        self.assertEqual(
+            profile["candidate"]["basic_info"]["evidence"][0]["source"],
+            "cv.pdf",
+        )
+        self.assertEqual(
+            profile["candidate"]["publications_impact"]["publications"][0][
+                "title"
+            ],
+            "Paper A",
+        )
 
     def test_extract_meta_falls_back_to_smaller_sections_on_bad_json(self):
         full_candidate = _meta_candidate()

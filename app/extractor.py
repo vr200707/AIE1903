@@ -207,6 +207,65 @@ evidence([evidence])
 """
 
 
+SPAN_RULES = """\
+输入中的每一行都有唯一块 ID，例如 [b00012|p2]。
+不要复制原文作为 evidence。每个事实只需要输出 evidence_refs：
+[{"id": "b00012", "status": "confirmed"}]
+status 只能是 confirmed / to_verify / conflict。
+后端会根据 id 回填来源、页码和原文。
+"""
+
+
+SPAN_META_SYSTEM_PROMPT = """\
+你是候选人简历结构化抽取引擎（基础模块阶段）。输入是带块 ID 的纯文本。
+只输出一个 JSON 对象，顶层包含 schema_version 与 candidate。
+
+""" + SPAN_RULES + """
+
+事实与判断分离：basic_info / education_employment / awards_funding /
+academic_service 是事实；overall_evaluation 是基于事实的判断。
+
+本阶段只抽取以下模块：
+- basic_info
+- education_employment
+- awards_funding
+- academic_service
+- overall_evaluation
+- publications_impact（publications 必须为 []，汇总字段按文档填写）
+
+每个事实对象用 evidence_refs 代替 evidence。找不到时填 null 或空数组，禁止推测。
+"""
+
+
+SPAN_EXPAND_SYSTEM_PROMPT = """\
+你是候选人简历论文结构化抽取器。输入是带块 ID 的局部上下文和论文标题列表。
+为每篇论文输出完整 publication record，但 evidence 用 evidence_refs 代替：
+[{"id": "b00012", "status": "confirmed"}]
+
+publication_record 字段：
+title(string), year(integer|null),
+author_role("first_author"|"co_first_author"|"corresponding_author"|
+"co_corresponding_author"|"middle_author"|"single_author"|"unknown"),
+venue(string|null), venue_type("journal"|"conference"|"workshop"|"preprint"|
+"other"|"unknown"), ranking(string|null), citation_count(integer|null),
+citation_query_date(date|null), code_repository(url|null),
+repository_stars(integer|null), stars_query_date(date|null),
+evidence_refs([{"id":string,"status":string}]).
+
+只抽取给定标题列表中的论文，找不到就跳过。只输出 JSON，不要解释。
+"""
+
+
+def _evidence_span_mode() -> bool:
+    _load_dotenv()
+    return os.getenv("EXTRACT_EVIDENCE_SPANS", "1").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
 def _render_documents(documents: list[ParsedDocument]) -> str:
     blocks: list[str] = []
     for doc in documents:
@@ -384,6 +443,7 @@ def _cache_key(
     schema_version = schema["properties"]["schema_version"]["const"]
     payload = {
         "extraction_strategy": EXTRACTION_STRATEGY,
+        "evidence_spans": _evidence_span_mode(),
         "papers_per_chunk": papers_per_chunk,
         "context_max_chars": context_max_chars,
         "schema_version": schema_version,
@@ -723,6 +783,227 @@ def _dedup_publications(publications: list[dict[str, Any]]) -> list[dict[str, An
     return result
 
 
+def _build_blocks(documents: list[ParsedDocument]) -> list[dict[str, Any]]:
+    """Turn parsed documents into line-level blocks with stable IDs."""
+    blocks: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    index = 1
+    for document in documents:
+        blocks.append(
+            {
+                "id": f"b{index:05d}",
+                "source": document.filename,
+                "page": None,
+                "text": f"=== 文档：{document.filename} ===",
+            }
+        )
+        index += 1
+        for page in document.pages:
+            for raw in page.text.splitlines():
+                line = re.sub(r"\s+", " ", raw).strip()
+                if not line or line in seen:
+                    continue
+                if re.fullmatch(r"[-_=~#*•·]{2,}", line):
+                    continue
+                if len(line) == 1 and not line.isalnum():
+                    continue
+                seen.add(line)
+                blocks.append(
+                    {
+                        "id": f"b{index:05d}",
+                        "source": document.filename,
+                        "page": page.page_number,
+                        "text": line,
+                    }
+                )
+                index += 1
+    return blocks
+
+
+def _render_blocks(blocks: list[dict[str, Any]]) -> str:
+    lines: list[str] = []
+    for block in blocks:
+        page = f"|p{block['page']}" if block.get("page") is not None else ""
+        lines.append(f"[{block['id']}{page}] {block['text']}")
+    return "\n".join(lines)
+
+
+def _resolve_evidence_refs(
+    refs: Any,
+    blocks: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if not isinstance(refs, list):
+        return []
+    evidence: list[dict[str, Any]] = []
+    for ref in refs:
+        if isinstance(ref, str):
+            block_id = ref
+            status = "confirmed"
+        elif isinstance(ref, dict):
+            block_id = ref.get("id")
+            status = ref.get("status", "confirmed")
+            if status not in {"confirmed", "to_verify", "conflict"}:
+                status = "confirmed"
+        else:
+            continue
+        block = blocks.get(str(block_id))
+        if block is None:
+            continue
+        evidence.append(
+            {
+                "source": block["source"],
+                "source_url": None,
+                "evidence": block["text"],
+                "evidence_status": status,
+                "query_date": QUERY_DATE,
+                "page": block.get("page"),
+                "source_type": "resume",
+            }
+        )
+    return evidence
+
+
+def _hydrate_evidence(
+    value: Any,
+    blocks: dict[str, dict[str, Any]],
+) -> Any:
+    """Replace model-returned evidence_refs with concrete evidence objects."""
+    if isinstance(value, dict):
+        hydrated: dict[str, Any] = {}
+        for key, item in value.items():
+            if key == "evidence_refs":
+                continue
+            hydrated[key] = _hydrate_evidence(item, blocks)
+        if "evidence_refs" in value:
+            hydrated["evidence"] = _resolve_evidence_refs(
+                value["evidence_refs"],
+                blocks,
+            )
+        return hydrated
+    if isinstance(value, list):
+        return [_hydrate_evidence(item, blocks) for item in value]
+    return value
+
+
+def _span_extract_meta(context: str, blocks: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    raw = _chat(
+        [
+            {"role": "system", "content": SPAN_META_SYSTEM_PROMPT},
+            {"role": "user", "content": context},
+        ],
+        stage="extraction_meta",
+    )
+    data = _parse_json(raw, "span basic modules")
+    candidate = data.get("candidate") if isinstance(data, dict) else None
+    if not isinstance(candidate, dict):
+        raise ValueError("Span extraction is missing the candidate field")
+    candidate = _hydrate_evidence(candidate, blocks)
+    publications_impact = candidate.setdefault("publications_impact", {})
+    publications_impact.setdefault("publications", [])
+    publications_impact.setdefault("total_citations", None)
+    publications_impact.setdefault("citation_query_date", None)
+    profile = {"schema_version": "1.0.0", "candidate": candidate}
+    errors = _validate_profile(profile)
+    if errors:
+        raise ValueError(
+            "Span extraction does not conform to schema.json:\n"
+            + "\n".join(errors)
+        )
+    return candidate
+
+
+def _span_expand_publication_batch(
+    context: str,
+    batch: list[dict[str, Any]],
+    blocks: dict[str, dict[str, Any]],
+    *,
+    max_retries: int,
+) -> list[dict[str, Any]]:
+    local_context = _publication_batch_context(context, batch)
+    last_error = ""
+    for _ in range(max_retries + 1):
+        user_content = (
+            local_context
+            + "\n\n需要抽取的论文标题列表：\n"
+            + json.dumps(batch, ensure_ascii=False)
+        )
+        raw = _chat(
+            [
+                {"role": "system", "content": SPAN_EXPAND_SYSTEM_PROMPT},
+                {"role": "user", "content": user_content},
+            ],
+            stage="extraction_publications",
+        )
+        try:
+            data = _parse_json(raw, "span publication expansion")
+        except ValueError as exc:
+            last_error = str(exc)
+            continue
+        publications = data.get("publications") if isinstance(data, dict) else None
+        if not isinstance(publications, list):
+            last_error = "Publication expansion did not return a publications list"
+            continue
+        return [
+            item
+            for item in (_hydrate_evidence(item, blocks) for item in publications)
+            if isinstance(item, dict)
+        ]
+    if len(batch) > 1:
+        midpoint = len(batch) // 2
+        return _span_expand_publication_batch(
+            context,
+            batch[:midpoint],
+            blocks,
+            max_retries=max_retries,
+        ) + _span_expand_publication_batch(
+            context,
+            batch[midpoint:],
+            blocks,
+            max_retries=max_retries,
+        )
+    raise ValueError(f"Publication expansion failed after retries: {last_error}")
+
+
+def _span_extract_profile(
+    documents: list[ParsedDocument],
+    *,
+    max_retries: int,
+    papers_per_chunk: int,
+) -> tuple[dict[str, Any], list[str]]:
+    blocks = _build_blocks(documents)
+    blocks_map = {block["id"]: block for block in blocks}
+    context = _render_blocks(blocks)
+    candidate = _span_extract_meta(context, blocks_map)
+    publication_context = _publication_sections_text(context)
+    titles = (
+        _enumerate_titles(publication_context)
+        if "publication" in context.lower()
+        else []
+    )
+    publications: list[dict[str, Any]] = []
+    for start in range(0, len(titles), papers_per_chunk):
+        batch = titles[start : start + papers_per_chunk]
+        publications.extend(
+            _span_expand_publication_batch(
+                context,
+                batch,
+                blocks_map,
+                max_retries=max_retries,
+            )
+        )
+    candidate["publications_impact"]["publications"] = _dedup_publications(
+        publications
+    )
+    profile = {"schema_version": "1.0.0", "candidate": candidate}
+    errors = _validate_profile(profile)
+    if errors:
+        raise ValueError(
+            "Span extraction result does not conform to schema.json:\n"
+            + "\n".join(errors)
+        )
+    return profile, []
+
+
 def extract_profile(
     documents: list[ParsedDocument],
     *,
@@ -745,6 +1026,20 @@ def extract_profile(
     cached = _read_cache(key)
     if cached is not None:
         return cached, skipped
+
+    if _evidence_span_mode():
+        try:
+            span_profile, _span_skipped = _span_extract_profile(
+                usable,
+                max_retries=max_retries,
+                papers_per_chunk=papers_per_chunk,
+            )
+            _write_cache(key, span_profile)
+            return span_profile, skipped + _span_skipped
+        except Exception:
+            # Legacy full-evidence path is the fallback when the compact
+            # representation cannot be assembled safely.
+            pass
 
     rendered = _render_documents(usable)
     if compress:

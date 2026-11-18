@@ -45,11 +45,24 @@ brew install tesseract tesseract-lang poppler
 产出 `to_verify`（附上 top 结果链接与摘要）或 `not_found_public`，交由人工复核，
 避免把未证实的声明误判为 `confirmed`。
 
+搜索结果展示前经过两段式闸口：
+
+1. 本地规则要求结果明确包含候选人姓名，并命中机构、职位、奖项或项目等具体实体。
+   只有通用词重叠（例如仅命中 `research`）的结果会被直接丢弃。
+2. 剩余歧义结果由 `web_verify` 阶段的模型复核。模型必须同时确认候选人、声明实体和
+   来源类型，并返回搜索结果标题或摘要中的逐字引用；引用无法在原文中定位时拒绝。
+
+闸口失败或没有可靠结果时记录为 `not_found_public`，不会展示无关链接。模型或搜索服务
+暂时不可用时记录为无链接的 `to_verify`，并标记为可重试。
+
 可通过环境变量覆盖搜索后端：
 
 ```bash
 # WEB_SEARCH_PROVIDER=bing
 # WEB_SEARCH_BASE_URL=https://cn.bing.com/search
+# DEEPSEEK_MODEL_WEB_VERIFY=deepseek-chat
+# WEB_VERIFY_JUDGE_MAX_OUTPUT_TOKENS=1024
+# WEB_VERIFY_MAX_WORKERS=3
 ```
 
 ## 通用约定（Conventions）
